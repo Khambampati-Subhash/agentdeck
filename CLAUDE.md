@@ -7,7 +7,7 @@ window) and `core/` is [herdr-core](https://github.com/herdrdev/herdr-core)
 see `NOTICE.md`.
 
 **Status (2026-11-10):** both upstreams imported with history (app `0ac92e4`,
-core `ce81486`). P0 (build and tests) is finishing; P1 cuts the link to herdr.dev. Open items are in `docs/plan.md`.
+core `ce81486`). P0 is done: build, tests and a scratch window on our own core. It's not merged to `main` yet. Next is P1, cutting the link to herdr.dev. Open items are in `docs/plan.md`.
 Update this line at the end of every milestone.
 
 ## Docs
@@ -66,6 +66,8 @@ After cloning: `git submodule update --init --depth 1` (Ghostty).
 - App: `cd app && cargo build --locked`, `just test` (needs Bun), `cargo test --locked`.
 - After a rebuild, the first core test run can time out on macOS (first-launch
   scan of new binaries). Rerun before debugging; see P0 in `docs/plan.md`.
+- Dev window on our build: `just dev` (scratch home, core session `aos`); `just hc ls`.
+  The user has the real Herdr installed: never use the default session or `~/.config/herdr-app`.
 - Mod check: `app/target/debug/herdr-app check <mod folder>`.
 - Screenshot a running scratch window: `herdr-app shot out.png`.
 

@@ -8,7 +8,7 @@ upstream sync before the trees drift.
 Each milestone is planned with `superpowers:writing-plans` when it starts
 and reviewed with `/code-review high` before merge.
 
-## P0: import and build (in progress)
+## P0: import and build (done 2026-11-10, merge pending)
 
 - [x] Clear the old AgentOS (Go agentd, Swift shell) on `herdr-rewrite`.
       History stays on `main` and the old branches.
@@ -31,13 +31,17 @@ and reviewed with `/code-review high` before merge.
         That's macOS's first-launch scan of new binaries, not a code bug. Rerun, or
         add the terminal under System Settings → Privacy & Security → Developer
         Tools to skip the scan.
-- [ ] `just check` (fmt, cargo-deny, clippy) in core; Bun JS tests in app.
-- [ ] Root `justfile`: `build`, `test`, `check` for both halves;
-      `dev` runs the app and core in a scratch home and session.
+- [x] Core lint: `cargo fmt --check`, `cargo deny check`, `clippy -D warnings` all pass.
+- [ ] App Bun JS tests (`app/scripts/*.test.ts`): Bun isn't installed yet.
+- [ ] Core's Windows clippy (`just lint`) needs the `x86_64-pc-windows-msvc` target; skip it unless we ship Windows.
+- [x] Root `justfile`: `build`, `test`, `check`, `dev` (scratch home
+      `/var/tmp/agentos-dev`, core session `aos`), `hc`, `dev-clean`.
+      Session names stay short: macOS caps socket paths at 103 bytes.
 - [ ] Merge `herdr-rewrite` to `main`.
 
 **Done when:** a scratch-home window opens on our own build of core, shows a
-shell, and closing and reopening the window keeps the shell.
+shell, and closing and reopening the window keeps the shell. **Met 2026-11-10**:
+the window reopened onto the same space, pane and shell, with no network sockets open.
 
 ## P1: cut the link to herdr.dev
 
@@ -66,6 +70,12 @@ from a fixture, settings, quit) makes no outbound connection, checked with
 `nettop` or `lsof -i` during the run.
 
 ## P2: rename to AgentOS
+
+Not a blind text replace. A `herdr`→`agentos` sed was tried on 2026-11-10 and
+discarded (saved at `/var/tmp/agentos-saved/`). It broke the build (files
+not renamed), pointed updates at `agentos.dev`, a domain we don't own, and rewrote
+licence notices and upstream history. Rename names, files and paths together,
+keep third-party text and links to upstream, and only rename after P1.
 
 Names (defaults; change here before P2 starts):
 
