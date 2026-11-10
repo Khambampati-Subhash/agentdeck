@@ -65,9 +65,15 @@ build, and would send usage data there. All of these go, each removal with a tes
 - [ ] A test greps the shipped binaries' strings for `herdr.dev` and fails if
       any network URL is left.
 
-**Done when:** a full app session (open, new space, split, agent status
-from a fixture, settings, quit) makes no outbound connection, checked with
-`nettop` or `lsof -i` during the run.
+**Done when:** a full app session (open, new space, split, settings, What's
+new, check for updates, quit) makes no outbound connection, including from
+short-lived children like `curl`, checked with `scripts/watch-net`.
+Detailed plan: `docs/superpowers/plans/2026-11-10-p1-offline.md`.
+
+Found 2026-11-10: even builds from source fetch the bundled changelog's
+`media.herdr.dev` images with `curl` at every start (`update_notes::started`).
+The first scratch run downloaded two. The P0 "no sockets" check missed it
+because it was a one-off `lsof` snapshot.
 
 ## P2: rename to AgentOS
 
