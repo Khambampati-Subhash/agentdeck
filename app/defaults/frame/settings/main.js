@@ -818,7 +818,7 @@ export default class Settings extends View {
         this.row(
           t,
           "What we send",
-          s && !s.sends ? "This build never sends: it's built from source. You can still see what a release would send." : "Exactly what leaves your computer, word for word.",
+          s && !s.sends ? "AgentOS never sends this: it has no telemetry server. You can still see what would be counted." : "Exactly what leaves your computer, word for word.",
           this.button(t, "st-telemetry-show", this.showData ? "Hide" : "Show", (_e, cx) => {
             this.showData = !this.showData;
             cx.notify();
