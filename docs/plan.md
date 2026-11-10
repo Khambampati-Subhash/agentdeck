@@ -17,10 +17,23 @@ and reviewed with `/code-review high` before merge.
 - [x] Ghostty submodules at the pinned commits (`app/vendor/ghostty`,
       `core/vendor/ghostty`).
 - [x] Toolchain: Zig 0.16.0 in `~/.local/bin`, `just`.
-- [ ] `cargo build --locked` passes in `core/` and `app/` on macOS with
-      Command Line Tools only.
-- [ ] `just check` in core and `cargo test --locked` in app pass, or the
-      failures are written down here with the reason.
+- [x] `cargo build --locked` works in both halves on macOS 27.2 with Command Line Tools only
+      (core 1m 36s, app 5m 19s, Rust 1.99.1, Zig 0.16.0).
+- [x] App `cargo test --locked`: 398 passed, 0 failed.
+- [ ] Core `cargo test --locked --no-fail-fast`: 478 passed, **9 failed**,
+      cause not known yet. Debug with `superpowers:systematic-debugging`.
+      Run them alone first to tell flaky from broken:
+      - foreground.rs: `a_shell_that_execs_an_agent_keeps_its_status`,
+        `a_shell_script_root_keeps_its_agents_status` (status asserted right after
+        the foreground change; looks timing-sensitive)
+      - m1.rs: `a_command_cut_off_by_a_restart_says_so`,
+        `a_core_that_stops_reading_never_holds_up_the_next_one`
+      - machines/releases: `a_machine_of_another_cpu_gets_the_released_build_for_it`,
+        `a_root_remote_gets_the_independently_signed_standalone_release`,
+        `machine_installs_keep_the_complete_bundle_and_both_aliases`
+      - `remote_addresses_are_rejected_for_now`,
+        `spawn_failure_is_reported_and_leaves_nothing_running` (the `hc` error output isn't JSON)
+- [ ] `just check` (fmt, cargo-deny, clippy) in core; Bun JS tests in app.
 - [ ] Root `justfile`: `build`, `test`, `check` for both halves;
       `dev` runs the app and core in a scratch home and session.
 - [ ] Merge `herdr-rewrite` to `main`.
@@ -67,7 +80,8 @@ Names (defaults; change here before P2 starts):
 | `dev.herdr.app`, `dev.herdr.core` | `dev.agentos.app`, `dev.agentos.core` |
 | labels `herdr.space`, `herdr.tab`, `herdr.pinned`, ... | `agentos.space`, ... |
 | `herdr.d.ts`, `import ... from "herdr"` | `agentos.d.ts`, `"agentos"` (keep `"herdr"` as an alias so shared mods run) |
-| Herdr 98 layout, logo, icons | dropped or redrawn |
+| Herdr 98 layout | dropped or redrawn |
+| Ram logo | **done 2026-11-10**: "window stack" icon (`app/assets/icons/herdr-ui-icon-clean.svg` is the source; the `.icns`, `.ico`, PNG and welcome logo are rendered from it). File names stay `herdr-*` until this rename; the DMG background and the sidebar's "Herdr" text still need doing |
 
 Keep as is: OSC 7501 (the status protocol agents emit; it's a number, not a
 brand), the agent-detection files, crate-internal module names where renaming
