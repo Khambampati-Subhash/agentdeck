@@ -31,12 +31,24 @@ class DistributionTests(unittest.TestCase):
         path.write_text("#!/bin/sh\n" + body + "\n")
         path.chmod(0o755)
 
-    def run_script(self, script, os_name, arch, *args):
+    def run_script(self, script, os_name, arch, *args, releases="https://releases.example"):
+        # AgentOS installers have no default server: each run names a test one, or none.
         env = dict(os.environ, PATH=f"{self.bin}:{os.environ['PATH']}", TEST_OS=os_name, TEST_ARCH=arch)
+        env.pop("HERDR_RELEASES_URL", None)
+        if releases is not None:
+            env["HERDR_RELEASES_URL"] = releases
         return subprocess.run(
             [str(ROOT / script), *args], cwd=ROOT, env=env,
             capture_output=True, text=True, check=False,
         )
+
+    def test_installer_without_a_release_server_stops_before_download(self):
+        for value in (None, ""):
+            with self.subTest(value=value):
+                result = self.run_script("distribution/install.sh", "Linux", "x86_64", releases=value)
+                self.assertEqual(result.returncode, 1)
+                self.assertIn("set HERDR_RELEASES_URL to an AgentOS release server; AgentOS has no default", result.stderr)
+                self.assertNotIn("unexpected download", result.stderr)
 
     def test_intel_mac_installer_stops_before_download(self):
         for arch in ("x86_64", "amd64"):
@@ -162,7 +174,7 @@ printf 'dev PATH added' >> "$3"''')
         installer = self.bin / "install.sh"
         installer.write_text(script)
         env = dict(os.environ, PATH=f"{self.bin}:{os.environ['PATH']}", TEST_OS="Darwin",
-                   TEST_ARCH="arm64", HOME=str(home))
+                   TEST_ARCH="arm64", HOME=str(home), HERDR_RELEASES_URL="https://releases.example")
         result = subprocess.run(["sh", str(installer)], cwd=ROOT, env=env,
                                 capture_output=True, text=True, check=False)
         return result, installed.read_bytes(), log.read_text().splitlines(), plist_log.exists(), plist

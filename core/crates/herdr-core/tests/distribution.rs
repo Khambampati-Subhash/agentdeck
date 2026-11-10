@@ -673,3 +673,28 @@ fn another_cpu_without_a_release_server_is_refused() {
     assert!(!odd.root.join(".local/bin/herdr-core").exists(), "nothing installed there");
     assert!(!odd.root.join(".local/share/herdr-core").exists(), "nothing half-installed there");
 }
+
+#[test]
+fn installer_without_a_release_server_stops_before_download() {
+    use std::os::unix::fs::PermissionsExt;
+    let s = Session::new();
+    let tools = s.root.join("tools");
+    std::fs::create_dir_all(&tools).unwrap();
+    let curl = tools.join("curl");
+    std::fs::write(&curl, format!("#!/bin/sh\ntouch {}/downloaded\nexit 1\n", s.root.display())).unwrap();
+    std::fs::set_permissions(&curl, std::fs::Permissions::from_mode(0o755)).unwrap();
+    for releases in [None, Some("")] {
+        let mut cmd = s.program("sh");
+        cmd.arg(format!("{ROOT}/../../distribution/install.sh"))
+            .env("PATH", format!("{}:/usr/bin:/bin", tools.display()))
+            .env("HC_INSTALL_DIR", s.root.join("bin"));
+        if let Some(url) = releases {
+            cmd.env("HERDR_RELEASES_URL", url);
+        }
+        let out = cmd.output().unwrap();
+        assert!(!out.status.success(), "{out:?}");
+        let err = String::from_utf8_lossy(&out.stderr);
+        assert!(err.contains("set HERDR_RELEASES_URL to an AgentOS release server; AgentOS has no default"), "{err}");
+        assert!(!s.root.join("downloaded").exists(), "curl was not run");
+    }
+}

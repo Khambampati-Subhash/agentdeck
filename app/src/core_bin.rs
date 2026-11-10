@@ -208,7 +208,7 @@ pub fn update() -> Result<String, String> {
 
 /// `hc update --version X`: at least X (a newer core stays). Cores before 0.1.5 lack it.
 pub fn update_to(at_least: Option<&str>) -> Result<String, String> {
-    // The core found may be someone's upstream install, whose default is herdr.dev.
+    // The core found may be an upstream install, which defaults to upstream's release server.
     if crate::update::releases().is_none() {
         return Err(crate::update::NO_SERVER.into());
     }
