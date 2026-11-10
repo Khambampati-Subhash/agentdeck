@@ -170,7 +170,9 @@ fn login_shell_path() -> Option<std::ffi::OsString> {
 /// Installs the core's latest release with its own installer (into
 /// ~/.local/bin, or HC_INSTALL_DIR), then finds it. Err: what went wrong.
 pub fn install() -> Result<PathBuf, String> {
-    let releases = crate::update::releases().ok_or_else(|| crate::update::NO_SERVER.to_owned())?;
+    let releases = crate::update::releases().ok_or_else(|| {
+        "AgentOS has no release server. Build the core (just build), then choose core/target/debug/herdr-core.".to_owned()
+    })?;
     let mut cmd = if cfg!(windows) {
         let mut c = crate::spawn::command("powershell");
         c.args(["-NoProfile", "-Command", &format!("irm {releases}/core/install.ps1 | iex")]);
@@ -296,6 +298,13 @@ fn ensure_core_bundle(version: &str) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn install_without_release_server_says_how_to_build() {
+        assert!(crate::update::releases().is_none(), "run without HERDR_RELEASES_URL");
+        let error = install().unwrap_err();
+        assert!(error.contains("just build"), "{error}");
+    }
 
     #[cfg(target_os = "macos")]
     #[test]
