@@ -20,8 +20,12 @@ test:
     cd core && cargo test --locked --no-fail-fast
     cd app && cargo test --locked
 
-# Core's own fmt, cargo-deny, clippy (Unix and Windows) and suite.
-check:
+# Fails if shipped code names herdr.dev (see scripts/offline-allow.txt).
+offline:
+    scripts/check-offline
+
+# The offline guard, core's own fmt, cargo-deny, clippy (Unix and Windows) and suite, the app suite.
+check: offline
     cd core && just check
     cd app && cargo test --locked
 

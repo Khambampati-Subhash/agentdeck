@@ -1,0 +1,10 @@
+# path<TAB>exact substring<TAB>why it is not a request
+app/src/update_notes.rs	releases.herdr.dev/demo.png	test fixture (#[cfg(test)])
+app/src/update_notes.rs	local_media_path("https://media.herdr.dev/	test of the preview-path mapping
+app/src/update_notes.rs	"https://media.herdr.dev/../peek.webp"	test of the preview-path mapping
+app/src/update_notes.rs	url.strip_prefix("https://media.herdr.dev/")	maps a URL to a local preview file; fetching is gated in fetch_media
+app/src/vt.rs	https://herdr.dev	hyperlink parsing test
+core/crates/herdr-core/src/platform/mod.rs	!= "https://releases.herdr.dev"	string comparison, makes no request
+app/scripts/notes-media.ts	media.herdr.dev	upstream release tooling; AgentOS never runs it
+app/scripts/notes-clips/	media.herdr.dev	upstream release tooling; AgentOS never runs it
+app/scripts/notes-media.test.ts	media.herdr.dev	test of upstream release tooling
