@@ -1,5 +1,5 @@
 //! The app's own updates. An installed app (Linux: `~/.local/share/herdr-app`,
-//! macOS: `Herdr.app`) checks `releases.herdr.dev/app/latest.json` a little
+//! macOS: `Herdr.app`) checks `<release server>/app/latest.json` a little
 //! after it opens and every hour, downloads a newer build for this
 //! machine, checks its sha256 and unpacks it next to itself (`<install>.new`).
 //! The frame then shows "Restart"; the swap happens on restart or the next
@@ -9,6 +9,9 @@
 //! A build from source never updates: only `scripts/package` (the release
 //! builds) sets `HERDR_APP_RELEASE`. `scripts/install-macos` makes a
 //! Herdr.app too, so the install's shape alone can't tell.
+//!
+//! AgentOS has no release server of its own: nothing is checked or downloaded
+//! unless `HERDR_RELEASES_URL` names one (tests point it at a local server).
 //!
 //! The core is checked on the same clock (`core/latest.json`): a newer core
 //! of the same generation is offered (also applied after an app update), unless
@@ -69,8 +72,16 @@ fn target() -> String {
     format!("{os}-{}", std::env::consts::ARCH)
 }
 
-fn releases() -> String {
-    std::env::var("HERDR_RELEASES_URL").unwrap_or_else(|_| "https://releases.herdr.dev".into())
+/// Why nothing was downloaded: there is no default release server.
+pub const NO_SERVER: &str = "No release server: AgentOS doesn't download builds. Set HERDR_RELEASES_URL to use one.";
+
+/// The release server, only when `HERDR_RELEASES_URL` names one.
+pub fn releases() -> Option<String> {
+    releases_from(std::env::var("HERDR_RELEASES_URL").ok())
+}
+
+fn releases_from(var: Option<String>) -> Option<String> {
+    var.filter(|url| !url.is_empty())
 }
 
 /// The version downloaded and waiting for a restart.
@@ -117,12 +128,12 @@ pub fn set_core(version: Option<String>, managed: Option<String>) {
 }
 
 fn checks_app() -> Option<PathBuf> {
-    root().filter(|_| option_env!("HERDR_APP_RELEASE").is_some() || std::env::var_os("HERDR_RELEASES_URL").is_some())
+    root().filter(|_| releases().is_some())
 }
 
-/// A release build checks the core; a source build only when pointed at a test release server.
+/// Checks the core only when a release server is set.
 fn checks_core() -> bool {
-    option_env!("HERDR_APP_RELEASE").is_some() || std::env::var_os("HERDR_RELEASES_URL").is_some()
+    releases().is_some()
 }
 
 /// For the settings screen: both programs, what's waiting, when we last looked.
@@ -156,7 +167,7 @@ pub fn start() {
     let app = checks_app();
     let core = checks_core();
     if app.is_none() && !core {
-        tracing::info!("a build from source: no updates");
+        tracing::info!("no release server: no updates");
         return;
     }
     RUNNING.store(true, Ordering::Relaxed);
@@ -222,7 +233,7 @@ struct CoreRelease {
 }
 
 fn latest_core() -> Result<CoreRelease, String> {
-    let text = curl_text(&format!("{}/core/latest.json", releases()))?;
+    let text = curl_text(&format!("{}/core/latest.json", releases().ok_or(NO_SERVER)?))?;
     serde_json::from_str(&text).map_err(|e| format!("core/latest.json: {e}"))
 }
 
@@ -266,7 +277,7 @@ pub fn update_core() {
 
 /// Downloads the latest release if it's newer. Ok(Some): a version is ready.
 fn check(root: &Path) -> Result<Option<String>, String> {
-    check_from(root, &releases())
+    check_from(root, &releases().ok_or(NO_SERVER)?)
 }
 
 fn check_from(root: &Path, releases: &str) -> Result<Option<String>, String> {
@@ -625,6 +636,13 @@ mod tests {
     use super::*;
 
     #[test]
+    fn releases_come_only_from_the_environment() {
+        assert_eq!(releases_from(None), None);
+        assert_eq!(releases_from(Some("".into())), None);
+        assert_eq!(releases_from(Some("http://127.0.0.1:9".into())), Some("http://127.0.0.1:9".into()));
+    }
+
+    #[test]
     fn failed_check_clears_success_and_recovery_records_a_new_time() {
         use std::io::{Read, Write};
         use std::net::TcpListener;
@@ -740,7 +758,7 @@ mod tests {
     #[ignore = "downloads the current release; runs real codesign on isolated bundles"]
     fn macos_unpack_preserves_release_signature_and_prepares_dev_builds() {
         let version = env!("CARGO_PKG_VERSION");
-        let manifest: serde_json::Value = serde_json::from_str(&curl_text(&format!("{}/app/{version}/manifest.json", releases())).unwrap()).unwrap();
+        let manifest: serde_json::Value = serde_json::from_str(&curl_text(&format!("{}/app/{version}/manifest.json", releases().expect("HERDR_RELEASES_URL"))).unwrap()).unwrap();
         let work = std::env::temp_dir().join(format!("herdr-signature-test-{}", std::process::id()));
         let signed = work.join("signed");
         let reference = work.join("reference");
