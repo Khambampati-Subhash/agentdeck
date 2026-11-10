@@ -73,7 +73,7 @@ fn a_shell_that_execs_an_agent_keeps_its_status() {
     wait_until("agent is the root program", || {
         get(&s, &t)["foreground"]["argv"].as_array().is_some_and(|argv| argv.contains(&json!(agent)))
     });
-    assert_eq!(get(&s, &t)["status"]["state"], "working");
+    reported_and_kept(&s, &t, "working");
 }
 
 #[test]
@@ -113,7 +113,15 @@ fn a_shell_script_root_keeps_its_agents_status() {
     let wrapper = executable(&s, &format!("#!/bin/bash\n{agent}\n"));
     let t = run(&s, &["bash", &wrapper]);
     wait_until("script root is foreground", || get(&s, &t)["foreground"]["pid"] == get(&s, &t)["pid"]);
-    assert_eq!(get(&s, &t)["status"]["state"], "working");
+    reported_and_kept(&s, &t, "working");
+}
+
+/// The argv can name a script before it runs (macOS's /bin/sh re-execs bash
+/// first), so wait for its report, then let several foreground samples pass.
+fn reported_and_kept(s: &Session, t: &str, state: &str) {
+    wait_until("reported", || get(s, t)["reported"] == true);
+    std::thread::sleep(std::time::Duration::from_millis(250));
+    assert_eq!(get(s, t)["status"]["state"], state);
 }
 
 #[test]

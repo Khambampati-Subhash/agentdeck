@@ -64,6 +64,8 @@ After cloning: `git submodule update --init --depth 1` (Ghostty).
 
 - Core: `cd core && cargo build --locked`, `just check` (fmt, clippy, tests), `just test`.
 - App: `cd app && cargo build --locked`, `just test` (needs Bun), `cargo test --locked`.
+- After a rebuild, the first core test run can time out on macOS (first-launch
+  scan of new binaries). Rerun before debugging; see P0 in `docs/plan.md`.
 - Mod check: `app/target/debug/herdr-app check <mod folder>`.
 - Screenshot a running scratch window: `herdr-app shot out.png`.
 
