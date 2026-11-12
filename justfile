@@ -35,6 +35,10 @@ dev: build
     test -f {{dev_root}}/app/settings.json || printf '{ "core": "%s" }\n' "$PWD/core/target/debug/herdr-core" > {{dev_root}}/app/settings.json
     cd {{dev_root}} && HERDR_APP_HOME={{dev_root}}/app HC_SESSION=aos "{{justfile_directory()}}/app/target/debug/herdr-app"
 
+# Builds a release and installs it as ~/Applications/AgentOS.app (shares nothing with an installed Herdr).
+install-app:
+    scripts/install-mac-app
+
 # Talk to the dev core: `just hc ls`.
 hc *args:
     HC_SESSION=aos core/target/debug/herdr-core {{args}}
