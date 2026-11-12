@@ -160,6 +160,13 @@
                       "content": {
                         "mod": "changes"
                       }
+                    },
+                    {
+                      "id": "pulls",
+                      "type": "block",
+                      "content": {
+                        "mod": "prboard"
+                      }
                     }
                   ]
                 }

@@ -1,1 +1,4 @@
 .superpowers/
+# Typings `herdr-app check` writes into the mod folder it checks.
+app/defaults/**/gpui-kit.d.ts
+app/defaults/**/jsconfig.json

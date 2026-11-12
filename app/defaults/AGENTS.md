@@ -174,8 +174,10 @@ through them, `layout.switch {name}` picks one; `shared("layout")` is the
 shown one's name. Herdr ships `main` ("Herdr": spaces by machine and the
 agents list on the left, `workspace-chrome`; tabs as pills with a + menu
 that starts a terminal or any installed agent, `new-menu`; panes as cards
-with a header; Files and Changes panels on the right, `files` and
-`changes`, opened from the tab bar and remembered per space (which ones:
+with a header; Files, Changes and Pull requests panels on the right,
+`files`, `changes` and `prboard` (open PRs or MRs through the person's `gh`
+or `glab`, each opening its diff and a comment box in a `prdiff` window),
+opened from the tab bar and remembered per space (which ones:
 shared `"workspace.panels"`, set by the welcome); a status bar,
 `workspace-status`), and as examples `terminals` ("Terminals": tabs in
 the title bar, panes as cards, a space picker) and `win98`
