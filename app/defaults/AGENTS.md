@@ -177,8 +177,9 @@ that starts a terminal or any installed agent, `new-menu`; panes as cards
 with a header; Files, Changes and Pull requests panels on the right,
 `files`, `changes` and `prboard` (open PRs or MRs through the person's `gh`
 or `glab`: GitHub and GitLab tabs, each over all their repos or this one;
-a card opens a `prdiff` window with its people, files and per-file diff,
-commits, comments and a comment box),
+a card opens a `prdiff` window with its people, files and per-file diff
+(click a line to comment on it), commits (open one for its own diff),
+comments and a comment box),
 opened from the tab bar and remembered per space (which ones:
 shared `"workspace.panels"`, set by the welcome); a status bar,
 `workspace-status`), and as examples `terminals` ("Terminals": tabs in

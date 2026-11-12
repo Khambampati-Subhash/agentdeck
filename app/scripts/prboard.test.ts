@@ -14,13 +14,19 @@ const board = await load("prboard", "PrBoard");
 const diff = await load("prdiff", "PrDiff");
 
 // Execute conditional builders and retain text, without native GPUI layout.
+// Like the runtime, a virtual list's rows can't register handlers: the list's
+// on_item_click covers them.
+let inRows = false;
+const HANDLERS = ["on_click", "on_mouse_down", "on_mouse_up", "on_hover", "on_mouse_move", "on_key_down", "on_scroll_wheel", "on_size_change"];
 function element(kind = "div") {
-  const node = { kind, id: "", children: [] as any[], click: null as any };
+  const node = { kind, id: "", children: [] as any[], click: null as any, item: null as any };
   const el: any = new Proxy(node, { get: (_, method) => {
     if (method === "node") return node;
     return (...args: any[]) => {
+      if (inRows && HANDLERS.includes(String(method))) throw new TypeError(`\`${String(method)}\` cannot be registered from a virtual list's item renderer`);
       if (method === "id") node.id = args[0];
       if (method === "on_click") node.click = args[0];
+      if (method === "on_item_click") node.item = args[0];
       if (method === "child") node.children.push(args[0]?.node ?? args[0]);
       if (method === "children") node.children.push(...args[0].map((child: any) => child?.node ?? child));
       if (method === "when" && args[0]) args[1](el);
@@ -31,6 +37,7 @@ function element(kind = "div") {
 }
 const textOf = (node: any): string => typeof node === "string" ? node : (node?.children ?? []).map(textOf).join(" ");
 const findId = (node: any, id: string): any => node?.id === id ? node : (node?.children ?? []).map((c: any) => findId(c, id)).find(Boolean);
+const findList = (node: any, id: string): any => node?.kind === "list" && node.id === id ? node : (node?.children ?? []).map((c: any) => findList(c, id)).find(Boolean);
 
 type Reply = { code: number; stdout: string; stderr?: string };
 function harness(source: string, cls: string, replies: (command: string, args: string[]) => Reply, props: any = {}, folder = "/repo") {
@@ -43,7 +50,15 @@ function harness(source: string, cls: string, replies: (command: string, args: s
   const globals: any = {
     View: class {}, div: () => element(), v_flex: () => element("v"), h_flex: () => element("h"),
     Input: { new: () => element() }, InputState: { new: () => ({ on() {}, value: () => "LGTM", set_value() {} }) },
-    Scrollbar: { vertical: () => element() }, v_virtual_list: () => element(),
+    Scrollbar: { vertical: () => element() },
+    v_virtual_list: (id: string, count: number, _h: number, key: (i: number) => string, rows: (r: any) => any[]) => {
+      const list = element("list");
+      list.id(id);
+      inRows = true;
+      try { list.children(rows({ start: 0, end: count })); } finally { inRows = false; }
+      list.node.keys = Array.from({ length: count }, (_, i) => key(i));
+      return list;
+    },
     theme: () => ({}), settings: () => ({}), props: () => props, notify() {}, closeOverlay() {},
     spaces: () => [{ id: "s1", active: true, folder, machine: null }], panes: () => [], focused: () => ({ pane: null, cwd: null }),
     openOverlay: (o: any) => overlays.push(o), watchFolder: async () => { throw new Error("not watched in tests"); },
@@ -232,18 +247,24 @@ const DIFF = [
 ].join("\n");
 
 const ghView = JSON.stringify({
-  title: "Fix it", headRefName: "fix", baseRefName: "main", reviewDecision: "CHANGES_REQUESTED", isDraft: false,
+  title: "Fix it", headRefName: "fix", headRefOid: "head123", baseRefName: "main", reviewDecision: "CHANGES_REQUESTED", isDraft: false,
   author: { login: "can" }, assignees: [{ login: "sub" }], reviewRequests: [{ login: "jon" }, { slug: "core-team", name: "Core" }],
   latestReviews: [{ author: { login: "mira" }, state: "APPROVED" }],
   reviews: [{ author: { login: "mira" }, state: "APPROVED", body: "Looks good", submittedAt: "2026-11-12T02:00:00Z" }, { author: { login: "x" }, state: "COMMENTED", body: "", submittedAt: "2026-11-12T03:00:00Z" }],
   comments: [{ author: { login: "jon" }, body: "First", createdAt: "2026-11-12T01:00:00Z" }],
   commits: [{ oid: "a1f3c9e0000", messageHeadline: "core: shorter path", authors: [{ login: "can", name: "Can" }], committedDate: "2026-11-12T00:00:00Z" }],
 });
+const REVIEW_COMMENTS = JSON.stringify([{ user: { login: "jon" }, body: "Log this?", created_at: "2026-11-12T01:30:00Z", path: "src/a.rs", line: 2, side: "RIGHT" }]);
 function ghPr(command: string, args: string[]): Reply {
   if (args[1] === "diff") return { code: 0, stdout: DIFF };
+  if (args[0] === "api" && args.includes("POST")) return { code: 0, stdout: "{}" };
+  if (args[0] === "api" && args.some((a) => a.endsWith("/comments?per_page=100"))) return { code: 0, stdout: REVIEW_COMMENTS };
+  if (args[0] === "api" && args.some((a) => a.includes("/commits/"))) return { code: 0, stdout: DIFF.split("diff --git a/gone.txt")[0] };
   if (args[1] === "view") return { code: 0, stdout: ghView };
   return { code: 0, stdout: "" };
 }
+let glReplies: any = null;
+const glProps = { pr: { num: 3, url: "https://gitlab.example.com/g/r/-/merge_requests/3" }, forge: "glab", repo: "g/r", pid: 43, overlay: "o1" };
 const ghProps = { pr: { num: 7, title: "Fix it" }, forge: "gh", repo: "o/r", cwd: "/repo", overlay: "o1" };
 
 test("the window splits the diff into files and shows the first", async () => {
@@ -267,8 +288,8 @@ test("GitHub details: people, commits, and comments with reviews in order", asyn
   expect(h.view.people.author).toBe("can");
   expect(h.view.people.assignees).toEqual(["sub"]);
   expect(h.view.people.reviewers).toEqual([{ login: "mira", state: "APPROVED" }, { login: "jon", state: "PENDING" }, { login: "Core", state: "PENDING" }]);
-  expect(h.view.commits).toEqual([{ sha: "a1f3c9e", title: "core: shorter path", author: "can", at: "2026-11-12T00:00:00Z" }]);
-  expect(h.view.comments.map((c: any) => [c.author, c.body, c.state])).toEqual([["jon", "First", null], ["mira", "Looks good", "APPROVED"]]);
+  expect(h.view.commits).toEqual([{ sha: "a1f3c9e0000", title: "core: shorter path", author: "can", at: "2026-11-12T00:00:00Z" }]);
+  expect(h.view.comments.map((c: any) => [c.author, c.body, c.state, c.path ?? null, c.line ?? null])).toEqual([["jon", "First", null, null, null], ["jon", "Log this?", null, "src/a.rs", 2], ["mira", "Looks good", "APPROVED", null, null]]);
   expect(h.view.pr.decision).toBe("CHANGES_REQUESTED");
   expect(h.view.pr.branch).toBe("fix");
 });
@@ -278,10 +299,13 @@ test("GitLab details come from the project's API by id", async () => {
     if (args[1] === "diff") return { code: 0, stdout: DIFF };
     const path = args[1] ?? "";
     if (path.endsWith("/approvals")) return { code: 0, stdout: JSON.stringify({ approved_by: [{ user: { username: "mira" } }] }) };
-    if (path.includes("/commits")) return { code: 0, stdout: JSON.stringify([{ short_id: "77be012", title: "test it", author_name: "Can", created_at: "2026-11-12T00:00:00Z" }]) };
-    if (path.includes("/notes")) return { code: 0, stdout: JSON.stringify([{ author: { username: "jon" }, body: "Why?", created_at: "2026-11-12T01:00:00Z", system: false }, { author: { username: "bot" }, body: "added 1 commit", system: true }]) };
-    return { code: 0, stdout: JSON.stringify({ title: "MR", source_branch: "a", target_branch: "main", draft: false, detailed_merge_status: "mergeable", author: { username: "can" }, assignees: [{ username: "sub" }], reviewers: [{ username: "mira" }, { username: "jon" }] }) };
+    if (path.includes("/repository/commits/")) return { code: 0, stdout: JSON.stringify([{ old_path: "x.txt", new_path: "x.txt", diff: "@@ -1 +1 @@\n-a\n+b\n" }]) };
+    if (path.includes("/commits")) return { code: 0, stdout: JSON.stringify([{ id: "77be012ffff", short_id: "77be012", title: "test it", author_name: "Can", created_at: "2026-11-12T00:00:00Z" }]) };
+    if (path.includes("/discussions")) return { code: 0, stdout: "{}" };
+    if (path.includes("/notes")) return { code: 0, stdout: JSON.stringify([{ author: { username: "jon" }, body: "Why?", created_at: "2026-11-12T01:00:00Z", system: false }, { author: { username: "bot" }, body: "added 1 commit", system: true }, { author: { username: "mira" }, body: "Here", created_at: "2026-11-12T02:00:00Z", system: false, type: "DiffNote", position: { new_path: "src/a.rs", old_path: "src/a.rs", new_line: null, old_line: 2 } }]) };
+    return { code: 0, stdout: JSON.stringify({ title: "MR", source_branch: "a", target_branch: "main", draft: false, detailed_merge_status: "mergeable", author: { username: "can" }, assignees: [{ username: "sub" }], reviewers: [{ username: "mira" }, { username: "jon" }], diff_refs: { base_sha: "b1", start_sha: "s1", head_sha: "h1" } }) };
   };
+  glReplies = replies;
   const h = harness(diff, "PrDiff", replies, { pr: { num: 3, url: "https://gitlab.example.com/g/r/-/merge_requests/3" }, forge: "glab", repo: "g/r", pid: 43, overlay: "o1" });
   h.view.init({}, h.cx);
   await h.settle();
@@ -289,8 +313,8 @@ test("GitLab details come from the project's API by id", async () => {
   expect(asked.sort()).toEqual(["projects/43/merge_requests/3", "projects/43/merge_requests/3/approvals", "projects/43/merge_requests/3/commits", "projects/43/merge_requests/3/notes"]);
   expect(h.calls.find((c) => c.args[1] === "diff").args).toEqual(["mr", "diff", "3", "-R", "https://gitlab.example.com/g/r", "--color", "never"]);
   expect(h.view.people.reviewers).toEqual([{ login: "mira", state: "APPROVED" }, { login: "jon", state: "PENDING" }]);
-  expect(h.view.commits[0].sha).toBe("77be012");
-  expect(h.view.comments.map((c: any) => c.body)).toEqual(["Why?"]);
+  expect(h.view.commits[0].sha).toBe("77be012ffff");
+  expect(h.view.comments.map((c: any) => [c.body, c.path ?? null, c.line ?? null, c.side ?? null])).toEqual([["Why?", null, null, null], ["Here", "src/a.rs", 2, "LEFT"]]);
   expect(h.view.pr.decision).toBe("mergeable");
 });
 
@@ -327,4 +351,111 @@ test("an empty diff has no files", async () => {
   await h.settle();
   expect(h.view.files).toEqual([]);
   expect(textOf(h.view.render(h.cx).node)).toContain("No changes");
+});
+
+// ---------------------------------------------------------------- line comments and commits
+
+test("diff rows know both their old and new line numbers", async () => {
+  const h = harness(diff, "PrDiff", ghPr, ghProps);
+  h.view.init({}, h.cx);
+  await h.settle();
+  expect(h.view.files[0].rows.slice(1).map((r: any) => [r.kind, r.old ?? null, r.new ?? null])).toEqual([[" ", 1, 1], ["-", 2, null], ["+", null, 2], ["+", null, 3]]);
+});
+
+test("a picked line takes the next comment on GitHub, on its side", async () => {
+  const h = harness(diff, "PrDiff", ghPr, ghProps);
+  h.view.init({}, h.cx);
+  await h.settle();
+  h.view.pickLine(3, h.cx); // "+new", new line 2
+  h.calls.length = 0;
+  h.view.postComment(h.cx);
+  await h.settle();
+  expect(h.calls[0].args).toEqual(["api", "-X", "POST", "repos/o/r/pulls/7/comments", "-f", "body=LGTM", "-f", "commit_id=head123", "-f", "path=src/a.rs", "-F", "line=2", "-f", "side=RIGHT"]);
+  expect(h.view.line).toBe(null);
+  h.view.pickLine(2, h.cx); // "-old", old line 2
+  h.calls.length = 0;
+  h.view.postComment(h.cx);
+  await h.settle();
+  expect(h.calls[0].args.slice(-4)).toEqual(["-F", "line=2", "-f", "side=LEFT"]);
+});
+
+test("a line comment on GitLab is a positioned discussion", async () => {
+  const h = harness(diff, "PrDiff", (c, a) => glReplies(c, a), glProps);
+  h.view.init({}, h.cx);
+  await h.settle();
+  h.view.pickLine(1, h.cx); // " keep", old 1 new 1
+  h.calls.length = 0;
+  h.view.postComment(h.cx);
+  await h.settle();
+  expect(h.calls[0].args).toEqual(["api", "-X", "POST", "projects/43/merge_requests/3/discussions", "-f", "body=LGTM", "-f", "position[position_type]=text",
+    "-f", "position[base_sha]=b1", "-f", "position[start_sha]=s1", "-f", "position[head_sha]=h1", "-f", "position[old_path]=src/a.rs", "-f", "position[new_path]=src/a.rs",
+    "-F", "position[old_line]=1", "-F", "position[new_line]=1", "--hostname", "gitlab.example.com"]);
+});
+
+test("hunk headers can't be picked, and the pick clears", async () => {
+  const h = harness(diff, "PrDiff", ghPr, ghProps);
+  h.view.init({}, h.cx);
+  await h.settle();
+  h.view.pickLine(0, h.cx);
+  expect(h.view.line).toBe(null);
+  h.view.pickLine(3, h.cx);
+  expect(textOf(h.view.render(h.cx).node)).toContain("src/a.rs:2");
+  h.view.pickLine(null, h.cx);
+  expect(h.view.line).toBe(null);
+});
+
+test("line comments show under their line in the diff", async () => {
+  const h = harness(diff, "PrDiff", ghPr, ghProps);
+  h.view.init({}, h.cx);
+  await h.settle();
+  const shown = h.view.shownRows(h.view.files[0]);
+  expect(shown.map((r: any) => r.kind)).toEqual(["@", " ", "-", "+", "c", "+"]);
+  expect(shown[4].text).toContain("Log this?");
+});
+
+test("a GitHub commit opens with its own files", async () => {
+  const h = harness(diff, "PrDiff", ghPr, ghProps);
+  h.view.init({}, h.cx);
+  await h.settle();
+  h.calls.length = 0;
+  h.view.openCommit(h.view.commits[0], h.cx);
+  await h.settle();
+  expect(h.calls[0].args).toEqual(["api", "-H", "Accept: application/vnd.github.diff", "repos/o/r/commits/a1f3c9e0000"]);
+  expect(h.view.commit.files.map((f: any) => f.path)).toEqual(["src/a.rs"]);
+  expect(textOf(h.view.render(h.cx).node)).toContain("All commits");
+  h.view.closeCommit(h.cx);
+  expect(h.view.commit).toBe(null);
+});
+
+test("a GitLab commit's diff comes as files from the API", async () => {
+  const h = harness(diff, "PrDiff", (c, a) => glReplies(c, a), glProps);
+  h.view.init({}, h.cx);
+  await h.settle();
+  h.calls.length = 0;
+  h.view.openCommit(h.view.commits[0], h.cx);
+  await h.settle();
+  expect(h.calls[0].args.slice(0, 2)).toEqual(["api", "projects/43/repository/commits/77be012ffff/diff?per_page=100"]);
+  expect(h.view.commit.files.map((f: any) => [f.path, f.add, f.del])).toEqual([["x.txt", 1, 1]]);
+});
+
+test("clicking a diff row picks it through the list, not the row", async () => {
+  const h = harness(diff, "PrDiff", ghPr, ghProps);
+  h.view.init({}, h.cx);
+  await h.settle();
+  const list = findList(h.view.render(h.cx).node, "prdiff");
+  expect(textOf(list)).toContain("new");
+  list.item(list.keys[3], h.cx); // "+new"
+  expect(h.view.lineLabel()).toBe("src/a.rs:2");
+  const again = findList(h.view.render(h.cx).node, "prdiff");
+  again.item(again.keys[4], h.cx); // the line comment's row opens the conversation
+  expect(h.view.tab).toBe("comments");
+});
+
+test("a commit's diff renders its rows", async () => {
+  const h = harness(diff, "PrDiff", ghPr, ghProps);
+  h.view.init({}, h.cx);
+  await h.settle();
+  h.view.openCommit(h.view.commits[0], h.cx);
+  await h.settle();
+  expect(textOf(findList(h.view.render(h.cx).node, "prdiff-commit"))).toContain("more");
 });
