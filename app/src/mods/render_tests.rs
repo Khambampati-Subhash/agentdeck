@@ -191,6 +191,8 @@ fn module(values: BTreeMap<String, Value>, calls: Rc<RefCell<Calls>>) -> HostMod
                 {
                     Some(json!({"code":128,"stdout":"","stderr":"fixture: not a git repository"}))
                 }
+                // The PR board asks the person's forge CLIs: signed out here.
+                "exec" if first == "gh" || first == "glab" => Some(json!({"code":1,"stdout":"","stderr":"fixture: not signed in"})),
                 _ => None,
             };
             let result = if let Some(reply) = reply {

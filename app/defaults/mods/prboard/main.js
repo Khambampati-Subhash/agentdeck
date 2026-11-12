@@ -1,20 +1,23 @@
-// Pull requests for the repo you're in, as a side panel beside Files and
-// Changes. Lists the open PRs (GitHub) or MRs (GitLab) in columns by how
-// they involve you, and opens each one's diff in a window (prdiff).
+// Pull requests as a side panel beside Files and Changes. A GitHub and a
+// GitLab tab, each over every repo you're part of or just this folder's,
+// split into columns by how a PR involves you. A card opens its diff,
+// commits and comments in a window (prdiff).
 //
-// Data comes from the user's own CLIs (gh for GitHub, glab for GitLab), run
-// through exec with their real env and login. No token lives in the app.
+// Data comes from the user's own CLIs (gh, glab; forge.js), run through
+// exec with their real env and login. No token lives in the app.
 
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex, Scrollbar } from "gpui-base";
 import { spaces, panes, focused, exec, theme, openOverlay, watchFolder } from "herdr";
+import { FORGES, forgeLabel, forgeOf, problem, me, listRepo, listAll } from "./forge.js";
 
 const COLUMNS = [
   { id: "review", label: "Review", empty: "Nothing needs your review." },
   { id: "assigned", label: "Assigned", empty: "Nothing is assigned to you." },
-  { id: "created", label: "Mine", empty: "You haven't opened one here." },
-  { id: "all", label: "All", empty: "No open pull requests here." },
+  { id: "created", label: "Mine", empty: "You have no open ones." },
+  { id: "all", label: "All", empty: "No open pull requests." },
 ];
+const SCOPES = [{ id: "all", label: "All repos" }, { id: "repo", label: "This repo" }];
 const EMPTY = () => ({ review: [], assigned: [], created: [], all: [] });
 
 // Where the work lives: the focused pane's folder, else the active space's.
@@ -24,37 +27,6 @@ function location() {
   const pane = f?.pane ? panes().find((p) => p.pane === f.pane) : null;
   const on = f?.pane === null ? (f.terminal?.includes("/") ? f.terminal.split("/")[0] : null) : space?.machine ?? null;
   return { cwd: pane?.cwd || f?.cwd || space?.folder, on };
-}
-const key = () => JSON.stringify(location());
-
-// GitLab when origin says so (gitlab.com or a host named gitlab), else GitHub.
-const kindOf = (remote) => /gitlab/i.test(remote) ? "glab" : "gh";
-
-const LIST = {
-  gh: ["pr", "list", "--state", "open", "--limit", "60", "--json", "number,title,author,headRefName,baseRefName,additions,deletions,changedFiles,isDraft,reviewDecision,reviewRequests,assignees,updatedAt,url"],
-  glab: ["mr", "list", "--per-page", "60", "--output", "json"],
-};
-
-const login = (u) => String((u && typeof u === "object" ? u.login ?? u.username ?? "" : u) ?? "").toLowerCase();
-
-// Both CLIs' rows as one shape.
-function uniform(rows, kind, me) {
-  const has = (users) => Boolean(me) && Array.isArray(users) && users.some((u) => login(u) === me);
-  if (kind === "glab") return rows.map((m) => ({
-    num: m.iid, title: m.title ?? "Untitled", branch: m.source_branch ?? "?", base: m.target_branch ?? "?",
-    add: 0, del: 0, files: 0,
-    draft: Boolean(m.draft ?? m.work_in_progress) || /^(draft:|\[draft\]|wip:)/i.test(m.title ?? ""),
-    decision: m.detailed_merge_status ?? "",
-    review: has(m.reviewers), assigned: has(m.assignees), mine: Boolean(me) && login(m.author) === me,
-    url: m.web_url, at: m.updated_at,
-  }));
-  return rows.map((p) => ({
-    num: p.number, title: p.title ?? "Untitled", branch: p.headRefName ?? "?", base: p.baseRefName ?? "?",
-    add: p.additions ?? 0, del: p.deletions ?? 0, files: p.changedFiles ?? 0,
-    draft: Boolean(p.isDraft), decision: p.reviewDecision ?? "",
-    review: has(p.reviewRequests), assigned: has(p.assignees), mine: Boolean(me) && login(p.author) === me,
-    url: p.url, at: p.updatedAt,
-  }));
 }
 
 // GitHub's review decision or GitLab's merge status, as a chip.
@@ -79,62 +51,76 @@ function since(ts) {
   return `${Math.floor(s / 86400)}d ago`;
 }
 
-const message = (e) => String(e?.message ?? e).trim();
-
 export default class PrBoard extends View {
   init(_props, cx) {
-    this.column = COLUMNS.some((c) => c.id === localStorage.getItem("prboard.column")) ? localStorage.getItem("prboard.column") : "review";
-    this.cols = EMPTY(); this.sel = 0; this.loading = false; this.error = null; this.repo = null;
+    const stored = (key, ids, fallback) => (ids.includes(localStorage.getItem(key)) ? localStorage.getItem(key) : fallback);
+    this.forge = stored("prboard.forge", FORGES.map((f) => f.id), "gh");
+    this.scope = Object.fromEntries(FORGES.map((f) => [f.id, stored(`prboard.scope.${f.id}`, SCOPES.map((s) => s.id), "all")]));
+    this.column = stored("prboard.column", COLUMNS.map((c) => c.id), "review");
+    this.cache = new Map(); this.cols = EMPTY(); this.sel = 0; this.loading = false; this.error = null; this.root = null;
     this.handle = cx.focus_handle();
     this.refresh(cx);
     cx.timer.every(60000, (cx) => this.refresh(cx));
   }
 
-  // The signed-in login, remembered per forge and machine.
-  async me(kind, root, on) {
-    const store = `prboard.me.${kind}${on ? "@" + on : ""}`;
-    const known = localStorage.getItem(store);
-    if (known) return known;
-    const r = await exec(kind, ["api", "user"], { cwd: root, on, timeout: 15000 });
-    if (r.code !== 0) return null;
-    let me = null;
-    try { me = login(JSON.parse(r.stdout)); } catch {}
-    if (me) localStorage.setItem(store, me);
-    return me;
+  // What's shown: the forge, its scope, and the folder when that's the scope.
+  view() {
+    const scope = this.scope[this.forge];
+    return JSON.stringify([this.forge, scope, scope === "repo" ? location() : null]);
+  }
+
+  // Shows what's known for this view at once; a load fills in the rest.
+  show(view, again = false) {
+    if (view === this.shown && !again) return;
+    if (view !== this.shown) this.sel = 0;
+    this.shown = view;
+    const known = this.cache.get(view);
+    this.cols = known?.cols ?? EMPTY(); this.error = known?.error ?? null; this.root = known?.root ?? null;
   }
 
   refresh(cx) {
+    const view = this.view();
+    this.show(view);
     if (this.loading) return;
-    const { cwd, on } = location(), context = key();
-    if (context !== this.context) { this.context = context; this.cols = EMPTY(); this.repo = null; this.error = null; this.sel = 0; this.watched = null; }
-    if (!cwd) { this.error = "Open a space in a git repo to see its pull requests."; return; }
+    const forge = this.forge, scope = this.scope[forge], { cwd, on } = location();
     this.loading = true;
     cx.spawn(async (cx) => {
-      let kind = "gh";
+      const keep = (state) => {
+        this.cache.set(view, state);
+        if (this.view() === view) this.show(view, true);
+      };
       try {
+        if (scope === "all") {
+          const opts = on ? {} : { cwd };
+          const who = await me(forge, opts);
+          keep({ cols: this.columns(await listAll(forge, who, opts)), error: null, root: null });
+          return;
+        }
+        if (!cwd) return keep({ cols: EMPTY(), error: "Open a space in a git repo to see its pull requests.", root: null });
         const top = await exec("git", ["rev-parse", "--show-toplevel"], { cwd, on, timeout: 15000 });
-        if (key() !== context) return;
-        if (top.code !== 0) { this.cols = EMPTY(); this.repo = null; this.error = "Not a git repository."; return; }
+        if (top.code !== 0) return keep({ cols: EMPTY(), error: "This folder isn't a git repository.", root: null });
         const root = top.stdout.trim();
         const remote = await exec("git", ["remote", "get-url", "origin"], { cwd: root, on, timeout: 15000 });
-        kind = kindOf(remote.code === 0 ? remote.stdout : "");
-        const me = await this.me(kind, root, on);
-        const r = await exec(kind, LIST[kind], { cwd: root, on, timeout: 60000 });
-        if (key() !== context) return;
-        if (r.code !== 0) throw new Error(r.stderr || r.stdout || `${kind} failed`);
-        const all = uniform(JSON.parse(r.stdout || "[]"), kind, me);
-        this.repo = { root, on, kind };
-        this.cols = { review: all.filter((p) => p.review), assigned: all.filter((p) => p.assigned), created: all.filter((p) => p.mine), all };
-        this.sel = Math.min(this.sel, Math.max(0, this.cols[this.column].length - 1));
-        this.error = null;
+        const here = forgeOf(remote.code === 0 ? remote.stdout : "");
+        if (here !== forge) return keep({ cols: EMPTY(), error: `This repo is on ${forgeLabel(here)}: open the ${forgeLabel(here)} tab, or pick All repos.`, root });
+        const who = await me(forge, { cwd: root, on });
+        keep({ cols: this.columns(await listRepo(forge, who, { cwd: root, on })), error: null, root });
         this.watch(root, on, cx);
       } catch (e) {
-        if (key() === context) this.error = /cannot start|not found|no such file/i.test(message(e)) ? `${kind} isn't installed or isn't on your PATH: ${message(e)}` : message(e);
+        const known = this.cache.get(view);
+        keep({ cols: known?.cols ?? EMPTY(), error: problem(forge, e), root: known?.root ?? null });
       } finally {
         this.loading = false;
+        this.sel = Math.min(this.sel, Math.max(0, this.cols[this.column].length - 1));
         cx.notify();
+        // The view changed while this one loaded: load that one too.
+        if (this.view() !== view && !this.cache.has(this.view())) this.refresh(cx);
       }
     });
+  }
+
+  columns(all) {
+    return { review: all.filter((p) => p.review), assigned: all.filter((p) => p.assigned), created: all.filter((p) => p.mine), all };
   }
 
   // A fetch, push or checkout moves refs: look again. Here only (watchFolder).
@@ -145,10 +131,22 @@ export default class PrBoard extends View {
       try {
         while (this.watched === root) {
           await watchFolder(`${root}/.git/refs`);
-          if (this.watched === root) this.refresh(cx);
+          if (this.watched === root && this.scope[this.forge] === "repo") this.refresh(cx);
         }
       } catch {}
     });
+  }
+
+  setForge(id, cx) {
+    this.forge = id;
+    localStorage.setItem("prboard.forge", id);
+    this.refresh(cx);
+  }
+
+  setScope(id, cx) {
+    this.scope[this.forge] = id;
+    localStorage.setItem(`prboard.scope.${this.forge}`, id);
+    this.refresh(cx);
   }
 
   setColumn(id) {
@@ -157,38 +155,45 @@ export default class PrBoard extends View {
   }
 
   open(pr) {
-    if (!this.repo) return;
+    const { on } = location(), here = this.scope[pr.forge] === "repo";
     openOverlay({
-      mod: "prdiff", kind: "window", key: `prdiff-${pr.num}`, width: 880, height: 560,
-      props: { pr: { num: pr.num, title: pr.title, branch: pr.branch, base: pr.base, decision: pr.decision, draft: pr.draft, url: pr.url }, cwd: this.repo.root, on: this.repo.on, kind: this.repo.kind },
+      mod: "prdiff", kind: "window", key: `prdiff-${pr.repo}-${pr.num}`, width: 880, height: 560,
+      props: {
+        pr: { num: pr.num, title: pr.title, branch: pr.branch, base: pr.base, decision: pr.decision, draft: pr.draft, url: pr.url },
+        forge: pr.forge, repo: pr.repo, pid: pr.pid, cwd: here ? this.root : null, on: here ? on : null,
+      },
     });
   }
 
   card(t, pr, i) {
-    const st = statusOf(pr), on = i === this.sel;
+    const st = statusOf(pr), on = i === this.sel, every = this.scope[this.forge] === "all";
     const lines = pr.add || pr.del ? `+${pr.add} −${pr.del}` : "";
-    return v_flex().id(`pr-${pr.num}`).w_full().flex_none().px(10).py(8).gap(4).rounded(8).cursor_pointer()
+    const where = pr.branch ? (pr.base ? `${pr.branch} → ${pr.base}` : pr.branch) : "";
+    return v_flex().id(`pr-${pr.repo}-${pr.num}`).w_full().flex_none().px(10).py(8).gap(4).rounded(8).cursor_pointer()
       .when(on, (e) => e.bg(t.selected)).hover((s) => s.bg(t.hover))
       .on_click((_e, cx) => { cx.stop_propagation(); this.sel = i; this.open(pr); cx.notify(); })
-      .child(h_flex().w_full().gap(8).items_center()
-        .child(div().text_size(11).text_color(t.dim).child(`#${pr.num}`))
-        .child(div().px(4).py(1).rounded(4).bg((t[st.color] ?? t.muted) + "22").text_size(10.5).font_semibold().text_color(t[st.color] ?? t.muted).child(st.text))
+      .child(h_flex().w_full().gap(8).items_center().text_size(10.5)
+        .when(every, (e) => e.child(div().min_w(0).truncate().text_color(t.accent).child(pr.repo)))
+        .child(div().flex_none().text_size(11).text_color(t.dim).child(`#${pr.num}`))
+        .child(div().flex_none().px(4).py(1).rounded(4).bg((t[st.color] ?? t.muted) + "22").font_semibold().text_color(t[st.color] ?? t.muted).child(st.text))
         .child(div().flex_1())
-        .when(pr.files > 0, (e) => e.child(div().text_size(10.5).text_color(t.dim).child(`${pr.files} files`))))
+        .when(pr.files > 0, (e) => e.child(div().flex_none().text_color(t.dim).child(`${pr.files} files`))))
       .child(div().w_full().text_size(13).text_color(t.foreground).truncate().child(pr.title))
       .child(h_flex().w_full().gap(8).items_center().text_size(10.5).text_color(t.dim)
-        .child(div().flex_1().min_w(0).truncate().child(pr.base !== "?" ? `${pr.branch} → ${pr.base}` : pr.branch))
+        .child(div().flex_1().min_w(0).truncate().child(where))
         .when(Boolean(lines), (e) => e.child(div().child(lines)))
         .child(div().flex_none().child(since(pr.at))));
   }
 
   render(cx) {
-    if (key() !== this.context) this.refresh(cx);
+    if (this.view() !== this.shown) this.refresh(cx);
     const t = theme(), list = this.cols[this.column];
-    const tabs = COLUMNS.map((c) => h_flex().id(`prboard-${c.id}`).h(22).px(7).gap(4).items_center().rounded(6).cursor_pointer()
-      .bg(this.column === c.id ? t.raised : t.background).text_color(this.column === c.id ? t.foreground : t.muted).hover((s) => s.bg(t.hover))
-      .on_click((_e, cx) => { this.setColumn(c.id); cx.notify(); })
-      .child(c.label).when(this.cols[c.id].length > 0, (e) => e.child(div().text_color(t.dim).child(String(this.cols[c.id].length)))));
+    const pill = (id, label, on, click, count) => h_flex().id(id).h(22).px(8).gap(5).items_center().rounded(5).cursor_pointer()
+      .bg(on ? t.raised : t.chrome).text_color(on ? t.foreground : t.muted).hover((s) => s.text_color(t.foreground))
+      .on_click((_e, cx) => { click(cx); cx.notify(); })
+      .child(label).when(Boolean(count), (e) => e.child(div().text_color(t.dim).child(String(count))));
+    const group = (children) => h_flex().flex_none().p(2).gap(2).rounded(7).bg(t.chrome).border_1().border_color(t.border).children(children);
+    const counts = (forge) => this.cache.get(JSON.stringify([forge, this.scope[forge], this.scope[forge] === "repo" ? location() : null]))?.cols.all.length;
     const empty = this.error || (this.loading ? "Loading pull requests…" : COLUMNS.find((c) => c.id === this.column).empty);
     return v_flex().id("prboard").size_full().min_h(0).rounded(10).overflow_hidden().bg(t.background).border_1().border_color(t.border).text_color(t.foreground).text_size(13).track_focus(this.handle)
       .on_key_down((e, cx) => {
@@ -200,16 +205,25 @@ export default class PrBoard extends View {
         cx.stop_propagation(); cx.notify();
       })
       .child(h_flex().h(42).flex_none().px(14).gap(8).items_center().border_b(1).border_color(t.border)
-        .child(div().font_semibold().child(this.repo?.kind === "glab" ? "Merge requests" : "Pull requests"))
+        .child(div().font_semibold().child("Pull requests"))
         .child(div().flex_1())
         .child(div().id("prboard-refresh").px(6).rounded(6).cursor_pointer().text_color(this.loading ? t.dim : t.muted).hover((s) => s.bg(t.hover).text_color(t.foreground))
           .tooltip("Refresh (R)").on_click((_e, cx) => { this.refresh(cx); cx.notify(); }).child("↻")))
-      .child(h_flex().h(32).flex_none().px(8).gap(2).items_center().border_b(1).border_color(t.border).text_size(11.5).children(tabs))
+      .child(h_flex().h(40).flex_none().px(8).gap(6).items_center().border_b(1).border_color(t.border).text_size(11.5)
+        .child(group(FORGES.map((f) => pill(`prboard-forge-${f.id}`, f.label, this.forge === f.id, (cx) => this.setForge(f.id, cx), counts(f.id)))))
+        .child(div().flex_1())
+        .child(group(SCOPES.map((s) => pill(`prboard-scope-${s.id}`, s.label, this.scope[this.forge] === s.id, (cx) => this.setScope(s.id, cx))))))
+      .child(h_flex().h(32).flex_none().px(8).gap(2).items_center().border_b(1).border_color(t.border).text_size(11.5)
+        .children(COLUMNS.map((c) => h_flex().id(`prboard-${c.id}`).h(22).px(7).gap(4).items_center().rounded(6).cursor_pointer()
+          .bg(this.column === c.id ? t.raised : t.background).text_color(this.column === c.id ? t.foreground : t.muted).hover((s) => s.bg(t.hover))
+          .on_click((_e, cx) => { this.setColumn(c.id); cx.notify(); })
+          .child(c.label).when(this.cols[c.id].length > 0, (e) => e.child(div().text_color(t.dim).child(String(this.cols[c.id].length)))))))
       .child(div().flex_1().min_h(0).relative()
         .child(v_flex().id("prboard-list").absolute().inset_0().overflow_y_scroll().p(6).gap(2)
           .children(list.map((pr, i) => this.card(t, pr, i)))
           .when(!list.length, (e) => e.child(div().p(8).text_color(t.dim).child(empty))))
         .child(Scrollbar.vertical("prboard-list").absolute().inset_0()))
-      .when(Boolean(this.error) && list.length > 0, (e) => e.child(div().px(12).py(6).border_t(1).border_color(t.border).text_size(11).text_color(t.ansi1).child(this.error)));
+      .when(Boolean(this.error) && list.length > 0, (e) => e.child(div().px(12).py(6).border_t(1).border_color(t.border).text_size(11).text_color(t.ansi1).child(this.error)))
+      .child(h_flex().h(26).flex_none().px(12).items_center().border_t(1).border_color(t.border).text_size(10.5).text_color(t.dim).child("↑↓ select · Enter open · R refresh"));
   }
 }
