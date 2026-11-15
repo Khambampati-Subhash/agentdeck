@@ -382,8 +382,8 @@ test("Fix with agent sends the check task with the log's last 120 lines", async 
   const fixButton = findId(tree, "prdiff-fix");
   expect(fixButton).toBeTruthy();
 
-  // Call fixWithAgent directly
-  h.view.fixWithAgent(h.cx);
+  expect(typeof fixButton.click).toBe("function");
+  fixButton.click({}, h.cx);
   await h.settle();
 
   expect(h.hcCalls.length).toBe(1);
@@ -393,11 +393,13 @@ test("Fix with agent sends the check task with the log's last 120 lines", async 
 
 test("Re-run calls the forge's re-run and reloads checks", async () => {
   let rerunCalled = false;
+  let checkLoads = 0;
 
   function withRerun(command: string, args: string[]): Reply {
     if (command === "git" && args[0] === "rev-parse") return { code: 0, stdout: "/repo\n" };
     if (command === "git") return { code: 0, stdout: "git@github.com:o/r.git\n" };
     if (command === "gh" && args[0] === "pr" && args[1] === "checks") {
+      checkLoads++;
       return { code: 0, stdout: JSON.stringify([
         { name: "test", bucket: "fail", workflow: "CI", link: "https://github.com/o/r/actions/runs/11/job/22" },
       ]) };
@@ -433,11 +435,13 @@ test("Re-run calls the forge's re-run and reloads checks", async () => {
   expect(backButton).toBeTruthy();
   expect(rerunButton).toBeTruthy();
 
-  // Call rerunCheck directly
-  h.view.rerunCheck(h.cx);
+  const loadsBefore = checkLoads;
+  expect(typeof rerunButton.click).toBe("function");
+  rerunButton.click({}, h.cx);
   await h.settle();
 
   expect(rerunCalled).toBe(true);
+  expect(checkLoads).toBe(loadsBefore + 1);
   expect(h.notes.length).toBeGreaterThan(0);
   expect(h.notes[h.notes.length - 1].title).toContain("Re-running");
 });
@@ -489,8 +493,8 @@ test("GitLab re-run calls the API correctly", async () => {
   expect(backButton).toBeTruthy();
   expect(rerunButton).toBeTruthy();
 
-  // Call rerunCheck directly
-  h.view.rerunCheck(h.cx);
+  expect(typeof rerunButton.click).toBe("function");
+  rerunButton.click({}, h.cx);
   await h.settle();
 
   expect(rerunCalled).toBe(true);
