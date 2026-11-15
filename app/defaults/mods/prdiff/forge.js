@@ -112,23 +112,19 @@ export const details = (p) => (p.forge === "glab" ? gitlab(p) : github(p));
 export async function checks(p, refs) {
   if (p.forge === "glab") {
     if (!refs.pipeline) return [];
-    try {
-      const jobs = await api(p, `${glProject(p)}/pipelines/${refs.pipeline}/jobs?per_page=100`);
-      return jobs.map((j) => {
-        const statusMap = { success: "pass", failed: "fail", canceled: "cancel", skipped: "skip", manual: "skip" };
-        return {
-          name: `${j.stage}: ${j.name}`,
-          state: statusMap[j.status] ?? "pending",
-          workflow: j.stage ?? "",
-          link: j.web_url ?? "",
-          job: String(j.id),
-          run: String(refs.pipeline),
-          at: j.started_at ?? j.created_at ?? null,
-        };
-      });
-    } catch (e) {
-      throw e;
-    }
+    const jobs = await api(p, `${glProject(p)}/pipelines/${refs.pipeline}/jobs?per_page=100`);
+    return jobs.map((j) => {
+      const statusMap = { success: "pass", failed: "fail", canceled: "cancel", skipped: "skip", manual: "skip" };
+      return {
+        name: `${j.stage}: ${j.name}`,
+        state: statusMap[j.status] ?? "pending",
+        workflow: j.stage ?? "",
+        link: j.web_url ?? "",
+        job: String(j.id),
+        run: String(refs.pipeline),
+        at: j.started_at ?? j.created_at ?? null,
+      };
+    });
   }
   const r = await exec(p.forge, ["pr", "checks", num(p), ...repoFlag(p), "--json", "name,state,bucket,link,workflow,startedAt,completedAt"], { cwd: p.cwd ?? undefined, on: p.on ?? undefined, timeout: 60000 });
   if (r.code !== 0) {
