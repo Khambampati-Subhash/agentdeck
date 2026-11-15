@@ -221,6 +221,8 @@ export default class PrBoard extends View {
   // agent's first message. In This repo it's this checkout; in All repos, a
   // local space's clone of the issue's repo.
   startWork(row, cx) {
+    if (this.starting) return; // one dialog per press, however often it's pressed while the body loads
+    this.starting = true;
     const here = this.scope[row.forge] === "repo", root = this.root, { on } = location();
     cx.spawn(async (cx) => {
       try {
@@ -232,6 +234,7 @@ export default class PrBoard extends View {
           props: { folder: at.folder, machine: at.on, action: "new", branch: branchFor(row), task: issueTask(row, body) },
         });
       } catch (e) { this.error = problem(row.forge, e); cx.notify(); }
+      finally { this.starting = false; }
     });
   }
 

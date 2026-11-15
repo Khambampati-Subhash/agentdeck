@@ -44,9 +44,10 @@ function harness(focusedMachine: string | null = null, replies: (command: string
   const destinations: (string | null)[] = [];
   const executions: any[] = [];
   const storage: Record<string, string> = {};
+  const inputs: any[] = [];
   const globals = {
     View: class {}, div: element, v_flex: element, h_flex: element,
-    InputState: { new: (opts: any) => ({ value: () => opts.value, on: () => {}, focus: () => {} }) },
+    InputState: { new: (opts: any) => { const input: any = { handlers: {}, value: () => opts.value, on: (event: string, fn: any) => { input.handlers[event] = fn; }, focus: () => {} }; inputs.push(input); return input; } },
     Input: { new: element }, Scrollbar: { vertical: element }, theme: () => ({}),
     spaces: () => { reads.spaces++; return structuredClone(spaceList); },
     panes: () => { reads.panes++; return structuredClone(paneList); },
@@ -70,7 +71,7 @@ function harness(focusedMachine: string | null = null, replies: (command: string
   const Worktree = new Function(...Object.keys(globals), `${source}; return Worktree;`)(...Object.values(globals));
   const worktree = new Worktree();
   Object.assign(worktree, { opening: true, text: "", at: 0, repo: { name: "repo" }, userHome: "/home/user" });
-  return { worktree, reads, writes, destinations, executions, snapshot: (spaces: any[], panes: any[]) => { spaceList = spaces; paneList = panes; }, agents: (list: any[]) => { agentsList = list; }, storage, setProps: (p: any) => { currentProps = { ...currentProps, ...p }; } };
+  return { worktree, reads, writes, destinations, executions, snapshot: (spaces: any[], panes: any[]) => { spaceList = spaces; paneList = panes; }, agents: (list: any[]) => { agentsList = list; }, storage, inputs, setProps: (p: any) => { currentProps = { ...currentProps, ...p }; } };
 }
 
 test("open render reads spaces and panes once and refreshes both on the next render", () => {
@@ -250,4 +251,51 @@ test("no task, no picker: today's dialog is unchanged", async () => {
     argv: undefined,
     task: undefined,
   }]);
+});
+
+// Opens the dialog the way the app does: init, then wait for its loading spawn.
+function fakeCx() {
+  const spawned: Promise<unknown>[] = [];
+  const cx: any = {
+    notify: () => {}, stop_propagation: () => {},
+    focus_handle: () => ({ focus: () => {} }),
+    timer: { after: (_ms: number, fn: () => void) => fn() },
+    spawn: (fn: (cx: any) => Promise<unknown>) => { spawned.push(fn(cx)); },
+  };
+  return { cx, settle: async () => { while (spawned.length) await spawned.shift(); } };
+}
+function gitRepo(command: string, args: string[]) {
+  if (command === "git" && args.includes("--show-toplevel")) return { code: 0, stdout: "/repo\n" };
+  if (command === "git" && args.includes("--git-common-dir")) return { code: 0, stdout: "/repo/.git\n" };
+  if (command === "git" && args.includes("show-ref")) return { code: 1, stdout: "" };
+  return { code: 0, stdout: "" };
+}
+
+test("a branch with a task waits for Enter before it creates anything", async () => {
+  const { worktree, writes, executions, inputs, agents, setProps } = harness(null, gitRepo);
+  agents([{ key: "claude", name: "Claude Code", run: ["claude"], installed: true }]);
+  setProps({ folder: "/repo", action: "new", branch: "12-fix", task: "Work on #12" });
+  const { cx, settle } = fakeCx();
+  worktree.init({}, cx);
+  await settle();
+  expect(worktree.repo?.top).toBe("/repo");
+  expect(writes).toEqual([]);
+  expect(executions.some((e) => e.args.includes("worktree") && e.args.includes("add"))).toBe(false);
+  inputs[0].handlers.submit({}, cx);
+  await settle();
+  expect(executions.filter((e) => e.args.includes("worktree") && e.args.includes("add")).length).toBe(1);
+  expect(writes).toEqual([["space.new", {
+    folder: "/home/user/.herdr/worktrees/repo/12-fix", machine: "", tab: undefined, argv: ["claude"], task: "Work on #12",
+  }]]);
+});
+
+test("a branch with no task still creates it on load", async () => {
+  const { worktree, writes, setProps } = harness(null, gitRepo);
+  setProps({ folder: "/repo", action: "new", branch: "fix" });
+  const { cx, settle } = fakeCx();
+  worktree.init({}, cx);
+  await settle();
+  expect(writes).toEqual([["space.new", {
+    folder: "/home/user/.herdr/worktrees/repo/fix", machine: "", tab: undefined, argv: undefined, task: undefined,
+  }]]);
 });

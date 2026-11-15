@@ -90,7 +90,7 @@ export function branchFor(row) {
 // The agent's first message. Issues are #N on both forges.
 export function issueTask(row, body) {
   const ref = `#${row.num}`;
-  return `Work on ${forgeLabel(row.forge)} issue ${ref} in ${row.repo}: ${row.title}\n${row.url}\n\n${body.trim().slice(0, 6000) || "(no description)"}\n\nWork on this branch and commit as you go. Don't push or open a pull request unless asked.`;
+  return `Work on ${forgeLabel(row.forge)} issue ${ref} in ${row.repo}: ${row.title}\n${row.url}\n\n${body.trim().slice(0, 6000) || "(no description)"}\n\nWork on this branch and commit as you go. Don't push or open a ${row.forge === "glab" ? "merge" : "pull"} request unless asked.`;
 }
 
 // Whether an origin URL is the repo's. A copy of prdiff/agent.js's sameRepo,

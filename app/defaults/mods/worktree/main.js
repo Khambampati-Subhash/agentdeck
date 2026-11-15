@@ -159,7 +159,8 @@ export default class Worktree extends View {
         // loading lands on nothing and the dialog stays keyboard-dead.
         this.handle.focus();
         if (props().action !== "remove") cx.timer.after(100, () => this.input.focus());
-        if (props().branch) await this.work(cx);
+        // A task starts an agent: wait for Enter so the agent can be chosen.
+        if (props().branch && !props().task) await this.work(cx);
       } catch (error) { this.repo = null; this.error = String(error); cx.notify(); }
     });
   }

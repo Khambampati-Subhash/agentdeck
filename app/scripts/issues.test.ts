@@ -185,6 +185,7 @@ test("issueTask carries the title, link and body", () => {
     "Work on GitHub issue #12 in o/r: Crash on empty config!\nhttps://github.com/o/r/issues/12\n\nSteps: run it.\n\nWork on this branch and commit as you go. Don't push or open a pull request unless asked.");
   expect(issueTask(crash, "  ")).toContain("\n\n(no description)\n\n");
   expect(issueTask({ ...crash, forge: "glab" }, "x")).toStartWith("Work on GitLab issue #12 in o/r:");
+  expect(issueTask({ ...crash, forge: "glab" }, "x")).toEndWith("Don't push or open a merge request unless asked.");
   expect(issueTask(crash, "y".repeat(9000))).toContain("y".repeat(6000) + "\n\nWork on this branch");
   expect(issueTask(crash, "y".repeat(9000))).not.toContain("y".repeat(6001));
 });
@@ -292,4 +293,22 @@ test("Start work on GitLab reads the description from the issues API", async () 
   const asked = h.calls.find((c) => c.command === "glab" && /\/issues\/3$/.test(c.args[1] ?? ""));
   expect(asked.args).toEqual(["api", "projects/43/issues/3", "--hostname", "gitlab.example.com"]);
   expect(h.overlays[0].props.task).toContain("Work on GitLab issue #3 in g/r: Issue 3\nhttps://gitlab.example.com/g/r/-/issues/3\n\nFrom GitLab.\n\n");
+});
+
+test("Start work clicked twice while the body loads opens one dialog", async () => {
+  const h = harness(board, "PrBoard", withBody(github));
+  h.store.set("prboard.kind", "issues");
+  h.store.set("prboard.scope.gh", "repo");
+  h.view.init({}, h.cx);
+  await h.settle();
+  const start = findId(h.view.render(h.cx).node, "issue-start-o/r-5");
+  start.click({}, h.cx);
+  start.click({}, h.cx);
+  h.view.render(h.cx).node.key({ key: "enter" }, h.cx);
+  await h.settle();
+  expect(h.calls.filter((c) => c.args.includes("body")).length).toBe(1);
+  expect(h.overlays.length).toBe(1);
+  start.click({}, h.cx);
+  await h.settle();
+  expect(h.overlays.length).toBe(2);
 });

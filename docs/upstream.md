@@ -22,4 +22,4 @@ here with why. Files we only added aren't upstream's and aren't listed.
 | `app/src/telemetry.rs`, `feedback.rs`, `app/defaults/herdr.d.ts`, `app/defaults/frame/feedback/main.js`, `app/defaults/frame/settings/main.js` | P1: telemetry and feedback send only to an endpoint the person configures. |
 | `app/defaults/layouts/main.json`, `app/defaults/mods/tabs/main.js`, `app/defaults/frame/welcome/main.js`, `app/defaults/AGENTS.md`, `app/justfile` | The Pull requests panel (`prboard`, `prdiff` mods): a third panel beside Files and Changes, its tab bar button and welcome card, the mod guide, and its tests in `just test`. |
 | `app/src/mods/render_tests.rs` | The shipped-mods render test answers `gh` and `glab` (the PR panel's CLIs) as signed out. |
-| `app/defaults/mods/worktree/main.js`, `app/defaults/AGENTS.md` | The worktree dialog: `task` prop and an agent picker when task is given without argv. |
+| `app/defaults/mods/worktree/main.js`, `app/defaults/AGENTS.md` | The worktree dialog: `task` prop and an agent picker when task is given without argv. With a `task`, a `branch` prop no longer creates the worktree on load; it waits for Enter. |
