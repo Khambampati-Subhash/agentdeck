@@ -186,7 +186,9 @@ repo, or says to open one; in This repo a header **＋** opens the `propen`
 dialog on the checkout; a pull request card opens a `prdiff` window with its people, files and per-file diff
 (click a line to comment on it), commits (open one for its own diff),
 comments (each with **→ Agent** to send it to an agent on the branch), checks
-(open one for its log, **Fix with agent** to send the failure to the agent, **Re-run** for an Actions run or pipeline job) and a comment box),
+(open one for its log, **Fix with agent** to send the failure to the agent, **Re-run** for an Actions run or pipeline job;
+a `gh pr checks` that fails without printing the list shows its error, not "No checks") and a comment box;
+with several agents on the branch it asks which, **×** dismissing the ask),
 opened from the tab bar and remembered per space (which ones:
 shared `"workspace.panels"`, set by the welcome); a status bar,
 `workspace-status`), and as examples `terminals` ("Terminals": tabs in
@@ -851,14 +853,16 @@ has 120 programs (agents, editors, runtimes, tools, databases, infra);
   space's first terminal is; `clean`, 560×480 from the space menu on git
   spaces, runs `git fetch --prune origin`, lists the linked worktrees with a
   reason each (in use by a space or terminal, folder gone, uncommitted
-  changes, merged into `origin/<base>`, branch deleted on origin, not merged),
-  ticks the removable ones that are safe, never lets in-use or dirty ones be
+  changes, detached HEAD, base branch, merged into `origin/<base>`, branch
+  deleted on origin, not merged),
+  ticks the removable ones that are safe, never lets in-use, dirty or detached ones be
   ticked, and only on Enter or Remove runs plain `git worktree remove`, one
-  `git worktree prune` for gone folders and, unless "Delete their branches
-  too" is off, `git branch -d`; never `--force` or `-D`, and what git refuses
+  `git worktree prune` for gone folders (git prunes every worktree record
+  whose folder is gone, not only the ticked ones) and, unless "Delete their branches
+  too" is off, `git branch -d` (never on the base branch); never `--force` or `-D`, and what git refuses
   is shown), or with `{branch, tab?, argv?, task?}` to make one at once with
   that first tab (with `task`, it waits for Enter instead); when `task` is given without `argv`, the dialog shows an agent picker
-  (installed agents only) and starts the chosen one with `task` as its first message
+  (installed agents only; with none it says so and creates nothing) and starts the chosen one with `task` as its first message
   (callers passing `task` should use height 300); checkouts go to
   `~/.herdr/worktrees/<repo>/<branch>` on the space's machine, a constant
   at its top; the
@@ -869,7 +873,7 @@ has 120 programs (agents, editors, runtimes, tools, databases, infra);
   as a 560×460 dialog with props `{folder, machine}`; it drafts a title and
   body from the commits ahead of `origin/<base>`, warns about uncommitted
   changes, refuses a detached HEAD or a branch with nothing ahead, offers the
-  branch's open one instead of a second, and only on Create or Enter runs
+  branch's open one instead of a second (Enter opens it), and only on Create or Enter runs
   `git push -u origin <branch>` then `gh pr create` / `glab mr create`
   (a draft unless Draft is turned off) and opens the new one's `prdiff`
   window). Shipped mods

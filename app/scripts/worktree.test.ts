@@ -201,6 +201,25 @@ test("picking another agent is remembered", () => {
   worktree.pickAgent(0);
   expect(worktree.pick).toBe(0);
   expect(storage["worktree.agent"]).toBe("claude");
+  // A click on a pill moves the highlight: it must redraw.
+  let notified = 0;
+  findId(worktree.render({}).node, "wt-agent-1").click({}, { notify: () => { notified++; } });
+  expect(worktree.pick).toBe(1);
+  expect(storage["worktree.agent"]).toBe("codex");
+  expect(notified).toBe(1);
+});
+
+test("a task with no installed agent says so as soon as it opens", async () => {
+  const { worktree, writes, agents, setProps } = harness(null, gitRepo);
+  agents([{ key: "pi", name: "Pi", run: ["pi"], installed: false }]);
+  setProps({ folder: "/repo", action: "new", branch: "12-fix", task: "Work on #12" });
+  const { cx, settle } = fakeCx();
+  worktree.init({}, cx);
+  await settle();
+  const root = worktree.render(cx).node;
+  expect(textOf(root)).toContain("No agent is installed to take this task.");
+  expect(findId(root, "wt-agent-0")).toBeNull();
+  expect(writes).toEqual([]);
 });
 
 test("a task with no installed agent says so and creates nothing", async () => {
@@ -336,6 +355,39 @@ test("classify: in use and dirty can't be picked; merged, gone and missing are p
   expect(classify({ ...f, merged: true, gone: true })).toEqual({ reason: "Merged into main", selectable: true, picked: true });
   expect(classify({ ...f, gone: true })).toEqual({ reason: "Branch deleted on origin", selectable: true, picked: true });
   expect(classify(f)).toEqual({ reason: "Not merged", selectable: true, picked: false });
+  // Detached: its commits may be reachable from nowhere else.
+  const detached = { reason: "Detached HEAD; its commits could be lost", selectable: false, picked: false };
+  expect(classify({ ...f, branch: null })).toEqual(detached);
+  expect(classify({ ...f, branch: null, merged: true, gone: true })).toEqual(detached);
+  expect(classify({ ...f, branch: null, dirty: 1 })).toEqual({ reason: "1 uncommitted change", selectable: false, picked: false });
+  expect(classify({ ...f, branch: null, missing: true })).toEqual({ reason: "Folder is gone", selectable: true, picked: true });
+  // The base branch: removable by hand, never picked, never "merged".
+  const baseRow = { reason: "Base branch", selectable: true, picked: false };
+  expect(classify({ ...f, branch: "main" })).toEqual(baseRow);
+  expect(classify({ ...f, branch: "main", merged: true, gone: true })).toEqual(baseRow);
+});
+
+test("a worktree on the base branch can be removed but its branch is never deleted", async () => {
+  const porcelain = ["worktree /r\nHEAD 0\nbranch refs/heads/dev",
+    "worktree /w/m\nHEAD 1\nbranch refs/heads/main",
+    "worktree /w/a\nHEAD 1\nbranch refs/heads/a"].join("\n\n") + "\n";
+  const inner = cleanRepo();
+  const h = await openClean((command: string, args: string[], options: any = {}) =>
+    args.join(" ") === "worktree list --porcelain" ? { code: 0, stdout: porcelain } : inner(command, args, options));
+  expect(h.worktree.rows.map((r: any) => [r.branch, r.reason, r.selectable, r.picked])).toEqual([["main", "Base branch", true, false], ["a", "Merged into main", true, true]]);
+  findId(h.view(), "wt-clean-0").click({}, h.cx);
+  await h.worktree.removeChosen();
+  expect(removals(h.executions)).toEqual([["worktree", "remove", "/w/m"], ["worktree", "remove", "/w/a"], ["branch", "-d", "a"]]);
+});
+
+test("a base-branch worktree whose folder is gone is pruned, its branch kept", async () => {
+  const porcelain = ["worktree /r\nHEAD 0\nbranch refs/heads/dev",
+    "worktree /w/m\nHEAD 1\nbranch refs/heads/main\nprunable gitdir file points to non-existent location"].join("\n\n") + "\n";
+  const inner = cleanRepo();
+  const h = await openClean((command: string, args: string[], options: any = {}) =>
+    args.join(" ") === "worktree list --porcelain" ? { code: 0, stdout: porcelain } : inner(command, args, options));
+  await h.worktree.removeChosen();
+  expect(removals(h.executions)).toEqual([["worktree", "prune"]]);
 });
 
 // A repo at /r on main with linked worktrees a (merged), b (gone on origin),

@@ -157,6 +157,7 @@ export default class Worktree extends View {
         if (p.task && !p.argv) {
           const all = await knownAgents({ on: this.on });
           this.agents = all.filter((a) => a.installed);
+          if (!this.agents.length) this.error = "No agent is installed to take this task.";
           const stored = localStorage.getItem("worktree.agent");
           this.pick = Math.max(0, this.agents.findIndex((a) => a.key === stored));
         }
@@ -267,12 +268,12 @@ export default class Worktree extends View {
     const list = await git(at, ["worktree", "list", "--porcelain"], on);
     if (!list.ok) throw new Error(list.err || "git worktree list failed.");
     this.all = listAll(list.out);
+    this.base = base;
     const rows = [];
     for (const w of this.all) {
       const status = w.missing ? { ok: true, out: "" } : await git(w.path, ["--no-optional-locks", "-c", "core.fsmonitor=false", "status", "--porcelain"], on);
-      // A worktree on the base branch itself is never "merged": -d would delete the base.
       const why = status.ok
-        ? classify({ ...w, inUse: this.usedBy(w.path), dirty: status.out ? status.out.split("\n").length : 0, merged: merged.includes(w.branch) && w.branch !== base, gone: gone.has(w.branch), base })
+        ? classify({ ...w, inUse: this.usedBy(w.path), dirty: status.out ? status.out.split("\n").length : 0, merged: merged.includes(w.branch), gone: gone.has(w.branch), base })
         : { reason: status.err || "git status failed.", selectable: false, picked: false };
       rows.push({ ...w, ...why });
     }
@@ -323,7 +324,8 @@ export default class Worktree extends View {
         : w.missing ? (pruned ??= await git(at, ["worktree", "prune"], on))
         : await git(at, ["worktree", "remove", w.path], on, 600_000);
       const removed = r.ok;
-      if (removed && this.branches && w.branch) r = await git(at, ["branch", "-d", w.branch], on);
+      // The base branch is never deleted, even when its worktree goes.
+      if (removed && this.branches && w.branch && w.branch !== this.base) r = await git(at, ["branch", "-d", w.branch], on);
       results.push({ path: w.path, branch: w.branch, removed, ok: r.ok, message: r.ok ? "" : r.err || "git refused." });
     }
     const kept = results.filter((r) => !r.ok).map((r) => `${r.branch ?? tilde(r.path, this.userHome ?? "")}: ${r.message}`);
@@ -555,7 +557,7 @@ export default class Worktree extends View {
             .text_color(t.foreground),
         ),
       )
-      .when(Boolean(this.agents), (el) =>
+      .when(this.agents?.length > 0, (el) =>
         el.child(
           h_flex()
             .gap(8)
@@ -573,7 +575,7 @@ export default class Worktree extends View {
                   .text_size(12)
                   .when(i === this.pick, (el) => el.bg(t.accent).text_color(t.background))
                   .when(i !== this.pick, (el) => el.bg(t.input).text_color(t.foreground).hover((s) => s.bg(t.hover)))
-                  .on_click(() => this.pickAgent(i))
+                  .on_click((_e, cx) => { this.pickAgent(i); cx.notify(); })
                   .child(a.name),
               ),
             ),

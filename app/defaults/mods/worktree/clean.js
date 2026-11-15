@@ -24,11 +24,15 @@ export function goneBranches(forEachRef) {
 
 // Why a worktree is listed, whether it can be ticked, and whether it is
 // already: f = { branch, missing, inUse, dirty, merged, gone, base }.
-// First match wins: in use and uncommitted changes are never removable.
+// First match wins: in use, uncommitted changes and a detached HEAD (its
+// commits may be on no branch) are never removable. The base branch can be
+// ticked by hand but is never "merged" (its branch is never deleted).
 export function classify(f) {
   if (f.inUse) return { reason: `In use by ${f.inUse}`, selectable: false, picked: false };
   if (f.missing) return { reason: "Folder is gone", selectable: true, picked: true };
   if (f.dirty) return { reason: `${f.dirty} uncommitted change${f.dirty === 1 ? "" : "s"}`, selectable: false, picked: false };
+  if (!f.branch) return { reason: "Detached HEAD; its commits could be lost", selectable: false, picked: false };
+  if (f.branch === f.base) return { reason: "Base branch", selectable: true, picked: false };
   if (f.merged) return { reason: `Merged into ${f.base}`, selectable: true, picked: true };
   if (f.gone) return { reason: "Branch deleted on origin", selectable: true, picked: true };
   return { reason: "Not merged", selectable: true, picked: false };
