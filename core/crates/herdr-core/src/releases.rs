@@ -1,7 +1,9 @@
-//! Released builds on releases.herdr.dev: the list (`core/latest.json`, or
+//! Released builds on a release server: the list (`core/latest.json`, or
 //! `core/<version>/manifest.json` for one version) and its checked
 //! downloads. curl, sha256sum/shasum (Windows: its own crypto) and tar do
 //! the work: no HTTP or crypto code in hc for something run this rarely.
+//! AgentOS has no release server of its own: only one `HERDR_RELEASES_URL`
+//! names is ever asked (tests point it at local files).
 
 use crate::rpc::RpcError;
 use serde::Deserialize;
@@ -22,15 +24,26 @@ pub struct Target {
     pub sha256: String,
 }
 
-fn base() -> String {
-    std::env::var("HERDR_RELEASES_URL")
-        .unwrap_or_else(|_| "https://releases.herdr.dev".into())
-        .trim_end_matches('/')
-        .into()
+const NO_SERVER: &str = "no release server: AgentOS doesn't download builds";
+
+fn base() -> Result<String, RpcError> {
+    match std::env::var("HERDR_RELEASES_URL").ok().filter(|url| !url.is_empty()) {
+        Some(url) => Ok(url.trim_end_matches('/').into()),
+        None => Err(RpcError::new(
+            "unavailable",
+            NO_SERVER,
+            "build this core from its repo (just build), or set HERDR_RELEASES_URL",
+        )),
+    }
+}
+
+/// The error a missing release server gives, which callers pass on as is.
+pub fn is_no_server(e: &RpcError) -> bool {
+    e.message == NO_SERVER
 }
 
 fn unavailable(why: String) -> RpcError {
-    RpcError::new("unavailable", why, "check your connection; the releases are at releases.herdr.dev")
+    RpcError::new("unavailable", why, "check your connection to the release server")
 }
 
 fn curl(url: &str, to: &Path) -> Result<(), RpcError> {
@@ -50,8 +63,8 @@ fn curl(url: &str, to: &Path) -> Result<(), RpcError> {
 /// The latest release's list, or one version's.
 pub fn manifest(version: Option<&str>, scratch: &Path) -> Result<Manifest, RpcError> {
     let url = match version {
-        Some(v) => format!("{}/core/{v}/manifest.json", base()),
-        None => format!("{}/core/latest.json", base()),
+        Some(v) => format!("{}/core/{v}/manifest.json", base()?),
+        None => format!("{}/core/latest.json", base()?),
     };
     let file = scratch.join("manifest.json");
     curl(&url, &file)?;

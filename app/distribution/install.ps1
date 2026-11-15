@@ -1,6 +1,8 @@
 # Installs the Herdr app on Windows, and herdr-core if there's none yet:
 #
-#   powershell -c "irm https://releases.herdr.dev/app/install.ps1 | iex"
+#   $env:HERDR_RELEASES_URL = "<release server>"; powershell -File install.ps1
+#
+# AgentOS has no release server of its own, so there is no default.
 #
 # The app into %LOCALAPPDATA%\Programs\herdr-app (added to your PATH for
 # `herdr-app`), Herdr in the Start menu. The core, with its own installer,
@@ -16,7 +18,8 @@ $ProgressPreference = "SilentlyContinue"
 # throw, not exit: under `irm | iex`, exit would close the person's window.
 function Fail($why) { throw "herdr: $why" }
 
-$releases = if ($env:HERDR_RELEASES_URL) { $env:HERDR_RELEASES_URL.TrimEnd("/") } else { "https://releases.herdr.dev" }
+if (-not $env:HERDR_RELEASES_URL) { Fail "set HERDR_RELEASES_URL to an AgentOS release server; AgentOS has no default" }
+$releases = $env:HERDR_RELEASES_URL.TrimEnd("/")
 $dir = Join-Path $env:LOCALAPPDATA "Programs\herdr-app"
 $arch = if ($env:PROCESSOR_ARCHITEW6432) { $env:PROCESSOR_ARCHITEW6432 } else { $env:PROCESSOR_ARCHITECTURE }
 if ($arch -ne "AMD64") { Fail "no build for $arch Windows yet (x64 only)" }

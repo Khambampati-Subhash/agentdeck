@@ -141,6 +141,14 @@ do it, it's a mod):
       Each needs a check of what OSC 7501 and `hc` already give.
 - [ ] Our default layout and theme.
 - [ ] Anything else from daily use: keep a list here.
+- [x] The forge loop: issue → agent → PR → merged ([plan](superpowers/plans/2026-11-15-forge-loop.md),
+      spec in `docs/features.md` F13–F17). Done on branch `forge-loop`; merge pending.
+  - F13: issues on the Pull requests board, and **Start work** opens a worktree
+    with an agent on the issue.
+  - F14: a PR window Checks tab with logs, **Fix with agent** and **Re-run**.
+  - F15: review comments sent to the agent on the PR's branch with **→ Agent**.
+  - F16: open a pull or merge request from a worktree's branch (`propen`).
+  - F17: **Clean up worktrees** removes merged or gone ones, never dirty or in-use ones.
 
 ## Open questions
 

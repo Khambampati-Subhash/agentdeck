@@ -20,8 +20,12 @@ test:
     cd core && cargo test --locked --no-fail-fast
     cd app && cargo test --locked
 
-# Core's own fmt, cargo-deny, clippy (Unix and Windows) and suite.
-check:
+# Fails if shipped code names herdr.dev (see scripts/offline-allow.txt).
+offline:
+    scripts/check-offline
+
+# The offline guard, core's own fmt, cargo-deny, clippy (Unix and Windows) and suite, the app suite.
+check: offline
     cd core && just check
     cd app && cargo test --locked
 
@@ -30,6 +34,10 @@ dev: build
     mkdir -p {{dev_root}}/app
     test -f {{dev_root}}/app/settings.json || printf '{ "core": "%s" }\n' "$PWD/core/target/debug/herdr-core" > {{dev_root}}/app/settings.json
     cd {{dev_root}} && HERDR_APP_HOME={{dev_root}}/app HC_SESSION=aos "{{justfile_directory()}}/app/target/debug/herdr-app"
+
+# Builds a release and installs it as ~/Applications/AgentOS.app (shares nothing with an installed Herdr).
+install-app:
+    scripts/install-mac-app
 
 # Talk to the dev core: `just hc ls`.
 hc *args:

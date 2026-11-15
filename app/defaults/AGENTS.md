@@ -174,8 +174,22 @@ through them, `layout.switch {name}` picks one; `shared("layout")` is the
 shown one's name. Herdr ships `main` ("Herdr": spaces by machine and the
 agents list on the left, `workspace-chrome`; tabs as pills with a + menu
 that starts a terminal or any installed agent, `new-menu`; panes as cards
-with a header; Files and Changes panels on the right, `files` and
-`changes`, opened from the tab bar and remembered per space (which ones:
+with a header; Files, Changes and Pull requests panels on the right,
+`files`, `changes` and `prboard` (open PRs or MRs through the person's `gh`
+or `glab`: GitHub and GitLab tabs, each over all their repos or this one;
+a Pull requests / Issues switch, the Issues view in Assigned, Mine and All
+columns with **↗** to open an issue in the browser and **Start work** (or
+Enter on the selected issue) to open the worktree dialog on a `<num>-<slug>`
+branch with an agent picker, the issue's title, link and body as the agent's
+first message; in All repos it uses a local space cloned from the issue's
+repo, or says to open one; in This repo a header **＋** opens the `propen`
+dialog on the checkout; a pull request card opens a `prdiff` window with its people, files and per-file diff
+(click a line to comment on it), commits (open one for its own diff),
+comments (each with **→ Agent** to send it to an agent on the branch), checks
+(open one for its log, **Fix with agent** to send the failure to the agent, **Re-run** for an Actions run or pipeline job;
+a `gh pr checks` that fails without printing the list shows its error, not "No checks") and a comment box;
+with several agents on the branch it asks which, **×** dismissing the ask),
+opened from the tab bar and remembered per space (which ones:
 shared `"workspace.panels"`, set by the welcome); a status bar,
 `workspace-status`), and as examples `terminals` ("Terminals": tabs in
 the title bar, panes as cards, a space picker) and `win98`
@@ -834,14 +848,35 @@ has 120 programs (agents, editors, runtimes, tools, databases, infra);
   example pane header, not used by the default layouts), and `worktree`
   (git worktrees as spaces: the space menu's and the + menu's New worktree,
   Open worktree (the repo's checkouts, filtered; one already shown is gone
-  to) and Remove worktree open it as a dialog with props `{space, folder?,
-  action: "new" | "open" | "remove"}` (the repo: folder, else where the
-  space's first terminal is), or with `{branch, tab?, argv?}` to make one at once with
-  that first tab; checkouts go to
+  to), Remove worktree and Clean up worktrees open it as a dialog with props `{space, folder?,
+  action: "new" | "open" | "remove" | "clean"}` (the repo: folder, else where the
+  space's first terminal is; `clean`, 560×480 from the space menu on git
+  spaces, runs `git fetch --prune origin`, lists the linked worktrees with a
+  reason each (in use by a space or terminal, folder gone, uncommitted
+  changes, detached HEAD, base branch, merged into `origin/<base>`, branch
+  deleted on origin, not merged),
+  ticks the removable ones that are safe, never lets in-use, dirty or detached ones be
+  ticked, and only on Enter or Remove runs plain `git worktree remove`, one
+  `git worktree prune` for gone folders (git prunes every worktree record
+  whose folder is gone, not only the ticked ones) and, unless "Delete their branches
+  too" is off, `git branch -d` (never on the base branch); never `--force` or `-D`, and what git refuses
+  is shown), or with `{branch, tab?, argv?, task?}` to make one at once with
+  that first tab (with `task`, it waits for Enter instead); when `task` is given without `argv`, the dialog shows an agent picker
+  (installed agents only; with none it says so and creates nothing) and starts the chosen one with `task` as its first message
+  (callers passing `task` should use height 300); checkouts go to
   `~/.herdr/worktrees/<repo>/<branch>` on the space's machine, a constant
   at its top; the
   `spaces` sidebar nests worktree spaces under their repo's and shows each
-  space's repo, branch, ahead/behind and uncommitted changes). Shipped mods
+  space's repo, branch, ahead/behind and uncommitted changes), and `propen`
+  (opens a pull or merge request from a checkout's branch: the space menu's
+  Open pull request on git spaces and the Pull requests panel's **＋** open it
+  as a 560×460 dialog with props `{folder, machine}`; it drafts a title and
+  body from the commits ahead of `origin/<base>`, warns about uncommitted
+  changes, refuses a detached HEAD or a branch with nothing ahead, offers the
+  branch's open one instead of a second (Enter opens it), and only on Create or Enter runs
+  `git push -u origin <branch>` then `gh pr create` / `glab mr create`
+  (a draft unless Draft is turned off) and opens the new one's `prdiff`
+  window). Shipped mods
   are Herdr's; duplicate with `mod.clone` before editing.
 
 ### Check before you finish

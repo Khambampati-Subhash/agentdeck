@@ -1,16 +1,17 @@
 import { test, expect } from "bun:test";
-import { readFile } from "node:fs/promises";
+import { load, fns, harness as modHarness, findId as modFindId, textOf as modTextOf, element as modElement, type Reply } from "./mod-harness.ts";
 
-const source = (await readFile(new URL("../defaults/mods/worktree/main.js", import.meta.url), "utf8"))
-  .replace(/^import .*;\n/gm, "").replace("export default class Worktree", "class Worktree");
+const source = await load("worktree", "Worktree");
+const menu = await load("menu", "Menu");
 
 // Execute conditional builders and retain text, without native GPUI layout.
 function element() {
-  const node = { id: "", children: [] as any[] };
+  const node = { id: "", children: [] as any[], click: null as any };
   const el: any = new Proxy(node, { get: (_, method) => {
     if (method === "node") return node;
     return (...args: any[]) => {
       if (method === "id") node.id = args[0];
+      if (method === "on_click") node.click = args[0];
       if (method === "child") node.children.push(args[0]?.node ?? args[0]);
       if (method === "children") node.children.push(...args[0].map((child: any) => child?.node ?? child));
       if (method === "when" && args[0]) args[1](el);
@@ -25,33 +26,53 @@ function textOf(node: any): string {
 function rowsOf(node: any): any[] {
   return node?.id?.match(/^wt-\d+$/) ? [node] : (node?.children ?? []).flatMap(rowsOf);
 }
+function findId(node: any, id: string): any {
+  if (node?.id === id) return node;
+  for (const child of node?.children ?? []) {
+    const found = findId(child, id);
+    if (found) return found;
+  }
+  return null;
+}
 
-function harness(focusedMachine: string | null = null) {
+function harness(focusedMachine: string | null = null, replies: (command: string, args: string[], options?: any) => { code: number; stdout?: string; stderr?: string } = () => ({ code: 0, stdout: "" })) {
   let spaceList: any[] = [];
   let paneList: any[] = [];
+  let agentsList: any[] = [];
+  let currentProps: any = { overlay: "overlay" };
   const reads = { spaces: 0, panes: 0 };
   const writes: unknown[] = [];
   const destinations: (string | null)[] = [];
   const executions: any[] = [];
+  const storage: Record<string, string> = {};
+  const inputs: any[] = [];
   const globals = {
     View: class {}, div: element, v_flex: element, h_flex: element,
+    InputState: { new: (opts: any) => { const input: any = { handlers: {}, value: () => opts.value, on: (event: string, fn: any) => { input.handlers[event] = fn; }, focus: () => {} }; inputs.push(input); return input; } },
     Input: { new: element }, Scrollbar: { vertical: element }, theme: () => ({}),
     spaces: () => { reads.spaces++; return structuredClone(spaceList); },
     panes: () => { reads.panes++; return structuredClone(paneList); },
-    props: () => ({ overlay: "overlay" }), closeOverlay: () => {},
+    props: () => currentProps, closeOverlay: () => {},
     run: (command: string, args: any) => {
       writes.push([command, args]);
       if (command === "space.new") destinations.push(args.machine === "" ? null : args.machine ?? focusedMachine);
     },
     exec: async (command: string, args: string[], options: any) => {
       executions.push({ command, args, ...options });
-      return { code: 0, stdout: "", stderr: "" };
+      const reply = replies(command, args, options);
+      return { code: reply.code, stdout: reply.stdout ?? "", stderr: reply.stderr ?? "" };
     },
+    knownAgents: async () => structuredClone(agentsList),
+    localStorage: {
+      getItem: (key: string) => storage[key] ?? null,
+      setItem: (key: string, value: string) => { storage[key] = value; },
+    },
+    home: () => "/home/user",
   };
   const Worktree = new Function(...Object.keys(globals), `${source}; return Worktree;`)(...Object.values(globals));
   const worktree = new Worktree();
   Object.assign(worktree, { opening: true, text: "", at: 0, repo: { name: "repo" }, userHome: "/home/user" });
-  return { worktree, reads, writes, destinations, executions, snapshot: (spaces: any[], panes: any[]) => { spaceList = spaces; paneList = panes; } };
+  return { worktree, reads, writes, destinations, executions, snapshot: (spaces: any[], panes: any[]) => { spaceList = spaces; paneList = panes; }, agents: (list: any[]) => { agentsList = list; }, storage, inputs, setProps: (p: any) => { currentProps = { ...currentProps, ...p }; } };
 }
 
 test("open render reads spaces and panes once and refreshes both on the next render", () => {
@@ -135,4 +156,360 @@ test("space matching keeps deepest checkout, machine, live-folder and fallback r
   worktree.open(worktree.list[0]);
   expect(writes[4]).toEqual(["space.select", { id: "remote" }]);
   expect(reads).toEqual({ spaces: 5, panes: 5 });
+});
+
+test("a task brings an agent picker; Enter starts that agent with the task", async () => {
+  const { worktree, writes, storage, setProps } = harness();
+  const agentsList = [
+    { key: "claude", name: "Claude Code", run: ["claude"], installed: true },
+    { key: "codex", name: "Codex", run: ["codex"], installed: true },
+    { key: "pi", name: "Pi", run: ["pi"], installed: false },
+  ];
+  const installed = agentsList.filter(a => a.installed);
+  storage["worktree.agent"] = "codex";
+  const pick = installed.findIndex(a => a.key === "codex");
+  setProps({ folder: "/repo", action: "new", branch: "12-fix", task: "Work on #12" });
+  Object.assign(worktree, {
+    opening: false, text: "12-fix", repo: { name: "repo", main: "/repo", top: "/repo" },
+    userHome: "/home/user", agents: installed, pick,
+  });
+  const rendered = worktree.render({}).node;
+  const text = textOf(rendered);
+  expect(text).toContain("Codex");
+  expect(text).not.toContain("Pi");
+  await worktree.create();
+  expect(writes[0]).toEqual(["space.new", {
+    folder: "/home/user/.herdr/worktrees/repo/12-fix",
+    machine: "",
+    tab: undefined,
+    argv: ["codex"],
+    task: "Work on #12",
+  }]);
+});
+
+test("picking another agent is remembered", () => {
+  const { worktree, storage, setProps } = harness();
+  const installed = [
+    { key: "claude", name: "Claude Code", run: ["claude"], installed: true },
+    { key: "codex", name: "Codex", run: ["codex"], installed: true },
+  ];
+  setProps({ folder: "/repo", action: "new", task: "Work" });
+  Object.assign(worktree, {
+    opening: false, text: "fix", repo: { name: "repo", main: "/repo", top: "/repo" },
+    userHome: "/home/user", agents: installed, pick: 0,
+  });
+  worktree.pickAgent(0);
+  expect(worktree.pick).toBe(0);
+  expect(storage["worktree.agent"]).toBe("claude");
+  // A click on a pill moves the highlight: it must redraw.
+  let notified = 0;
+  findId(worktree.render({}).node, "wt-agent-1").click({}, { notify: () => { notified++; } });
+  expect(worktree.pick).toBe(1);
+  expect(storage["worktree.agent"]).toBe("codex");
+  expect(notified).toBe(1);
+});
+
+test("a task with no installed agent says so as soon as it opens", async () => {
+  const { worktree, writes, agents, setProps } = harness(null, gitRepo);
+  agents([{ key: "pi", name: "Pi", run: ["pi"], installed: false }]);
+  setProps({ folder: "/repo", action: "new", branch: "12-fix", task: "Work on #12" });
+  const { cx, settle } = fakeCx();
+  worktree.init({}, cx);
+  await settle();
+  const root = worktree.render(cx).node;
+  expect(textOf(root)).toContain("No agent is installed to take this task.");
+  expect(findId(root, "wt-agent-0")).toBeNull();
+  expect(writes).toEqual([]);
+});
+
+test("a task with no installed agent says so and creates nothing", async () => {
+  const { worktree, writes, setProps } = harness();
+  setProps({ folder: "/repo", action: "new", task: "Work" });
+  Object.assign(worktree, {
+    opening: false, text: "fix", repo: { name: "repo", main: "/repo", top: "/repo" },
+    userHome: "/home/user", agents: [],
+  });
+  const error = await worktree.create();
+  expect(error).toBe("No agent is installed to take this task.");
+  expect(writes).toEqual([]);
+});
+
+test("a branch checked out elsewhere shows git's words and opens no space", async () => {
+  const { worktree, writes, setProps } = harness(null, (command, args) => {
+    if (command === "git" && args.includes("show-ref")) return { code: 0, stdout: "" };
+    if (command === "git" && args.includes("worktree") && args.includes("add")) {
+      return { code: 128, stdout: "", stderr: "fatal: '12-fix' is already checked out at '/repo'" };
+    }
+    return { code: 0, stdout: "" };
+  });
+  setProps({ folder: "/repo", action: "new", branch: "12-fix" });
+  Object.assign(worktree, {
+    opening: false, text: "12-fix", repo: { name: "repo", main: "/repo", top: "/repo" },
+    userHome: "/home/user",
+  });
+  const error = await worktree.create();
+  expect(error).toContain("already checked out");
+  expect(writes).toEqual([]);
+});
+
+test("no task, no picker: today's dialog is unchanged", async () => {
+  const { worktree, writes, setProps } = harness();
+  setProps({ folder: "/repo", action: "new", branch: "fix" });
+  Object.assign(worktree, {
+    opening: false, text: "fix", repo: { name: "repo", main: "/repo", top: "/repo" },
+    userHome: "/home/user",
+  });
+  const rendered = worktree.render({}).node;
+  const text = textOf(rendered);
+  expect(text).not.toContain("agent");
+  expect(worktree.agents).toBeUndefined();
+  await worktree.create();
+  expect(writes[0]).toEqual(["space.new", {
+    folder: "/home/user/.herdr/worktrees/repo/fix",
+    machine: "",
+    tab: undefined,
+    argv: undefined,
+    task: undefined,
+  }]);
+});
+
+// Opens the dialog the way the app does: init, then wait for its loading spawn.
+function fakeCx() {
+  const spawned: Promise<unknown>[] = [];
+  const cx: any = {
+    notify: () => {}, stop_propagation: () => {},
+    focus_handle: () => ({ focus: () => {} }),
+    timer: { after: (_ms: number, fn: () => void) => fn() },
+    spawn: (fn: (cx: any) => Promise<unknown>) => { spawned.push(fn(cx)); },
+  };
+  return { cx, settle: async () => { while (spawned.length) await spawned.shift(); } };
+}
+function gitRepo(command: string, args: string[]) {
+  if (command === "git" && args.includes("--show-toplevel")) return { code: 0, stdout: "/repo\n" };
+  if (command === "git" && args.includes("--git-common-dir")) return { code: 0, stdout: "/repo/.git\n" };
+  if (command === "git" && args.includes("show-ref")) return { code: 1, stdout: "" };
+  return { code: 0, stdout: "" };
+}
+
+test("a branch with a task waits for Enter before it creates anything", async () => {
+  const { worktree, writes, executions, inputs, agents, setProps } = harness(null, gitRepo);
+  agents([{ key: "claude", name: "Claude Code", run: ["claude"], installed: true }]);
+  setProps({ folder: "/repo", action: "new", branch: "12-fix", task: "Work on #12" });
+  const { cx, settle } = fakeCx();
+  worktree.init({}, cx);
+  await settle();
+  expect(worktree.repo?.top).toBe("/repo");
+  expect(writes).toEqual([]);
+  expect(executions.some((e) => e.args.includes("worktree") && e.args.includes("add"))).toBe(false);
+  inputs[0].handlers.submit({}, cx);
+  await settle();
+  expect(executions.filter((e) => e.args.includes("worktree") && e.args.includes("add")).length).toBe(1);
+  expect(writes).toEqual([["space.new", {
+    folder: "/home/user/.herdr/worktrees/repo/12-fix", machine: "", tab: undefined, argv: ["claude"], task: "Work on #12",
+  }]]);
+});
+
+test("a branch with no task still creates it on load", async () => {
+  const { worktree, writes, setProps } = harness(null, gitRepo);
+  setProps({ folder: "/repo", action: "new", branch: "fix" });
+  const { cx, settle } = fakeCx();
+  worktree.init({}, cx);
+  await settle();
+  expect(writes).toEqual([["space.new", {
+    folder: "/home/user/.herdr/worktrees/repo/fix", machine: "", tab: undefined, argv: undefined, task: undefined,
+  }]]);
+});
+
+// ---------------------------------------------------------------- clean up
+
+const pure = () => fns(source, ["listAll", "goneBranches", "classify"]);
+
+test("listAll keeps linked worktrees and marks missing ones", () => {
+  const { listAll } = pure();
+  const porcelain = [
+    "worktree /r\nHEAD 1111\nbranch refs/heads/main",
+    "worktree /w/a\nHEAD 2222\nbranch refs/heads/a",
+    "worktree /w/b\nHEAD 3333\nbranch refs/heads/b\nprunable gitdir file points to non-existent location",
+    "worktree /w/bare\nbare",
+  ].join("\n\n") + "\n";
+  expect(listAll(porcelain)).toEqual([
+    { path: "/w/a", branch: "a", missing: false },
+    { path: "/w/b", branch: "b", missing: true },
+  ]);
+  expect(listAll("worktree /r\nHEAD 1\ndetached\n\nworktree /w/x\nHEAD 2\ndetached\n")).toEqual([{ path: "/w/x", branch: null, missing: false }]);
+});
+
+test("goneBranches reads the branches whose upstream is gone", () => {
+  const { goneBranches } = pure();
+  expect([...goneBranches("main\t\nb\t[gone]\ne\t[ahead 1]\nf\t[gone]\n")]).toEqual(["b", "f"]);
+  expect(goneBranches("").size).toBe(0);
+});
+
+test("classify: in use and dirty can't be picked; merged, gone and missing are picked", () => {
+  const { classify } = pure();
+  const f = { branch: "x", missing: false, inUse: null, dirty: 0, merged: false, gone: false, base: "main" };
+  expect(classify({ ...f, inUse: "fix", missing: true, merged: true })).toEqual({ reason: "In use by fix", selectable: false, picked: false });
+  expect(classify({ ...f, missing: true, dirty: 2 })).toEqual({ reason: "Folder is gone", selectable: true, picked: true });
+  expect(classify({ ...f, dirty: 1, merged: true })).toEqual({ reason: "1 uncommitted change", selectable: false, picked: false });
+  expect(classify({ ...f, dirty: 3 })).toEqual({ reason: "3 uncommitted changes", selectable: false, picked: false });
+  expect(classify({ ...f, merged: true, gone: true })).toEqual({ reason: "Merged into main", selectable: true, picked: true });
+  expect(classify({ ...f, gone: true })).toEqual({ reason: "Branch deleted on origin", selectable: true, picked: true });
+  expect(classify(f)).toEqual({ reason: "Not merged", selectable: true, picked: false });
+  // Detached: its commits may be reachable from nowhere else.
+  const detached = { reason: "Detached HEAD; its commits could be lost", selectable: false, picked: false };
+  expect(classify({ ...f, branch: null })).toEqual(detached);
+  expect(classify({ ...f, branch: null, merged: true, gone: true })).toEqual(detached);
+  expect(classify({ ...f, branch: null, dirty: 1 })).toEqual({ reason: "1 uncommitted change", selectable: false, picked: false });
+  expect(classify({ ...f, branch: null, missing: true })).toEqual({ reason: "Folder is gone", selectable: true, picked: true });
+  // The base branch: removable by hand, never picked, never "merged".
+  const baseRow = { reason: "Base branch", selectable: true, picked: false };
+  expect(classify({ ...f, branch: "main" })).toEqual(baseRow);
+  expect(classify({ ...f, branch: "main", merged: true, gone: true })).toEqual(baseRow);
+});
+
+test("a worktree on the base branch can be removed but its branch is never deleted", async () => {
+  const porcelain = ["worktree /r\nHEAD 0\nbranch refs/heads/dev",
+    "worktree /w/m\nHEAD 1\nbranch refs/heads/main",
+    "worktree /w/a\nHEAD 1\nbranch refs/heads/a"].join("\n\n") + "\n";
+  const inner = cleanRepo();
+  const h = await openClean((command: string, args: string[], options: any = {}) =>
+    args.join(" ") === "worktree list --porcelain" ? { code: 0, stdout: porcelain } : inner(command, args, options));
+  expect(h.worktree.rows.map((r: any) => [r.branch, r.reason, r.selectable, r.picked])).toEqual([["main", "Base branch", true, false], ["a", "Merged into main", true, true]]);
+  findId(h.view(), "wt-clean-0").click({}, h.cx);
+  await h.worktree.removeChosen();
+  expect(removals(h.executions)).toEqual([["worktree", "remove", "/w/m"], ["worktree", "remove", "/w/a"], ["branch", "-d", "a"]]);
+});
+
+test("a base-branch worktree whose folder is gone is pruned, its branch kept", async () => {
+  const porcelain = ["worktree /r\nHEAD 0\nbranch refs/heads/dev",
+    "worktree /w/m\nHEAD 1\nbranch refs/heads/main\nprunable gitdir file points to non-existent location"].join("\n\n") + "\n";
+  const inner = cleanRepo();
+  const h = await openClean((command: string, args: string[], options: any = {}) =>
+    args.join(" ") === "worktree list --porcelain" ? { code: 0, stdout: porcelain } : inner(command, args, options));
+  await h.worktree.removeChosen();
+  expect(removals(h.executions)).toEqual([["worktree", "prune"]]);
+});
+
+// A repo at /r on main with linked worktrees a (merged), b (gone on origin),
+// c (dirty), d (a space is in it), e (not merged), f (folder gone).
+const PORCELAIN = ["worktree /r\nHEAD 0\nbranch refs/heads/main",
+  ...["a", "b", "c", "d", "e"].map((b) => `worktree /w/${b}\nHEAD 1\nbranch refs/heads/${b}`),
+  "worktree /w/f\nHEAD 2\nbranch refs/heads/f\nprunable gitdir file points to non-existent location"].join("\n\n") + "\n";
+function cleanRepo(o: { fetch?: number; branchD?: (b: string) => { code: number; stdout?: string; stderr?: string } } = {}) {
+  return (command: string, args: string[], options: any = {}) => {
+    const a = args.join(" ");
+    if (command !== "git") return { code: 1, stdout: "" };
+    if (a === "rev-parse --show-toplevel") return { code: 0, stdout: "/r\n" };
+    if (a === "rev-parse --path-format=absolute --git-common-dir") return { code: 0, stdout: "/r/.git\n" };
+    if (a === "fetch --prune origin") return { code: o.fetch ?? 0, stdout: "", stderr: o.fetch ? "fatal: unable to access" : "" };
+    if (a === "symbolic-ref --short refs/remotes/origin/HEAD") return { code: 0, stdout: "origin/main\n" };
+    if (a.startsWith("branch --merged origin/main")) return { code: 0, stdout: "main\na\n" };
+    if (a.startsWith("for-each-ref")) return { code: 0, stdout: "main\t\na\t\nb\t[gone]\nc\t\nd\t\ne\t[ahead 1]\nf\t\n" };
+    if (a === "worktree list --porcelain") return { code: 0, stdout: PORCELAIN };
+    if (a.endsWith("status --porcelain")) return { code: 0, stdout: options.cwd === "/w/c" ? " M x\n" : "" };
+    if (args[0] === "branch" && args[1] === "-d") return o.branchD?.(args[2]) ?? { code: 0, stdout: `Deleted branch ${args[2]}` };
+    return { code: 0, stdout: "" };
+  };
+}
+async function openClean(replies = cleanRepo()) {
+  const h = harness(null, replies);
+  h.snapshot([{ id: "sd", name: "d-space", folder: "/w/d", machine: null, tabs: [] }], []);
+  h.setProps({ folder: "/r", action: "clean" });
+  const { cx, settle } = fakeCx();
+  h.worktree.init({}, cx);
+  await settle();
+  const view = () => h.worktree.render(cx).node;
+  return { ...h, cx, settle, view };
+}
+const removals = (executions: any[]) => executions.filter((e) => ["remove", "prune", "-d"].includes(e.args[1])).map((e) => e.args);
+
+test("clean view lists reasons and only removes what's picked, without force", async () => {
+  const h = await openClean();
+  const text = textOf(h.view());
+  for (const r of ["Merged into main", "Branch deleted on origin", "1 uncommitted change", "In use by d-space", "Not merged", "Folder is gone"]) expect(text).toContain(r);
+  expect(text).not.toContain("/r ");
+  // status is never run in a folder that's gone.
+  expect(h.executions.some((e) => e.cwd === "/w/f")).toBe(false);
+  // Nothing is removed on load.
+  expect(removals(h.executions)).toEqual([]);
+  await h.worktree.removeChosen();
+  const all = h.executions.map((e) => e.args);
+  expect(removals(h.executions)).toEqual([
+    ["worktree", "remove", "/w/a"], ["branch", "-d", "a"],
+    ["worktree", "remove", "/w/b"], ["branch", "-d", "b"],
+    ["worktree", "prune"], ["branch", "-d", "f"],
+  ]);
+  expect(all.flat().some((x: string) => x === "--force" || x === "-D" || x === "-f")).toBe(false);
+  expect(textOf(h.view())).toContain("Removed 3.");
+});
+
+test("clicks toggle only selectable rows; the branch toggle keeps branches", async () => {
+  const h = await openClean();
+  for (const i of [...Array(6).keys()]) findId(h.view(), `wt-clean-${i}`).click({}, h.cx);
+  // a, b, f were picked and are now off; e is now on; c and d stay off.
+  findId(h.view(), "wt-clean-branches").click({}, h.cx);
+  await h.worktree.removeChosen();
+  expect(removals(h.executions)).toEqual([["worktree", "remove", "/w/e"]]);
+});
+
+test("Enter removes the picked ones, and Enter again closes", async () => {
+  const h = await openClean();
+  let closed = 0;
+  h.worktree.close = () => { closed++; };
+  const enter = { key: "enter" };
+  h.worktree.key(enter, h.cx);
+  await h.settle();
+  expect(removals(h.executions).length).toBe(6);
+  expect(closed).toBe(0);
+  h.worktree.key(enter, h.cx);
+  await h.settle();
+  expect(closed).toBe(1);
+  expect(removals(h.executions).length).toBe(6);
+});
+
+test("a space opened since the list was read keeps its worktree", async () => {
+  const h = await openClean();
+  h.snapshot([{ id: "sd", name: "d-space", folder: "/w/d", machine: null, tabs: [] }, { id: "sa", name: "a-space", folder: "/w/a", machine: null, tabs: [] }], []);
+  await h.worktree.removeChosen();
+  expect(removals(h.executions).some((a) => a.includes("/w/a") || a.includes("a"))).toBe(false);
+  expect(textOf(h.view())).toContain("In use by a-space");
+});
+
+test("a pane inside a worktree marks it in use", async () => {
+  const h = harness(null, cleanRepo());
+  h.snapshot([{ id: "s1", name: "other", folder: "/elsewhere", machine: null, tabs: [{ id: "t1" }, { id: "t2" }] }], [
+    { tab: "t1", cwd: "/elsewhere" }, { tab: "t2", cwd: "/w/e/src", title: "claude", program: { name: "Claude Code" } },
+  ]);
+  h.setProps({ folder: "/r", action: "clean" });
+  const { cx, settle } = fakeCx();
+  h.worktree.init({}, cx);
+  await settle();
+  expect(textOf(h.worktree.render(cx).node)).toContain("In use by Claude Code");
+});
+
+test("a branch git won't delete is reported, not hidden", async () => {
+  const h = await openClean(cleanRepo({ branchD: (b) => b === "b" ? { code: 1, stdout: "", stderr: "error: the branch 'b' is not fully merged" } : { code: 0, stdout: "" } }));
+  await h.worktree.removeChosen();
+  expect(textOf(h.view())).toContain("b: error: the branch 'b' is not fully merged");
+});
+
+test("an unreachable origin still lists from local refs", async () => {
+  const h = await openClean(cleanRepo({ fetch: 128 }));
+  const text = textOf(h.view());
+  expect(text).toContain("Couldn't reach origin; using what's known here.");
+  expect(text).toContain("Merged into main");
+  expect(text).toContain("Not merged");
+});
+
+test("the space menu offers Clean up worktrees on git spaces, as a 560x480 dialog", async () => {
+  const spaces = () => [{ id: "s1", folder: "/r", machine: null, tabs: [{ id: "t1" }] }];
+  const replies = (_c: string, a: string[]): Reply => ({ code: 0, stdout: a.includes("--show-toplevel") ? "/r\n" : "/r/.git\n" });
+  const h = modHarness(menu, "Menu", replies, { tab: "space", target: { id: "s1" } }, "/r", { spaces, panes: () => [], svg: () => modElement(), keys: () => [], terminals: () => [] });
+  h.view.init({}, h.cx);
+  await h.settle();
+  const root = h.view.render(h.cx).node;
+  const i = [...Array(10).keys()].find((n) => modTextOf(modFindId(root, `mi-${n}`)).includes("Clean up worktrees"));
+  expect(i).toBeDefined();
+  modFindId(root, `mi-${i}`).click({}, h.cx);
+  expect(h.overlays).toEqual([{ mod: "worktree", kind: "dialog", width: 560, height: 480, props: { space: "s1", action: "clean" } }]);
 });

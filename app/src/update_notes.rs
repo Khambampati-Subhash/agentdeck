@@ -182,7 +182,16 @@ fn preview_media(url: &str) -> bool {
     true
 }
 
+/// Media comes from the release server's notes; with none set, nothing is fetched,
+/// whatever URLs the bundled or cached notes name.
+fn may_fetch_media(releases: Option<&str>) -> bool {
+    releases.is_some()
+}
+
 fn fetch_media(notes: &[Note]) {
+    if !may_fetch_media(crate::update::releases().as_deref()) {
+        return;
+    }
     let dir = path("update-notes-media");
     if std::fs::create_dir_all(&dir).is_err() { return; }
     for media in notes.iter().flat_map(|n| &n.items).flat_map(|item| &item.media) {
@@ -264,6 +273,12 @@ pub fn presented(versions: &[String]) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn media_is_fetched_only_with_a_release_server() {
+        assert!(!may_fetch_media(None));
+        assert!(may_fetch_media(Some("http://127.0.0.1:9")));
+    }
     fn fixture() -> Vec<Note> {
         parse("## [1.8.0] - 2026-10-23\n<!-- spotlight -->\n- New thing\n![demo](https://releases.herdr.dev/demo.png)\n## [1.7.0] - 2026-10-22\n- Another thing\n## [1.5.0] - 2026-10-20\n- Old thing\n")
     }

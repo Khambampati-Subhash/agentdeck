@@ -303,7 +303,7 @@ export function presentUpdateNotes(versions: string[]): null;
 
 /** Anonymous usage data (one report per day, never terminal content). `enabled`: collecting now;
  *  `setting`: settings.json's `telemetry`; `off_because`: an env var that turns it off for this run
- *  (DO_NOT_TRACK, HERDR_TELEMETRY, CI); `sends`: false for a build from source (it never sends).
+ *  (DO_NOT_TRACK, HERDR_TELEMETRY, CI); `sends`: false unless HERDR_TELEMETRY_URL names a server (AgentOS has none).
  *  `draft`: today's report so far; `queued`: finished days waiting to go, exactly as they'll be
  *  sent; `last_sent`: the last one the server took (`at`: unix seconds). Null until it starts. */
 export function telemetry(): {

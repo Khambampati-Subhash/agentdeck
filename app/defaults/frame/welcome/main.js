@@ -18,6 +18,7 @@ const APPEARANCES = [
 const PANELS = [
   { id: "files", icon: "files", title: "Files", about: "The folder you're in as a tree. Open a file to read it, highlighted." },
   { id: "changes", icon: "git-compare", title: "Changes", about: "What your agents changed: every file with its diff, and a commit box." },
+  { id: "pulls", icon: "git-pull-request", title: "Pull requests", about: "This repo's open PRs and MRs, through your gh or glab login. Open one to read its diff and comment." },
 ];
 
 // The key bound to a command, as people press it: "Ctrl+Shift+P".
@@ -399,7 +400,7 @@ export default class Welcome extends View {
     if (shared("workspace.panels") === undefined || shared("workspace.panels") === null) setShared("workspace.panels", []);
     return v_flex()
       .gap(14)
-      .child(this.title(t, "Choose your panels", "Herdr comes with a couple of panels. Turn one on and it appears beside your terminals. Drag this window aside to see it. Later, the buttons in the tab bar open and close them."))
+      .child(this.title(t, "Choose your panels", "Herdr comes with a few panels. Turn one on and it appears beside your terminals. Drag this window aside to see it. Later, the buttons in the tab bar open and close them."))
       .children(PANELS.map((p) => this.panelCard(t, p)))
       .child(
         h_flex()

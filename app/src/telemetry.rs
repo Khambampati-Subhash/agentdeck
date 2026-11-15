@@ -25,7 +25,6 @@ use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant, SystemTime};
 
 pub const VERSION: u32 = 1;
-const ENDPOINT: &str = "https://telemetry.herdr.dev/v1/report";
 /// Frozen reports older than this are dropped unsent.
 const KEEP_DAYS: i64 = 7;
 const TICK: Duration = Duration::from_secs(30);
@@ -97,12 +96,13 @@ fn read_env_off() -> Option<&'static str> {
     CI.iter().any(|k| set(k).is_some()).then_some("CI")
 }
 
-/// Where reports go, if this build sends at all.
+/// Where reports go: only a server `HERDR_TELEMETRY_URL` names. AgentOS has none.
 fn endpoint() -> Option<String> {
-    match std::env::var("HERDR_TELEMETRY_URL").ok().filter(|u| !u.is_empty()) {
-        Some(url) => Some(url),
-        None => option_env!("HERDR_APP_RELEASE").map(|_| ENDPOINT.to_owned()),
-    }
+    endpoint_from(std::env::var("HERDR_TELEMETRY_URL").ok())
+}
+
+fn endpoint_from(var: Option<String>) -> Option<String> {
+    var.filter(|url| !url.is_empty())
 }
 
 pub fn collecting() -> bool {
@@ -621,7 +621,7 @@ impl Worker {
             "setting": SETTING.load(Ordering::Relaxed),
             "off_because": env_off(),
             "sends": endpoint().is_some(),
-            "endpoint": endpoint().unwrap_or_else(|| ENDPOINT.to_owned()),
+            "endpoint": endpoint().unwrap_or_default(),
             "draft": self.install.as_ref().filter(|_| on).map(|i| self.day.report(i)),
             "queued": queued,
             "last_sent": last,
@@ -699,6 +699,13 @@ fn post(url: &str, body: &str) -> Option<u16> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn endpoint_comes_only_from_the_environment() {
+        assert_eq!(endpoint_from(None), None);
+        assert_eq!(endpoint_from(Some("".into())), None);
+        assert_eq!(endpoint_from(Some("http://127.0.0.1:9/r".into())), Some("http://127.0.0.1:9/r".into()));
+    }
 
     #[test]
     fn dates_are_utc_calendar_days() {

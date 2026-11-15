@@ -652,3 +652,49 @@ fn a_machine_of_another_cpu_gets_the_released_build_for_it() {
     odd.bin = odd.root.join(".local/bin/herdr-core");
     drop(r);
 }
+
+#[test]
+fn another_cpu_without_a_release_server_is_refused() {
+    let mut odd = Session::new();
+    odd.bin = odd.root.join("bin/herdr-core"); // no hc there yet
+    std::fs::create_dir_all(odd.root.join("fakebin")).unwrap();
+    let other = if std::env::consts::ARCH == "aarch64" { "x86_64" } else { "aarch64" };
+    let os = if std::env::consts::OS == "macos" { "Darwin" } else { "Linux" };
+    let uname = odd.root.join("fakebin/uname");
+    std::fs::write(&uname, format!("#!/bin/sh\necho '{os} {other}'\n")).unwrap();
+    std::fs::set_permissions(&uname, std::os::unix::fs::PermissionsExt::from_mode(0o755)).unwrap();
+
+    let mut s = Session::new();
+    s.env.push(fake_ssh(&s, &[("odd", &odd)]));
+    // Started first, so its startup notes stay out of the error we read.
+    s.json(&["server", "start"]);
+    let (_, error) = s.err(&["machine", "add", "odd", "--install"]);
+    assert_eq!(error["error"]["kind"], "unavailable", "{error}");
+    assert!(!odd.root.join(".local/bin/herdr-core").exists(), "nothing installed there");
+    assert!(!odd.root.join(".local/share/herdr-core").exists(), "nothing half-installed there");
+}
+
+#[test]
+fn installer_without_a_release_server_stops_before_download() {
+    use std::os::unix::fs::PermissionsExt;
+    let s = Session::new();
+    let tools = s.root.join("tools");
+    std::fs::create_dir_all(&tools).unwrap();
+    let curl = tools.join("curl");
+    std::fs::write(&curl, format!("#!/bin/sh\ntouch {}/downloaded\nexit 1\n", s.root.display())).unwrap();
+    std::fs::set_permissions(&curl, std::fs::Permissions::from_mode(0o755)).unwrap();
+    for releases in [None, Some("")] {
+        let mut cmd = s.program("sh");
+        cmd.arg(format!("{ROOT}/../../distribution/install.sh"))
+            .env("PATH", format!("{}:/usr/bin:/bin", tools.display()))
+            .env("HC_INSTALL_DIR", s.root.join("bin"));
+        if let Some(url) = releases {
+            cmd.env("HERDR_RELEASES_URL", url);
+        }
+        let out = cmd.output().unwrap();
+        assert!(!out.status.success(), "{out:?}");
+        let err = String::from_utf8_lossy(&out.stderr);
+        assert!(err.contains("set HERDR_RELEASES_URL to an AgentOS release server; AgentOS has no default"), "{err}");
+        assert!(!s.root.join("downloaded").exists(), "curl was not run");
+    }
+}

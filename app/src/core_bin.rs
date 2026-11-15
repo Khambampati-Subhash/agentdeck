@@ -170,7 +170,9 @@ fn login_shell_path() -> Option<std::ffi::OsString> {
 /// Installs the core's latest release with its own installer (into
 /// ~/.local/bin, or HC_INSTALL_DIR), then finds it. Err: what went wrong.
 pub fn install() -> Result<PathBuf, String> {
-    let releases = std::env::var("HERDR_RELEASES_URL").unwrap_or_else(|_| "https://releases.herdr.dev".into());
+    let releases = crate::update::releases().ok_or_else(|| {
+        "AgentOS has no release server. Build the core (just build), then choose core/target/debug/herdr-core.".to_owned()
+    })?;
     let mut cmd = if cfg!(windows) {
         let mut c = crate::spawn::command("powershell");
         c.args(["-NoProfile", "-Command", &format!("irm {releases}/core/install.ps1 | iex")]);
@@ -206,6 +208,10 @@ pub fn update() -> Result<String, String> {
 
 /// `hc update --version X`: at least X (a newer core stays). Cores before 0.1.5 lack it.
 pub fn update_to(at_least: Option<&str>) -> Result<String, String> {
+    // The core found may be an upstream install, which defaults to upstream's release server.
+    if crate::update::releases().is_none() {
+        return Err(crate::update::NO_SERVER.into());
+    }
     let mut cmd = crate::spawn::command(path());
     cmd.args(["update", "--json"]);
     if let Some(v) = at_least {
@@ -259,7 +265,9 @@ fn ensure_core_bundle(version: &str) -> Result<(), String> {
     if !official {
         return Ok(());
     }
-    let releases = std::env::var("HERDR_RELEASES_URL").unwrap_or_else(|_| "https://releases.herdr.dev".into());
+    let Some(releases) = crate::update::releases() else {
+        return Ok(());
+    };
     let mut cmd = crate::spawn::command("sh");
     cmd.args([
         "-c",
@@ -290,6 +298,13 @@ fn ensure_core_bundle(version: &str) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn install_without_release_server_says_how_to_build() {
+        assert!(crate::update::releases().is_none(), "run without HERDR_RELEASES_URL");
+        let error = install().unwrap_err();
+        assert!(error.contains("just build"), "{error}");
+    }
 
     #[cfg(target_os = "macos")]
     #[test]

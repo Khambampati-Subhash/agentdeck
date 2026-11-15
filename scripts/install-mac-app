@@ -1,0 +1,77 @@
+#!/bin/bash
+# Builds AgentOS and installs it as a normal Mac app: ~/Applications/AgentOS.app,
+# opened from Finder, Spotlight, Launchpad or the Dock.
+#
+# It shares nothing with an installed Herdr (upstream's app/scripts/install-macos
+# would replace it): its own bundle ID, its own settings folder, its own core
+# session and its own core, inside the app. ~/.local/bin is left alone.
+#
+# Usage: scripts/install-mac-app            (build and install)
+#        scripts/install-mac-app --no-build (install what's already built)
+set -euo pipefail
+
+NAME="AgentOS"
+ID="io.github.khambampati-subhash.agentos"
+SESSION="agentos"
+HOME_DIR="$HOME/Library/Application Support/$NAME"
+APP="$HOME/Applications/$NAME.app"
+
+[[ $(uname -s) == Darwin ]] || { echo "install-mac-app: macOS only" >&2; exit 1; }
+root="$(cd "$(dirname "$0")/.." && pwd)"
+export PATH="$HOME/.local/bin:$PATH" # Zig 0.16.0
+
+if [[ ${1:-} != --no-build ]]; then
+  (cd "$root/core" && cargo build --release --locked)
+  (cd "$root/app" && cargo build --release --locked)
+fi
+app_bin="$root/app/target/release/herdr-app"
+core_bin="$root/core/target/release/herdr-core"
+[[ -x $app_bin && -x $core_bin ]] || { echo "install-mac-app: build first (no --no-build)" >&2; exit 1; }
+
+# Never write over an installed Herdr.
+case "$APP" in *Herdr.app*) echo "install-mac-app: refusing to touch $APP" >&2; exit 1 ;; esac
+
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$HOME_DIR"
+# Replace atomically so installing doesn't interrupt a running copy.
+cp "$app_bin" "$APP/Contents/MacOS/$NAME.new" && mv -f "$APP/Contents/MacOS/$NAME.new" "$APP/Contents/MacOS/$NAME"
+cp "$core_bin" "$APP/Contents/MacOS/herdr-core.new" && mv -f "$APP/Contents/MacOS/herdr-core.new" "$APP/Contents/MacOS/herdr-core"
+chmod +x "$APP/Contents/MacOS/$NAME" "$APP/Contents/MacOS/herdr-core"
+cp "$root/app/assets/icons/Herdr.icns" "$APP/Contents/Resources/$NAME.icns"
+
+# The app's core is the one inside the bundle (kept if settings already exist).
+settings="$HOME_DIR/settings.json"
+[[ -f $settings ]] || printf '{ "core": "%s" }\n' "$APP/Contents/MacOS/herdr-core" > "$settings"
+
+cat > "$APP/Contents/Info.plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+    <key>CFBundleExecutable</key><string>$NAME</string>
+    <key>CFBundleIdentifier</key><string>$ID</string>
+    <key>CFBundleName</key><string>$NAME</string>
+    <key>CFBundleDisplayName</key><string>$NAME</string>
+    <key>CFBundleIconFile</key><string>$NAME</string>
+    <key>CFBundlePackageType</key><string>APPL</string>
+    <key>CFBundleShortVersionString</key><string>0.1.0</string>
+    <key>CFBundleVersion</key><string>1</string>
+    <key>NSMicrophoneUsageDescription</key><string>Terminal programs running in $NAME can use the microphone, for example for voice input.</string>
+    <key>NSCameraUsageDescription</key><string>Terminal programs running in $NAME can use the camera.</string>
+    <key>NSAppleEventsUsageDescription</key><string>Terminal programs running in $NAME can use AppleScript to control other apps.</string>
+    <key>NSPrincipalClass</key><string>NSApplication</string>
+    <key>NSHighResolutionCapable</key><true/>
+    <key>LSEnvironment</key><dict/>
+</dict></plist>
+PLIST
+# Finder starts apps without a login shell: give it the env it needs.
+pb() { /usr/libexec/PlistBuddy -c "$1" "$APP/Contents/Info.plist"; }
+pb "Add :LSEnvironment:HERDR_APP_HOME string $HOME_DIR"
+pb "Add :LSEnvironment:HC_SESSION string $SESSION"
+pb "Add :LSEnvironment:PATH string $APP/Contents/MacOS:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+
+codesign --force --sign - "$APP/Contents/MacOS/herdr-core"
+codesign --force --sign - "$APP"
+/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$APP"
+echo "Installed $APP"
+echo "  settings: $HOME_DIR"
+echo "  core session: $SESSION (HC_SESSION=$SESSION $APP/Contents/MacOS/herdr-core ls)"
+echo "Open it from Spotlight or Finder: open \"$APP\""

@@ -147,3 +147,22 @@ fn update_from_a_file_swaps_hc_and_keeps_everything_running() {
         "no leftovers"
     );
 }
+
+#[test]
+fn update_without_a_release_server_says_so() {
+    let mut s = Session::new();
+    let dir = s.root.join("bin");
+    std::fs::create_dir(&dir).unwrap();
+    s.bin = dir.join("herdr-core");
+    std::fs::copy(BIN, &s.bin).unwrap();
+    let before = std::fs::read(&s.bin).unwrap();
+    for releases in [None, Some("")] {
+        if let Some(url) = releases {
+            s.env.push(("HERDR_RELEASES_URL".into(), url.into()));
+        }
+        let (_, error) = s.err(&["update"]);
+        assert_eq!(error["error"]["kind"], "unavailable", "{error}");
+        assert!(error["error"]["message"].as_str().unwrap().contains("no release server"), "{error}");
+    }
+    assert_eq!(std::fs::read(&s.bin).unwrap(), before, "hc was not replaced");
+}

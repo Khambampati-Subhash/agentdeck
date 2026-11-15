@@ -1,16 +1,16 @@
 #!/bin/sh
 # Installs herdr-core (hc), or updates it:
 #
-#   curl -fsSL https://releases.herdr.dev/core/install.sh | sh
+#   HERDR_RELEASES_URL=<release server> sh install.sh
 #
 # Into ~/.local/bin/herdr-core, with `hc` beside it only if no `hc` exists
 # (some window managers ship one). An hc that is already there is swapped
 # the planned way (hc update --from): running terminals keep running. One
 # from a package manager is left to it. HC_VERSION=0.2.0 picks a version;
-# HERDR_RELEASES_URL points elsewhere (tests).
+# HERDR_RELEASES_URL is required: AgentOS has no release server of its own.
 set -eu
 
-releases=${HERDR_RELEASES_URL:-https://releases.herdr.dev}
+releases=${HERDR_RELEASES_URL:-}
 bin=${HC_INSTALL_DIR:-$HOME/.local/bin}
 
 say() { printf '%s\n' "$*"; }
@@ -39,6 +39,7 @@ sha256() {
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
+[ -n "$releases" ] || fail "set HERDR_RELEASES_URL to an AgentOS release server; AgentOS has no default"
 manifest="$releases/core/latest.json"
 [ -n "${HC_VERSION:-}" ] && manifest="$releases/core/$HC_VERSION/manifest.json"
 curl -fsSL "$manifest" -o "$tmp/manifest.json" || fail "cannot reach $manifest"
@@ -88,10 +89,6 @@ if [ "$bundle" = 1 ] && [ -x "$tmp/Herdr Core.app/Contents/MacOS/herdr-core" ]; 
       for (i=1; i<=3; i++) { if (a[i]+0 > b[i]+0) exit 1; if (a[i]+0 < b[i]+0) exit 0 }
     }' || fail "$candidate is older than $installed; use hc update --from with --force to downgrade"
   fi
-  case "$releases" in
-    https://releases.herdr.dev | https://releases.herdr.dev/)
-      /usr/bin/codesign --verify --strict -R '=identifier "dev.herdr.core" and anchor apple generic and certificate leaf[subject.OU] = "2W9652Q7QR"' "$tmp/Herdr Core.app" || fail "not a signed Herdr release" ;;
-  esac
   "$bundled" --hc-install-bundle "$bundled" "$bin/herdr-core" || fail "installing Herdr Core.app failed"
   # A fresh install must not start a core (especially not a system/root core).
   if [ "$action" = updated ]; then

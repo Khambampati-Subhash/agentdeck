@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Fails if shipped code names herdr.dev, outside the reasoned entries in
+# scripts/offline-allow.txt. AgentOS never requests anything from herdr.dev.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+allow=scripts/offline-allow.txt
+paths=(app/src app/defaults app/distribution app/scripts app/build.rs
+       core/crates/herdr-core/src core/distribution core/scripts)
+bad=0
+while IFS= read -r hit; do
+  path=${hit%%:*}
+  [[ $path == *.md ]] && continue
+  text=${hit#*:*:}
+  ok=0
+  while IFS=$'\t' read -r apath sub _why; do
+    [[ -z $apath || $apath == \#* ]] && continue
+    if [[ $path == "$apath"* && $text == *"$sub"* ]]; then ok=1; break; fi
+  done < "$allow"
+  if (( ! ok )); then echo "$hit"; bad=1; fi
+done < <(git grep -n -I -E 'herdr\.dev' -- "${paths[@]}" || true)
+if (( bad )); then echo "check-offline: herdr.dev is named above; AgentOS must not request it" >&2; exit 1; fi
+echo "check-offline: clean"

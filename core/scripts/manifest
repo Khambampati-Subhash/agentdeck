@@ -7,7 +7,7 @@ tests building a fake release):
 {version, generation, notes, targets: {"<os>-<arch>": {url, sha256}}}.
 Version from crates/herdr-core/Cargo.toml, generation from api.rs; the
 notes line from $NOTES, else "herdr-core <version>". URLs under
-$RELEASES_URL (default https://releases.herdr.dev)/core/<version>/.
+$RELEASES_URL/core/<version>/ (required: AgentOS has no release server).
 """
 import hashlib, json, os, pathlib, re, sys
 
@@ -16,7 +16,9 @@ cargo = (root / "crates/herdr-core/Cargo.toml").read_text()
 version = re.search(r'^version = "(.+)"', cargo, re.M).group(1)
 api = (root / "crates/herdr-core/src/api.rs").read_text()
 generation = int(re.search(r"pub const GENERATION: u32 = (\d+);", api).group(1))
-base = os.environ.get("RELEASES_URL", "https://releases.herdr.dev").rstrip("/")
+base = os.environ.get("RELEASES_URL", "").rstrip("/")
+if not base:
+    sys.exit("manifest: set RELEASES_URL")
 
 targets = {}
 for f in sorted([*pathlib.Path(sys.argv[1]).glob("herdr-core-*.tar.gz"), *pathlib.Path(sys.argv[1]).glob("herdr-core-*.zip")]):

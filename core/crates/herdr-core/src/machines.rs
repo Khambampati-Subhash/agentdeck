@@ -503,7 +503,10 @@ pub fn install(paths: &crate::paths::Paths, to: Reach, session: Option<&str>) ->
         current
     } else {
         let version = env!("CARGO_PKG_VERSION");
-        let not_released = |_| {
+        let not_released = |e: RpcError| {
+            if crate::releases::is_no_server(&e) {
+                return e;
+            }
             RpcError::new(
                 "install_failed",
                 format!("{target} is {there}, and hc {version} has no release to download"),

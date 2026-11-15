@@ -16,15 +16,9 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 const ICON: &[u8] = include_bytes!("../assets/icons/herdr-ui-icon-clean.png");
-#[cfg(not(windows))]
-const APP_INSTALL: &str = "curl -fsSL https://releases.herdr.dev/app/install.sh | sh";
-#[cfg(windows)]
-const APP_INSTALL: &str = "powershell -c \"irm https://releases.herdr.dev/app/install.ps1 | iex\"";
-#[cfg(not(windows))]
-const CORE_INSTALL: &str = "curl -fsSL https://releases.herdr.dev/core/install.sh | sh";
-#[cfg(windows)]
-const CORE_INSTALL: &str = "powershell -c \"irm https://releases.herdr.dev/core/install.ps1 | iex\"";
-const CORE_PLACE: &str = if cfg!(windows) { r"%LOCALAPPDATA%\Programs\herdr-core" } else { "~/.local/bin" };
+// AgentOS has no release server: the core and app are built from the repo.
+const CORE_BUILD: &str = "just build, then Choose… core/target/debug/herdr-core";
+const APP_BUILD: &str = "rebuild AgentOS from its repo (just build)";
 
 /// What's missing before the main window can open.
 pub enum Need {
@@ -45,6 +39,25 @@ impl Need {
 #[cfg(test)]
 mod tests {
     use super::Need;
+
+    #[test]
+    fn setup_words_name_no_url() {
+        use crate::hc::Mismatch;
+        let needs = [
+            Need::Install,
+            Need::Connect("no answer".into()),
+            Need::Fix(Mismatch::TooOld { have: "0.1.0".into(), need: "0.2.0".into() }),
+            Need::Fix(Mismatch::Missing(vec!["terminal.peek".into()])),
+            Need::Fix(Mismatch::Newer { generation: 9 }),
+        ];
+        for need in &needs {
+            let (title, body, foot) = super::words(need);
+            for text in [title, body, foot] {
+                assert!(!text.contains("http"), "{text}");
+            }
+        }
+        assert!(super::words(&Need::Install).2.contains("just build"));
+    }
 
     #[test]
     fn unreadable_core_connections_offer_installation_instead_of_retry() {
@@ -163,35 +176,39 @@ impl Setup {
         .detach();
     }
 
-    /// Title, what's going on, and the line under the buttons.
     fn words(&self) -> (String, String, String) {
-        match &self.need {
-            Need::Install => (
-                "Herdr needs herdr-core".into(),
-                "herdr-core runs your terminals and agents, and keeps them alive when this window closes. Herdr couldn't find it on this computer.".into(),
-                format!("Install it for me puts it in {CORE_PLACE} (with hc), like its own installer: {CORE_INSTALL}"),
-            ),
-            Need::Connect(error) => (
-                "Herdr can't connect to herdr-core".into(),
-                error.clone(),
-                "Once you've resolved this, try again.".into(),
-            ),
-            Need::Fix(Mismatch::TooOld { have, need }) => (
-                "Herdr needs a newer herdr-core".into(),
-                format!("Yours is {have}; this Herdr needs {need} or newer. Updating keeps your terminals running."),
-                "Or update it yourself: hc update".into(),
-            ),
-            Need::Fix(Mismatch::Missing(methods)) => (
-                "Herdr needs a newer herdr-core".into(),
-                format!("Your herdr-core can't do everything this Herdr needs ({}). Updating keeps your terminals running.", methods.join(", ")),
-                "Or update it yourself: hc update".into(),
-            ),
-            Need::Fix(Mismatch::Newer { generation }) => (
-                "This Herdr is older than your herdr-core".into(),
-                format!("Your herdr-core speaks a newer protocol (generation {generation}) than this Herdr understands. Update Herdr; your terminals keep running."),
-                format!("Update Herdr: {APP_INSTALL}"),
-            ),
-        }
+        words(&self.need)
+    }
+}
+
+/// Title, what's going on, and the line under the buttons.
+fn words(need: &Need) -> (String, String, String) {
+    match need {
+        Need::Install => (
+            "Herdr needs herdr-core".into(),
+            "herdr-core runs your terminals and agents, and keeps them alive when this window closes. Herdr couldn't find it on this computer.".into(),
+            format!("Build it yourself: {CORE_BUILD}"),
+        ),
+        Need::Connect(error) => (
+            "Herdr can't connect to herdr-core".into(),
+            error.clone(),
+            "Once you've resolved this, try again.".into(),
+        ),
+        Need::Fix(Mismatch::TooOld { have, need }) => (
+            "Herdr needs a newer herdr-core".into(),
+            format!("Yours is {have}; this Herdr needs {need} or newer. Updating keeps your terminals running."),
+            "Or update it yourself: hc update".into(),
+        ),
+        Need::Fix(Mismatch::Missing(methods)) => (
+            "Herdr needs a newer herdr-core".into(),
+            format!("Your herdr-core can't do everything this Herdr needs ({}). Updating keeps your terminals running.", methods.join(", ")),
+            "Or update it yourself: hc update".into(),
+        ),
+        Need::Fix(Mismatch::Newer { generation }) => (
+            "This Herdr is older than your herdr-core".into(),
+            format!("Your herdr-core speaks a newer protocol (generation {generation}) than this Herdr understands. Update Herdr; your terminals keep running."),
+            format!("Update AgentOS: {APP_BUILD}"),
+        ),
     }
 }
 
