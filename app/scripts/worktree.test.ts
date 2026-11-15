@@ -25,33 +25,52 @@ function textOf(node: any): string {
 function rowsOf(node: any): any[] {
   return node?.id?.match(/^wt-\d+$/) ? [node] : (node?.children ?? []).flatMap(rowsOf);
 }
+function findId(node: any, id: string): any {
+  if (node?.id === id) return node;
+  for (const child of node?.children ?? []) {
+    const found = findId(child, id);
+    if (found) return found;
+  }
+  return null;
+}
 
-function harness(focusedMachine: string | null = null) {
+function harness(focusedMachine: string | null = null, replies: (command: string, args: string[]) => { code: number; stdout?: string; stderr?: string } = () => ({ code: 0, stdout: "" })) {
   let spaceList: any[] = [];
   let paneList: any[] = [];
+  let agentsList: any[] = [];
+  let currentProps: any = { overlay: "overlay" };
   const reads = { spaces: 0, panes: 0 };
   const writes: unknown[] = [];
   const destinations: (string | null)[] = [];
   const executions: any[] = [];
+  const storage: Record<string, string> = {};
   const globals = {
     View: class {}, div: element, v_flex: element, h_flex: element,
+    InputState: { new: (opts: any) => ({ value: () => opts.value, on: () => {}, focus: () => {} }) },
     Input: { new: element }, Scrollbar: { vertical: element }, theme: () => ({}),
     spaces: () => { reads.spaces++; return structuredClone(spaceList); },
     panes: () => { reads.panes++; return structuredClone(paneList); },
-    props: () => ({ overlay: "overlay" }), closeOverlay: () => {},
+    props: () => currentProps, closeOverlay: () => {},
     run: (command: string, args: any) => {
       writes.push([command, args]);
       if (command === "space.new") destinations.push(args.machine === "" ? null : args.machine ?? focusedMachine);
     },
     exec: async (command: string, args: string[], options: any) => {
       executions.push({ command, args, ...options });
-      return { code: 0, stdout: "", stderr: "" };
+      const reply = replies(command, args);
+      return { code: reply.code, stdout: reply.stdout ?? "", stderr: reply.stderr ?? "" };
     },
+    knownAgents: async () => structuredClone(agentsList),
+    localStorage: {
+      getItem: (key: string) => storage[key] ?? null,
+      setItem: (key: string, value: string) => { storage[key] = value; },
+    },
+    home: () => "/home/user",
   };
   const Worktree = new Function(...Object.keys(globals), `${source}; return Worktree;`)(...Object.values(globals));
   const worktree = new Worktree();
   Object.assign(worktree, { opening: true, text: "", at: 0, repo: { name: "repo" }, userHome: "/home/user" });
-  return { worktree, reads, writes, destinations, executions, snapshot: (spaces: any[], panes: any[]) => { spaceList = spaces; paneList = panes; } };
+  return { worktree, reads, writes, destinations, executions, snapshot: (spaces: any[], panes: any[]) => { spaceList = spaces; paneList = panes; }, agents: (list: any[]) => { agentsList = list; }, storage, setProps: (p: any) => { currentProps = { ...currentProps, ...p }; } };
 }
 
 test("open render reads spaces and panes once and refreshes both on the next render", () => {
@@ -135,4 +154,100 @@ test("space matching keeps deepest checkout, machine, live-folder and fallback r
   worktree.open(worktree.list[0]);
   expect(writes[4]).toEqual(["space.select", { id: "remote" }]);
   expect(reads).toEqual({ spaces: 5, panes: 5 });
+});
+
+test("a task brings an agent picker; Enter starts that agent with the task", async () => {
+  const { worktree, writes, storage, setProps } = harness();
+  const agentsList = [
+    { key: "claude", name: "Claude Code", run: ["claude"], installed: true },
+    { key: "codex", name: "Codex", run: ["codex"], installed: true },
+    { key: "pi", name: "Pi", run: ["pi"], installed: false },
+  ];
+  const installed = agentsList.filter(a => a.installed);
+  storage["worktree.agent"] = "codex";
+  const pick = installed.findIndex(a => a.key === "codex");
+  setProps({ folder: "/repo", action: "new", branch: "12-fix", task: "Work on #12" });
+  Object.assign(worktree, {
+    opening: false, text: "12-fix", repo: { name: "repo", main: "/repo", top: "/repo" },
+    userHome: "/home/user", agents: installed, pick,
+  });
+  const rendered = worktree.render({}).node;
+  const text = textOf(rendered);
+  expect(text).toContain("Codex");
+  expect(text).not.toContain("Pi");
+  await worktree.create();
+  expect(writes[0]).toEqual(["space.new", {
+    folder: "/home/user/.herdr/worktrees/repo/12-fix",
+    machine: "",
+    tab: undefined,
+    argv: ["codex"],
+    task: "Work on #12",
+  }]);
+});
+
+test("picking another agent is remembered", () => {
+  const { worktree, storage, setProps } = harness();
+  const installed = [
+    { key: "claude", name: "Claude Code", run: ["claude"], installed: true },
+    { key: "codex", name: "Codex", run: ["codex"], installed: true },
+  ];
+  setProps({ folder: "/repo", action: "new", task: "Work" });
+  Object.assign(worktree, {
+    opening: false, text: "fix", repo: { name: "repo", main: "/repo", top: "/repo" },
+    userHome: "/home/user", agents: installed, pick: 0,
+  });
+  worktree.pickAgent(0);
+  expect(worktree.pick).toBe(0);
+  expect(storage["worktree.agent"]).toBe("claude");
+});
+
+test("a task with no installed agent says so and creates nothing", async () => {
+  const { worktree, writes, setProps } = harness();
+  setProps({ folder: "/repo", action: "new", task: "Work" });
+  Object.assign(worktree, {
+    opening: false, text: "fix", repo: { name: "repo", main: "/repo", top: "/repo" },
+    userHome: "/home/user", agents: [],
+  });
+  const error = await worktree.create();
+  expect(error).toBe("No agent is installed to take this task.");
+  expect(writes).toEqual([]);
+});
+
+test("a branch checked out elsewhere shows git's words and opens no space", async () => {
+  const { worktree, writes, setProps } = harness(null, (command, args) => {
+    if (command === "git" && args.includes("show-ref")) return { code: 0, stdout: "" };
+    if (command === "git" && args.includes("worktree") && args.includes("add")) {
+      return { code: 128, stdout: "", stderr: "fatal: '12-fix' is already checked out at '/repo'" };
+    }
+    return { code: 0, stdout: "" };
+  });
+  setProps({ folder: "/repo", action: "new", branch: "12-fix" });
+  Object.assign(worktree, {
+    opening: false, text: "12-fix", repo: { name: "repo", main: "/repo", top: "/repo" },
+    userHome: "/home/user",
+  });
+  const error = await worktree.create();
+  expect(error).toContain("already checked out");
+  expect(writes).toEqual([]);
+});
+
+test("no task, no picker: today's dialog is unchanged", async () => {
+  const { worktree, writes, setProps } = harness();
+  setProps({ folder: "/repo", action: "new", branch: "fix" });
+  Object.assign(worktree, {
+    opening: false, text: "fix", repo: { name: "repo", main: "/repo", top: "/repo" },
+    userHome: "/home/user",
+  });
+  const rendered = worktree.render({}).node;
+  const text = textOf(rendered);
+  expect(text).not.toContain("agent");
+  expect(worktree.agents).toBeUndefined();
+  await worktree.create();
+  expect(writes[0]).toEqual(["space.new", {
+    folder: "/home/user/.herdr/worktrees/repo/fix",
+    machine: "",
+    tab: undefined,
+    argv: undefined,
+    task: undefined,
+  }]);
 });

@@ -3,7 +3,7 @@
 
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input, Scrollbar } from "gpui-base";
-import { run, props, closeOverlay, theme, spaces, panes, exec, home } from "herdr";
+import { run, props, closeOverlay, theme, spaces, panes, exec, home, knownAgents } from "herdr";
 
 // Where a space is now: its first terminal's live folder, else where it was made.
 function place(s, all = panes()) {
@@ -126,6 +126,8 @@ export default class Worktree extends View {
     this.repo = undefined; // undefined: looking, null: not in git
     this.dirty = false;
     this.unpushed = [];
+    this.agents = undefined; // task+argv: the installed agents to choose from
+    this.pick = 0; // the chosen agent's index
     cx.spawn(async (cx) => {
       try {
         if (this.on) {
@@ -143,6 +145,13 @@ export default class Worktree extends View {
           this.unpushed = (await submodules(repo.top, this.on)).unpushed;
         }
         if (repo && this.opening) this.list = await checkouts(repo, this.on);
+        const p = props();
+        if (p.task && !p.argv) {
+          const all = await knownAgents({ on: this.on });
+          this.agents = all.filter((a) => a.installed);
+          const stored = localStorage.getItem("worktree.agent");
+          this.pick = Math.max(0, this.agents.findIndex((a) => a.key === stored));
+        }
         this.repo = repo;
         cx.notify();
         // The list (and with it the filter input) only mounts once loading is
@@ -169,6 +178,11 @@ export default class Worktree extends View {
     cx.spawn(async (cx) => this.work(cx));
   }
 
+  pickAgent(i) {
+    this.pick = i;
+    if (this.agents?.[i]) localStorage.setItem("worktree.agent", this.agents[i].key);
+  }
+
   async work(cx) {
     if (this.busy || !this.repo) return;
     this.busy = true;
@@ -182,6 +196,10 @@ export default class Worktree extends View {
   }
 
   async create() {
+    const p = props();
+    if (p.task && !p.argv && (!this.agents || this.agents.length === 0)) {
+      return "No agent is installed to take this task.";
+    }
     const branch = this.text.trim();
     if (!branch) return "Type a branch name.";
     const path = `${ROOT(this.userHome)}/${this.repo.name}/${slug(branch)}`;
@@ -189,9 +207,8 @@ export default class Worktree extends View {
     const add = exists ? ["worktree", "add", path, branch] : ["worktree", "add", "-b", branch, path, "HEAD"];
     const r = await git(this.repo.top, add, this.on, 600_000);
     if (!r.ok) return r.err || "git worktree add failed.";
-    const p = props();
     // Leave spaces unnamed so they follow the checkout folder and nest under the repo.
-    run("space.new", { folder: path, machine: this.on ?? "", tab: p.tab, argv: p.argv });
+    run("space.new", { folder: path, machine: this.on ?? "", tab: p.tab, argv: p.argv ?? this.agents?.[this.pick]?.run, task: p.task });
     return "";
   }
 
@@ -348,6 +365,30 @@ export default class Worktree extends View {
             .border_color(this.inputFocused ? t.accent : t.input)
             .bg(t.background)
             .text_color(t.foreground),
+        ),
+      )
+      .when(Boolean(this.agents), (el) =>
+        el.child(
+          h_flex()
+            .gap(8)
+            .children(
+              this.agents.map((a, i) =>
+                div()
+                  .id(`wt-agent-${i}`)
+                  .h(28)
+                  .px(12)
+                  .flex_none()
+                  .items_center()
+                  .justify_center()
+                  .rounded(5)
+                  .cursor_pointer()
+                  .text_size(12)
+                  .when(i === this.pick, (el) => el.bg(t.accent).text_color(t.background))
+                  .when(i !== this.pick, (el) => el.bg(t.input).text_color(t.foreground).hover((s) => s.bg(t.hover)))
+                  .on_click(() => this.pickAgent(i))
+                  .child(a.name),
+              ),
+            ),
         ),
       )
       .when(Boolean(this.error), (el) => el.child(div().text_color(t.blocked).child(this.error)))
