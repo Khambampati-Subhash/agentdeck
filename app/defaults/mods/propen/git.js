@@ -14,8 +14,8 @@ function pathOf(remote) {
   remote = remote.trim();
   let path = "";
   if (remote.startsWith("git@")) path = remote.split(":")[1] || "";
-  else if (remote.startsWith("ssh://") || remote.startsWith("https://")) path = remote.split("/").slice(3).join("/");
-  return path.replace(/\/$/, "").replace(/\.git$/, "");
+  else if (/^(ssh|https?):\/\//.test(remote)) path = remote.split("/").slice(3).join("/");
+  return path.replace(/\/+$/, "").replace(/\.git$/, "");
 }
 
 // { root, branch, base, forge, repo, commits (oldest first), dirty }.

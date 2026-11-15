@@ -49,7 +49,7 @@ export default class ProOpen extends View {
 
   kind() { return this.info?.forge === "glab" ? "merge request" : "pull request"; }
 
-  // Enter: open the existing one, else create.
+  // Enter: open the existing one, else create (which refuses when it can't).
   go(cx) {
     if (this.open) return this.show(this.open);
     this.create(cx);
@@ -87,7 +87,7 @@ export default class ProOpen extends View {
   render(cx) {
     const t = theme(), info = this.info, n = info?.dirty ?? 0;
     const ready = Boolean(info) && !this.open;
-    const can = ready && info.commits.length > 0 && !this.busy;
+    const form = ready && info.commits.length > 0, can = form && !this.busy;
     const field = (el, name) => el.px(10).rounded(6).border(1).border_color(this.focusedField === name ? t.accent : t.input).bg(t.background).text_color(t.foreground);
     const label = (text) => div().text_size(11).text_color(t.dim).child(text);
     const button = (id, text, on, click) => div().id(id).h(28).px(12).flex_none().items_center().justify_center().rounded(5).text_size(12)
@@ -98,7 +98,8 @@ export default class ProOpen extends View {
     return v_flex()
       .id("propen")
       .track_focus(this.handle)
-      .on_key_down((e, cx) => { if (e.key === "escape") closeOverlay(props()?.overlay); })
+      // With the form shown its fields own Enter (in the body it's a new line).
+      .on_key_down((e, cx) => { if (e.key === "escape") closeOverlay(props()?.overlay); else if (e.key === "enter" && !form) this.go(cx); })
       .size_full()
       .p(16)
       .gap(8)
@@ -111,7 +112,7 @@ export default class ProOpen extends View {
         .child(button("propen-open", "Open", true, () => this.show(this.open)))))
       .when(ready && n > 0, (el) => el.child(div().text_color(t.working).child(`${n} uncommitted change${n === 1 ? "" : "s"} won't be in it.`)))
       .when(ready && info.commits.length === 0, (el) => el.child(div().text_color(t.blocked).child(`Nothing to open: no commits ahead of origin/${info.base}.`)))
-      .when(ready && info.commits.length > 0, (el) => el
+      .when(form, (el) => el
         .child(label("Title"))
         .child(field(Input.new(this.title).h(32).items_center(), "title"))
         .child(label("Description"))
@@ -129,7 +130,7 @@ export default class ProOpen extends View {
       .child(div().flex_1())
       .child(h_flex().gap(8).items_center().text_size(11).text_color(t.dim)
         .when(this.busy, (el) => el.child(div().frames(["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"], 90)))
-        .child(div().flex_1().child(this.busy ? "pushing and creating…" : ready ? "↵ create · esc cancel" : this.open ? "↵ open · esc close" : "esc close"))
+        .child(div().flex_1().child(this.busy ? "pushing and creating…" : form ? "↵ create · esc cancel" : this.open ? "↵ open · esc close" : "esc close"))
         .when(ready, (el) => el.child(button("propen-create", `Create ${this.isDraft ? "draft " : ""}${this.kind()}`, can, (cx) => this.create(cx)))));
   }
 }

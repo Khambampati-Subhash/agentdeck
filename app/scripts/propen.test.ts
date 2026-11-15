@@ -176,6 +176,42 @@ test("a failed create shows the CLI's message", async () => {
   expect(h.overlays).toEqual([]);
 });
 
+test("Enter on the dialog opens the existing one", async () => {
+  const h = await open(repo({ list: JSON.stringify([{ number: 7, url: "https://github.com/o/r/pull/7", title: "Fix it" }]) }));
+  const root = findId(h.view.render(h.cx).node, "propen");
+  expect(textOf(root)).toContain("↵ open · esc close");
+  root.key({ key: "enter" }, h.cx);
+  expect(h.overlays).toHaveLength(1);
+  expect(h.overlays[0]).toMatchObject({ mod: "prdiff", props: { pr: { num: 7 } } });
+  expect(outward(h)).toEqual([]);
+});
+
+test("with nothing to create the hint is only esc close, and Enter does nothing", async () => {
+  const h = await open(repo({ log: "" }));
+  const root = findId(h.view.render(h.cx).node, "propen");
+  expect(textOf(root)).toContain("esc close");
+  expect(textOf(root)).not.toContain("↵");
+  root.key({ key: "enter" }, h.cx);
+  await h.settle();
+  expect(outward(h)).toEqual([]);
+  expect(h.overlays).toEqual([]);
+});
+
+test("Enter on the dialog leaves the form to its fields (a body newline never creates)", async () => {
+  const h = await open(repo());
+  findId(h.view.render(h.cx).node, "propen").key({ key: "enter" }, h.cx);
+  await h.settle();
+  expect(outward(h)).toEqual([]);
+});
+
+test("pathOf reads ssh, ssh:// with a port, https and http, trailing / then .git", () => {
+  const { pathOf } = fns(source, ["pathOf"]);
+  expect(pathOf("https://h/o/r.git/")).toBe("o/r");
+  expect(pathOf("http://h/o/r")).toBe("o/r");
+  expect(pathOf("ssh://git@h:2222/g/sub/r.git\n")).toBe("g/sub/r");
+  expect(pathOf("git@h:o/r.git")).toBe("o/r");
+});
+
 // ---------------------------------------------------------------- the ways in
 
 test("the space menu offers Open pull request on git spaces", async () => {

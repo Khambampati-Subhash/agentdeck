@@ -196,6 +196,9 @@ test("sameRepo matches ssh and https remotes, nothing else", () => {
   expect(sameRepo("https://gitlab.example.com/g/sub/r/", "g/sub/r")).toBe(true);
   expect(sameRepo("ssh://git@github.com/a/one", "a/one")).toBe(true);
   expect(sameRepo("git@github.com:a/one-two.git", "a/one")).toBe(false);
+  expect(sameRepo("https://h/o/r.git/", "o/r")).toBe(true);
+  expect(sameRepo("http://h/o/r", "o/r")).toBe(true);
+  expect(sameRepo("ssh://git@h:2222/o/r.git", "o/r")).toBe(true);
 });
 
 // The board's replies, plus the issue's body.
