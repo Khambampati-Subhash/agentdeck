@@ -177,7 +177,8 @@ that starts a terminal or any installed agent, `new-menu`; panes as cards
 with a header; Files, Changes and Pull requests panels on the right,
 `files`, `changes` and `prboard` (open PRs or MRs through the person's `gh`
 or `glab`: GitHub and GitLab tabs, each over all their repos or this one;
-a card opens a `prdiff` window with its people, files and per-file diff
+a Pull requests / Issues switch, the Issues view in Assigned, Mine and All
+columns with **↗** to open an issue in the browser; a pull request card opens a `prdiff` window with its people, files and per-file diff
 (click a line to comment on it), commits (open one for its own diff),
 comments (each with **→ Agent** to send it to an agent on the branch), checks
 (open one for its log, **Fix with agent** to send the failure to the agent, **Re-run** for an Actions run or pipeline job) and a comment box),

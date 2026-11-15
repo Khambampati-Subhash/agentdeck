@@ -20,7 +20,7 @@ export function problem(forge, e) {
   return text || `${forge} failed`;
 }
 
-async function run(forge, args, opts) {
+export async function ask(forge, args, opts) {
   const r = await exec(forge, args, { timeout: 60000, ...opts });
   if (r.code !== 0) throw new Error(r.stderr || r.stdout || `${forge} failed`);
   return JSON.parse(r.stdout || "null");
@@ -31,7 +31,7 @@ export async function me(forge, opts) {
   const store = `prboard.me.${forge}${opts.on ? "@" + opts.on : ""}`;
   const known = localStorage.getItem(store);
   if (known) return known;
-  const who = login(await run(forge, ["api", "user"], { ...opts, timeout: 15000 }));
+  const who = login(await ask(forge, ["api", "user"], { ...opts, timeout: 15000 }));
   if (who) localStorage.setItem(store, who);
   return who || null;
 }
@@ -78,8 +78,8 @@ const GL_ALL = "merge_requests?state=opened&per_page=50&scope=";
 
 // The folder's open PRs or MRs.
 export async function listRepo(forge, me, opts) {
-  if (forge === "gh") return (await run("gh", GH_REPO, opts) ?? []).map((p) => fromGitHub(p, me));
-  return (await run("glab", GL_REPO, opts) ?? []).map((m) => fromGitLab(m, me));
+  if (forge === "gh") return (await ask("gh", GH_REPO, opts) ?? []).map((p) => fromGitHub(p, me));
+  return (await ask("glab", GL_REPO, opts) ?? []).map((m) => fromGitLab(m, me));
 }
 
 // Every repo's: one ask per column, merged, each row marked by the asks that found it.
@@ -87,7 +87,7 @@ export async function listAll(forge, me, opts) {
   const asks = forge === "gh"
     ? [["review", [...GH_SEARCH, "--review-requested", "@me"]], ["assigned", [...GH_SEARCH, "--assignee", "@me"]], ["mine", [...GH_SEARCH, "--author", "@me"]]]
     : [["review", ["api", `${GL_ALL}all&reviewer_username=${encodeURIComponent(me ?? "")}`]], ["assigned", ["api", `${GL_ALL}assigned_to_me`]], ["mine", ["api", `${GL_ALL}created_by_me`]]];
-  const found = await Promise.all(asks.filter(([why]) => why !== "review" || forge === "gh" || me).map(async ([why, args]) => [why, await run(forge, args, opts) ?? []]));
+  const found = await Promise.all(asks.filter(([why]) => why !== "review" || forge === "gh" || me).map(async ([why, args]) => [why, await ask(forge, args, opts) ?? []]));
   const rows = new Map();
   for (const [why, list] of found) {
     for (const raw of list) {
