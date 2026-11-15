@@ -41,7 +41,8 @@ export default class ProOpen extends View {
         this.base.set_value(info.base);
         this.open = open;
         this.info = info; // set together: Enter acts on both
-        this.title.focus();
+        // Focus a field only when the form renders it; otherwise keep the root's keys.
+        if (!open && info.commits.length) this.title.focus(); else this.handle.focus();
       } catch (e) { this.info = null; this.error = e?.message ?? String(e); }
       cx.notify();
     });
