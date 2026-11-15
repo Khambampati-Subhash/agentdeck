@@ -97,7 +97,7 @@ async function gitlab(p) {
   return {
     pr: mr.status === "fulfilled" ? { title: m.title, branch: m.source_branch, base: m.target_branch, decision: m.detailed_merge_status ?? "", draft: Boolean(m.draft) } : {},
     people: { author: name(m.author), assignees: (m.assignees ?? []).map(name), reviewers },
-    refs: { base: m.diff_refs?.base_sha, start: m.diff_refs?.start_sha, head: m.diff_refs?.head_sha },
+    refs: { base: m.diff_refs?.base_sha, start: m.diff_refs?.start_sha, head: m.diff_refs?.head_sha, pipeline: m.head_pipeline?.id ?? null },
     commits: ok(commits, []).map((c) => ({ sha: c.id ?? c.short_id ?? "", title: c.title ?? "", author: c.author_name ?? "", at: c.created_at })),
     comments: ok(notes, []).filter((n) => !n.system).map((n) => {
       const at = n.position, line = at?.new_line ?? at?.old_line;
@@ -108,3 +108,45 @@ async function gitlab(p) {
 }
 
 export const details = (p) => (p.forge === "glab" ? gitlab(p) : github(p));
+
+export async function checks(p, refs) {
+  if (p.forge === "glab") {
+    if (!refs.pipeline) return [];
+    try {
+      const jobs = await api(p, `${glProject(p)}/pipelines/${refs.pipeline}/jobs?per_page=100`);
+      return jobs.map((j) => {
+        const statusMap = { success: "pass", failed: "fail", canceled: "cancel", skipped: "skip", manual: "skip" };
+        return {
+          name: `${j.stage}: ${j.name}`,
+          state: statusMap[j.status] ?? "pending",
+          workflow: j.stage ?? "",
+          link: j.web_url ?? "",
+          job: String(j.id),
+          run: String(refs.pipeline),
+          at: j.started_at ?? j.created_at ?? null,
+        };
+      });
+    } catch (e) {
+      throw e;
+    }
+  }
+  const r = await exec(p.forge, ["pr", "checks", num(p), ...repoFlag(p), "--json", "name,state,bucket,link,workflow,startedAt,completedAt"], { cwd: p.cwd ?? undefined, on: p.on ?? undefined, timeout: 60000 });
+  if (r.code !== 0) {
+    if ((r.stderr || "").includes("no checks reported")) return [];
+    try { JSON.parse(r.stdout || "null"); } catch { throw new Error((r.stderr || r.stdout || "gh pr checks failed").trim()); }
+  }
+  const list = JSON.parse(r.stdout || "[]");
+  return list.map((c) => {
+    const stateMap = { skipping: "skip" };
+    const match = (c.link || "").match(/\/actions\/runs\/(\d+)(?:\/job\/(\d+))?/);
+    return {
+      name: c.name ?? "",
+      state: stateMap[c.bucket] ?? c.bucket ?? "pending",
+      workflow: c.workflow ?? "",
+      link: c.link ?? "",
+      job: match?.[2] ?? null,
+      run: match?.[1] ?? null,
+      at: c.completedAt ?? c.startedAt ?? null,
+    };
+  });
+}

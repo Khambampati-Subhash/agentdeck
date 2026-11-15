@@ -9,10 +9,11 @@ import { View, div } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input, Scrollbar, v_virtual_list } from "gpui-base";
 import { props, theme, notify, closeOverlay, openOverlay, settings } from "herdr";
 import { splitDiff } from "./diff.js";
-import { details, diffText, comment, openInBrowser, commitDiff, lineComment } from "./forge.js";
+import { details, diffText, comment, openInBrowser, commitDiff, lineComment, checks } from "./forge.js";
 import { sameRepo, agentsOn, tell, reviewTask, checkTask, tail } from "./agent.js";
+import { checksTab } from "./checks.js";
 
-const TABS = [{ id: "files", label: "Files" }, { id: "commits", label: "Commits" }, { id: "comments", label: "Comments" }];
+const TABS = [{ id: "files", label: "Files" }, { id: "commits", label: "Commits" }, { id: "comments", label: "Comments" }, { id: "checks", label: "Checks" }];
 const REVIEW = { APPROVED: ["✓", "done"], CHANGES_REQUESTED: ["✕", "blocked"], PENDING: ["⟳", "dim"], DISMISSED: ["–", "dim"] };
 
 function chipOf(pr) {
@@ -45,6 +46,7 @@ export default class PrDiff extends View {
     this.overlay = p.overlay;
     this.tab = "files"; this.files = []; this.file = 0; this.line = null; this.commit = null; this.refs = {};
     this.people = { author: "", assignees: [], reviewers: [] }; this.commits = []; this.comments = [];
+    this.checks = []; this.checkError = null;
     this.error = null; this.loading = false; this.note = null; this.errorNote = null; this.sending = null;
     this.handle = cx.focus_handle();
     this.typing = false; this.message = ""; this.busy = false;
@@ -53,6 +55,7 @@ export default class PrDiff extends View {
     this.input.on("submit", (_e, cx) => this.postComment(cx));
     this.input.on("focus", (_e, cx) => { this.typing = true; cx.notify(); });
     this.input.on("blur", (_e, cx) => { this.typing = false; cx.notify(); });
+    cx.timer.every(30000, () => { if (this.checks.some((c) => c.state === "pending")) this.loadChecks(cx); });
     this.refresh(cx);
   }
 
@@ -64,7 +67,7 @@ export default class PrDiff extends View {
       const problems = [];
       await Promise.all([
         diffText(this.p).then((text) => this.setFiles(splitDiff(text)), (e) => problems.push(message(e))),
-        this.loadDetails().then((errors) => problems.push(...errors)),
+        this.loadDetails().then((errors) => { problems.push(...errors); return this.loadChecks(cx); }),
       ]);
       this.error = problems.length ? problems.join("\n") : null;
       this.loading = false;
@@ -165,6 +168,29 @@ export default class PrDiff extends View {
   web(cx) {
     cx.spawn(async (cx) => {
       try { await openInBrowser(this.p); } catch (e) { this.errorNote = message(e); cx.notify(); }
+    });
+  }
+
+  loadChecks(cx) {
+    cx.spawn(async (cx) => {
+      try {
+        const list = await checks(this.p, this.refs);
+        this.checks = list.sort((a, b) => {
+          const order = { fail: 0, pending: 1, pass: 2, skip: 3, cancel: 4 };
+          return (order[a.state] ?? 99) - (order[b.state] ?? 99);
+        });
+        this.checkError = null;
+      } catch (e) {
+        this.checkError = message(e);
+      }
+      cx.notify();
+    });
+  }
+
+  openCheckInBrowser(c, cx) {
+    if (!c.link) return;
+    cx.spawn(async () => {
+      try { await openInBrowser({ ...this.p, pr: { ...this.p.pr, url: c.link } }); } catch {}
     });
   }
 
@@ -345,8 +371,8 @@ export default class PrDiff extends View {
     const target = this.line ? this.lineLabel() : null;
     const stop = (_e, cx) => cx.stop_propagation();
     const icon = (id, label, tip, click) => div().id(id).text_size(14).px(4).rounded(6).cursor_pointer().text_color(t.muted).hover((s) => s.bg(t.raised).text_color(t.foreground)).tooltip(tip).on_mouse_down("left", stop).on_click(click).child(label);
-    const counts = { files: this.files.length, commits: this.commits.length, comments: this.comments.length };
-    const body = this.tab === "commits" ? this.commitsTab(t) : this.tab === "comments" ? this.commentsTab(t) : this.filesTab(t);
+    const counts = { files: this.files.length, commits: this.commits.length, comments: this.comments.length, checks: this.checks.filter((c) => c.state === "fail").length };
+    const body = this.tab === "commits" ? this.commitsTab(t) : this.tab === "comments" ? this.commentsTab(t) : this.tab === "checks" ? checksTab(this, t) : this.filesTab(t);
     return v_flex()
       .id("prdiff")
       .size_full()
@@ -372,8 +398,8 @@ export default class PrDiff extends View {
         .child(icon("prdiff-refresh", "↻", "Refresh", (_e, cx) => { this.refresh(cx); cx.notify(); }))
         .child(icon("prdiff-close", "✕", "Close", () => closeOverlay(this.overlay))))
       .child(this.peopleLine(t))
-      // Tabs: Files · Commits · Comments, each with its count
-      .child(h_flex().h(34).flex_none().px(10).gap(2).items_center().border_b(1).border_color(t.border).text_size(12)
+      // Tabs: Files · Commits · Comments · Checks, each with its count
+      .child(h_flex().id("prdiff-tabs").h(34).flex_none().px(10).gap(2).items_center().border_b(1).border_color(t.border).text_size(12)
         .children(TABS.map((tab) => h_flex().id(`prdiff-tab-${tab.id}`).h(24).px(8).gap(5).items_center().rounded(6).cursor_pointer()
           .bg(this.tab === tab.id ? t.raised : t.background).text_color(this.tab === tab.id ? t.foreground : t.muted).hover((s) => s.bg(t.hover))
           .on_mouse_down("left", stop).on_click((_e, cx) => { this.tab = tab.id; cx.notify(); })

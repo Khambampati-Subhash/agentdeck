@@ -1,6 +1,6 @@
 import { test, expect } from "bun:test";
 import { readFile } from "node:fs/promises";
-import { load, harness, fns, findId, type Reply } from "./mod-harness";
+import { load, harness, fns, findId, textOf, type Reply } from "./mod-harness";
 
 const board = await load("prboard", "PrBoard");
 const forgeRaw = await readFile(new URL("../defaults/mods/prboard/forge.js", import.meta.url), "utf8");
@@ -90,4 +90,146 @@ test("This repo cards show the CI dot; other rows don't", async () => {
   // PR #10 has no checks
   const dot10 = findId(tree, "pr-ci-o/r-10");
   expect(dot10).toBeFalsy();
+});
+
+// ---------------------------------------------------------------- PR window Checks tab
+
+const diff = await load("prdiff", "PrDiff");
+
+test("GitHub checks parse even when gh exits 8 (pending) or 1 (failed)", async () => {
+  const checksJson = JSON.stringify([
+    { name: "build", bucket: "pass", workflow: "CI", link: "https://github.com/o/r/actions/runs/100/job/200", startedAt: "2026-11-14T10:00:00Z", completedAt: "2026-11-14T10:05:00Z" },
+    { name: "test", bucket: "fail", workflow: "CI", link: "https://github.com/o/r/actions/runs/11/job/22", startedAt: "2026-11-14T10:00:00Z", completedAt: "2026-11-14T10:10:00Z" },
+    { name: "lint", bucket: "pending", workflow: "Lint", link: "https://github.com/o/r/actions/runs/33", startedAt: "2026-11-14T10:15:00Z" },
+  ]);
+
+  function withChecks(command: string, args: string[]): Reply {
+    if (command === "git" && args[0] === "rev-parse") return { code: 0, stdout: "/repo\n" };
+    if (command === "git") return { code: 0, stdout: "git@github.com:o/r.git\n" };
+    if (command === "gh" && args[0] === "pr" && args[1] === "checks") return { code: 8, stdout: checksJson };
+    if (command === "gh" && args[0] === "pr" && args[1] === "view") {
+      return { code: 0, stdout: JSON.stringify({ title: "Test PR", headRefName: "fix", headRefOid: "abc123", baseRefName: "main", isDraft: false, author: { login: "me" } }) };
+    }
+    if (command === "gh" && args[0] === "pr" && args[1] === "diff") return { code: 0, stdout: "" };
+    return { code: 0, stdout: "" };
+  }
+
+  const h = harness(diff, "PrDiff", withChecks, { pr: { num: 7, url: "https://github.com/o/r/pull/7" }, forge: "gh", repo: "o/r" });
+  h.view.init({}, h.cx);
+  await h.settle();
+
+  expect(h.view.checks.length).toBe(3);
+  const states = h.view.checks.map((c: any) => [c.name, c.state, c.run, c.job]);
+  expect(states).toEqual([["test", "fail", "11", "22"], ["lint", "pending", "33", null], ["build", "pass", "100", "200"]]);
+  expect(h.view.checkError).toBe(null);
+
+  const tree = h.view.render(h.cx).node;
+  const tabBar = findId(tree, "prdiff-tabs");
+  expect(textOf(tabBar)).toContain("Checks 1");
+
+  // Test with exit code 1 (failed checks)
+  const withChecks1 = (command: string, args: string[]): Reply => {
+    if (command === "gh" && args[0] === "pr" && args[1] === "checks") return { code: 1, stdout: checksJson };
+    return withChecks(command, args);
+  };
+  const h2 = harness(diff, "PrDiff", withChecks1, { pr: { num: 7, url: "https://github.com/o/r/pull/7" }, forge: "gh", repo: "o/r" });
+  h2.view.init({}, h2.cx);
+  await h2.settle();
+  expect(h2.view.checks.length).toBe(3);
+  expect(h2.view.checkError).toBe(null);
+});
+
+test("no checks reported is an empty list, not an error", async () => {
+  function noChecks(command: string, args: string[]): Reply {
+    if (command === "git" && args[0] === "rev-parse") return { code: 0, stdout: "/repo\n" };
+    if (command === "git") return { code: 0, stdout: "git@github.com:o/r.git\n" };
+    if (command === "gh" && args[0] === "pr" && args[1] === "checks") return { code: 1, stdout: "", stderr: "no checks reported on the 'fix' branch" };
+    if (command === "gh" && args[0] === "pr" && args[1] === "view") {
+      return { code: 0, stdout: JSON.stringify({ title: "Test PR", headRefName: "fix", headRefOid: "abc123", baseRefName: "main", isDraft: false, author: { login: "me" } }) };
+    }
+    if (command === "gh" && args[0] === "pr" && args[1] === "diff") return { code: 0, stdout: "" };
+    return { code: 0, stdout: "" };
+  }
+
+  const h = harness(diff, "PrDiff", noChecks, { pr: { num: 7, url: "https://github.com/o/r/pull/7" }, forge: "gh", repo: "o/r" });
+  h.view.init({}, h.cx);
+  await h.settle();
+
+  expect(h.view.checks).toEqual([]);
+  expect(h.view.checkError).toBe(null);
+});
+
+test("GitLab checks are the head pipeline's jobs", async () => {
+  function gitlabChecks(command: string, args: string[]): Reply {
+    if (command === "git" && args[0] === "rev-parse") return { code: 0, stdout: "/repo\n" };
+    if (command === "git") return { code: 0, stdout: "git@gitlab.example.com:g/r.git\n" };
+    if (command === "glab" && args[0] === "api" && args[1] === "user") return { code: 0, stdout: JSON.stringify({ username: "me" }) };
+    if (command === "glab" && args[0] === "api" && args[1] === "projects/43/merge_requests/5") {
+      return { code: 0, stdout: JSON.stringify({ iid: 5, title: "Test MR", source_branch: "fix", target_branch: "main", author: { username: "me" }, head_pipeline: { id: 90 } }) };
+    }
+    if (command === "glab" && args[0] === "api" && args[1].startsWith("projects/43/merge_requests/5/")) {
+      return { code: 0, stdout: "[]" };
+    }
+    if (command === "glab" && args[0] === "api" && args[1] === "projects/43/pipelines/90/jobs?per_page=100") {
+      return { code: 0, stdout: JSON.stringify([
+        { id: 5, name: "rspec", stage: "test", status: "failed", web_url: "https://gitlab.example.com/g/r/-/jobs/5", pipeline: { id: 90 } },
+        { id: 6, name: "deploy", stage: "deploy", status: "manual", web_url: "https://gitlab.example.com/g/r/-/jobs/6", pipeline: { id: 90 } },
+      ]) };
+    }
+    if (command === "glab" && args[0] === "mr" && args[1] === "diff") return { code: 0, stdout: "" };
+    return { code: 0, stdout: "[]" };
+  }
+
+  const h = harness(diff, "PrDiff", gitlabChecks, { pr: { num: 5, url: "https://gitlab.example.com/g/r/-/merge_requests/5" }, forge: "glab", repo: "g/r", pid: 43 });
+  h.view.init({}, h.cx);
+  await h.settle();
+
+  expect(h.view.checks.length).toBe(2);
+  const states = h.view.checks.map((c: any) => [c.name, c.state, c.run, c.job]);
+  expect(states).toEqual([["test: rspec", "fail", "90", "5"], ["deploy: deploy", "skip", "90", "6"]]);
+});
+
+test("checks reload on the timer only while one is pending", async () => {
+  let callCount = 0;
+  const checksJson = JSON.stringify([
+    { name: "build", bucket: "pending", workflow: "CI", link: "https://github.com/o/r/actions/runs/100", startedAt: "2026-11-14T10:00:00Z" },
+  ]);
+  const checksJsonDone = JSON.stringify([
+    { name: "build", bucket: "pass", workflow: "CI", link: "https://github.com/o/r/actions/runs/100/job/200", startedAt: "2026-11-14T10:00:00Z", completedAt: "2026-11-14T10:05:00Z" },
+  ]);
+
+  function withTimer(command: string, args: string[]): Reply {
+    if (command === "git" && args[0] === "rev-parse") return { code: 0, stdout: "/repo\n" };
+    if (command === "git") return { code: 0, stdout: "git@github.com:o/r.git\n" };
+    if (command === "gh" && args[0] === "pr" && args[1] === "checks") {
+      callCount++;
+      return { code: 0, stdout: callCount === 1 ? checksJson : checksJsonDone };
+    }
+    if (command === "gh" && args[0] === "pr" && args[1] === "view") {
+      return { code: 0, stdout: JSON.stringify({ title: "Test PR", headRefName: "fix", headRefOid: "abc123", baseRefName: "main", isDraft: false, author: { login: "me" } }) };
+    }
+    if (command === "gh" && args[0] === "pr" && args[1] === "diff") return { code: 0, stdout: "" };
+    return { code: 0, stdout: "" };
+  }
+
+  const h = harness(diff, "PrDiff", withTimer, { pr: { num: 7, url: "https://github.com/o/r/pull/7" }, forge: "gh", repo: "o/r" });
+  h.view.init({}, h.cx);
+  await h.settle();
+
+  expect(h.view.checks.length).toBe(1);
+  expect(h.view.checks[0].state).toBe("pending");
+  expect(h.timers.length).toBe(1);
+  expect(h.timers[0].ms).toBe(30000);
+
+  const initialCallCount = callCount;
+  h.timers[0].f();
+  await h.settle();
+
+  expect(callCount).toBe(initialCallCount + 1);
+  expect(h.view.checks[0].state).toBe("pass");
+
+  // Fire timer again, should not reload (no pending checks)
+  h.timers[0].f();
+  await h.settle();
+  expect(callCount).toBe(initialCallCount + 1);
 });
