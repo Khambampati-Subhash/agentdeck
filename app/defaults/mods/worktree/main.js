@@ -1,9 +1,10 @@
-// Worktree dialog: { space, action: "new" | "open" | "remove" } or
+// Worktree dialog: { space, action: "new" | "open" | "remove" | "clean" } or
 // { folder, machine } for a repo without a space; optional { branch, tab, argv }.
 
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input, Scrollbar } from "gpui-base";
 import { run, props, closeOverlay, theme, spaces, panes, exec, home, knownAgents } from "herdr";
+import { listAll, goneBranches, classify } from "./clean.js";
 
 // Where a space is now: its first terminal's live folder, else where it was made.
 function place(s, all = panes()) {
@@ -109,6 +110,7 @@ export default class Worktree extends View {
     this.on = this.space()?.machine;
     this.userHome = this.on ? null : home();
     this.opening = props()?.action === "open";
+    this.cleaning = props()?.action === "clean";
     this.text = props()?.branch ?? "";
     this.list = undefined; // open: the checkouts, once read
     this.at = 0;
@@ -120,7 +122,8 @@ export default class Worktree extends View {
     this.input.on("blur", (_e, cx) => { this.inputFocused = false; cx.notify(); });
     this.handle = cx.focus_handle();
     this.handle.focus(); // the root is mounted from the first frame: keep the keyboard here while loading
-    if (props()?.action !== "remove") this.input.focus();
+    const typing = !["remove", "clean"].includes(props()?.action);
+    if (typing) this.input.focus();
     this.busy = false;
     this.error = "";
     this.repo = undefined; // undefined: looking, null: not in git
@@ -128,6 +131,10 @@ export default class Worktree extends View {
     this.unpushed = [];
     this.agents = undefined; // task+argv: the installed agents to choose from
     this.pick = 0; // the chosen agent's index
+    this.rows = undefined; // clean: the linked worktrees with why each may go, once read
+    this.branches = true; // clean: git branch -d each removed one's branch
+    this.note = "";
+    this.done = ""; // clean: what Remove did; Enter then closes
     cx.spawn(async (cx) => {
       try {
         if (this.on) {
@@ -145,6 +152,7 @@ export default class Worktree extends View {
           this.unpushed = (await submodules(repo.top, this.on)).unpushed;
         }
         if (repo && this.opening) this.list = await checkouts(repo, this.on);
+        if (repo && this.cleaning) { this.repo = repo; await this.cleanList(cx); }
         const p = props();
         if (p.task && !p.argv) {
           const all = await knownAgents({ on: this.on });
@@ -158,7 +166,7 @@ export default class Worktree extends View {
         // done, so the keyboard must move there now — a focus call made while
         // loading lands on nothing and the dialog stays keyboard-dead.
         this.handle.focus();
-        if (props().action !== "remove") cx.timer.after(100, () => this.input.focus());
+        if (typing) cx.timer.after(100, () => this.input.focus());
         // A task starts an agent: wait for Enter so the agent can be chosen.
         if (props().branch && !props().task) await this.work(cx);
       } catch (error) { this.repo = null; this.error = String(error); cx.notify(); }
@@ -245,8 +253,93 @@ export default class Worktree extends View {
     return r.ok ? "" : r.err || "git worktree remove failed.";
   }
 
+  // clean: every linked worktree and why it may go. It fetches first, so
+  // "merged" and "deleted on origin" are current; nothing is removed here.
+  async cleanList(cx) {
+    const at = this.repo.main, on = this.on;
+    this.note = (await git(at, ["fetch", "--prune", "origin"], on, 60_000)).ok ? "" : "Couldn't reach origin; using what's known here.";
+    const sym = await git(at, ["symbolic-ref", "--short", "refs/remotes/origin/HEAD"], on);
+    const base = sym.ok && sym.out.startsWith("origin/")
+      ? sym.out.slice("origin/".length)
+      : (await git(at, ["show-ref", "--verify", "--quiet", "refs/remotes/origin/main"], on)).ok ? "main" : "master";
+    const merged = (await git(at, ["branch", "--merged", `origin/${base}`, "--format=%(refname:short)"], on)).out.split("\n");
+    const gone = goneBranches((await git(at, ["for-each-ref", "--format=%(refname:short)%09%(upstream:track)", "refs/heads"], on)).out);
+    const list = await git(at, ["worktree", "list", "--porcelain"], on);
+    if (!list.ok) throw new Error(list.err || "git worktree list failed.");
+    this.all = listAll(list.out);
+    const rows = [];
+    for (const w of this.all) {
+      const status = w.missing ? { ok: true, out: "" } : await git(w.path, ["--no-optional-locks", "-c", "core.fsmonitor=false", "status", "--porcelain"], on);
+      // A worktree on the base branch itself is never "merged": -d would delete the base.
+      const why = status.ok
+        ? classify({ ...w, inUse: this.usedBy(w.path), dirty: status.out ? status.out.split("\n").length : 0, merged: merged.includes(w.branch) && w.branch !== base, gone: gone.has(w.branch), base })
+        : { reason: status.err || "git status failed.", selectable: false, picked: false };
+      rows.push({ ...w, ...why });
+    }
+    this.rows = rows;
+    cx.notify();
+  }
+
+  // Who is in a checkout on this machine: a space showing it or made there,
+  // else a terminal whose folder is inside it. null when nobody is.
+  usedBy(path) {
+    const spaceList = spaces(), paneList = panes();
+    const inside = (p) => p && (p.replace(/\\/g, "/") + "/").startsWith(path + "/");
+    const here = spaceList.filter((s) => (s.machine ?? null) === (this.on ?? null));
+    const s = spaceOf(path, this.all, this.on, spaceList, paneList) ?? here.find((s) => inside(s.folder));
+    if (s) return s.name || tilde(path, this.userHome ?? "");
+    const tabs = new Set(here.flatMap((s) => (s.tabs ?? []).map((t) => t.id)));
+    const p = paneList.find((p) => tabs.has(p.tab) && inside(p.cwd));
+    return p ? p.program?.name || p.title || "a terminal" : null;
+  }
+
+  toggle(i) {
+    const r = this.rows?.[i];
+    if (r?.selectable && !this.busy && !this.done) r.picked = !r.picked;
+  }
+
+  clean(cx) {
+    if (this.busy || !this.rows) return;
+    if (this.done || !this.rows.some((r) => r.picked)) return this.close();
+    this.busy = true;
+    cx.notify();
+    cx.spawn(async (cx) => {
+      try { await this.removeChosen(); } catch (error) { this.error = String(error); }
+      this.busy = false;
+      cx.notify();
+    });
+  }
+
+  // Removes the ticked worktrees with plain `git worktree remove` (git itself
+  // refuses changes), one `git worktree prune` for folders that are gone, and
+  // `git branch -d` when asked. Never forced: what git refuses is kept and said.
+  async removeChosen() {
+    const at = this.repo.main, on = this.on;
+    const results = [];
+    let pruned;
+    for (const w of this.rows.filter((r) => r.picked)) {
+      const user = this.usedBy(w.path); // a space may have opened there since the list
+      let r = user ? { ok: false, err: `In use by ${user}` }
+        : w.missing ? (pruned ??= await git(at, ["worktree", "prune"], on))
+        : await git(at, ["worktree", "remove", w.path], on, 600_000);
+      const removed = r.ok;
+      if (removed && this.branches && w.branch) r = await git(at, ["branch", "-d", w.branch], on);
+      results.push({ path: w.path, branch: w.branch, removed, ok: r.ok, message: r.ok ? "" : r.err || "git refused." });
+    }
+    const kept = results.filter((r) => !r.ok).map((r) => `${r.branch ?? tilde(r.path, this.userHome ?? "")}: ${r.message}`);
+    this.done = `Removed ${results.filter((r) => r.removed).length}.${kept.length ? ` Kept: ${kept.join("; ")}` : ""}`;
+    this.rows = this.rows.filter((w) => !results.some((r) => r.removed && r.path === w.path));
+    return results;
+  }
+
   key(e, cx) {
     if (e.key === "escape") return this.close();
+    if (this.cleaning) {
+      if (e.key !== "enter") return;
+      this.clean(cx);
+      cx.stop_propagation();
+      return cx.notify();
+    }
     if (this.opening) {
       const n = this.shown().length;
       if (e.key === "enter") this.open(this.shown()[this.at]);
@@ -324,9 +417,103 @@ export default class Worktree extends View {
       .child(h_flex().justify_end().text_size(11).text_color(t.dim).child("\u2191\u2193 choose \u00b7 \u21b5 open \u00b7 esc close"));
   }
 
+  renderClean(t) {
+    const r = this.repo;
+    const rows = this.rows ?? [];
+    const n = rows.filter((w) => w.picked).length;
+    const box = (on) => div().flex_none().size(14).rounded(3).border(1).border_color(on ? t.accent : t.input).when(on, (el) => el.bg(t.accent)).text_size(10).text_color(t.background).flex().items_center().justify_center().child(on ? "\u2713" : "");
+    const row = (w, i) =>
+      h_flex()
+        .id(`wt-clean-${i}`)
+        .flex_none()
+        .h(44)
+        .px(10)
+        .gap(10)
+        .items_center()
+        .rounded(7)
+        .when(w.selectable, (el) => el.cursor_pointer().hover((s) => s.bg(t.hover)))
+        .on_click((_e, cx) => { this.toggle(i); cx.notify(); })
+        .child(box(w.picked))
+        .child(
+          v_flex()
+            .flex_1()
+            .min_w(0)
+            .child(div().truncate().text_color(w.selectable ? t.foreground : t.dim).child(w.branch ?? "detached"))
+            .child(div().truncate().text_size(11.5).text_color(t.dim).child(tilde(w.path, this.userHome ?? ""))),
+        )
+        .child(div().flex_none().text_size(11).text_color(w.selectable ? t.muted : t.blocked).child(w.reason));
+    return v_flex()
+      .id("worktree")
+      .track_focus(this.handle)
+      .on_key_down((e, cx) => this.key(e, cx))
+      .size_full()
+      .p(16)
+      .gap(10)
+      .bg(t.popover)
+      .text_size(13)
+      .child(div().font_semibold().text_color(t.foreground).child(`Clean up worktrees${r ? ` of ${r.name}` : ""}`))
+      .when(Boolean(this.note), (el) => el.child(div().text_size(11.5).text_color(t.dim).child(this.note)))
+      .when(r === undefined || (r && !this.rows && !this.error), (el) => el.child(div().text_color(t.muted).child("\u2026")))
+      .when(r === null && !this.error, (el) => el.child(div().text_color(t.muted).child(`${this.folder ? tilde(this.folder, this.userHome ?? "") : "This folder"} is not in a git repository.`)))
+      .when(Boolean(this.rows), (el) =>
+        el
+          .child(
+            div()
+              .relative()
+              .flex_1()
+              .min_h(0)
+              .child(
+                v_flex()
+                  .id("wt-clean-list")
+                  .size_full()
+                  .overflow_y_scroll()
+                  .children(rows.map(row))
+                  .when(rows.length === 0, (el) => el.child(div().p(10).text_color(t.dim).child("No linked worktrees."))),
+              )
+              .child(Scrollbar.vertical("wt-clean-list").absolute().inset_0()),
+          )
+          .child(
+            h_flex()
+              .gap(10)
+              .items_center()
+              .child(h_flex().id("wt-clean-branches").gap(8).items_center().cursor_pointer().on_click((_e, cx) => { this.branches = !this.branches; cx.notify(); }).child(box(this.branches)).child(div().text_color(t.foreground).child("Delete their branches too")))
+              .child(div().flex_1())
+              .when(!this.done, (el) =>
+                el.child(
+                  div()
+                    .id("wt-clean-remove")
+                    .h(28)
+                    .px(12)
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .rounded(5)
+                    .text_size(12)
+                    .when(n > 0 && !this.busy, (el) => el.cursor_pointer().bg(t.accent).text_color(t.background))
+                    .when(n === 0 || this.busy, (el) => el.bg(t.input).text_color(t.dim))
+                    .on_click((_e, cx) => this.clean(cx))
+                    .child(`Remove ${n}`),
+                ),
+              ),
+          ),
+      )
+      .when(Boolean(this.done), (el) => el.child(div().text_color(t.foreground).child(this.done)))
+      .when(Boolean(this.error), (el) => el.child(div().text_color(t.blocked).child(this.error)))
+      .child(
+        h_flex()
+          .justify_end()
+          .text_size(11)
+          .text_color(t.dim)
+          .gap(6)
+          .when(this.busy, (el) => el.child(div().frames(["\u280b", "\u2819", "\u2839", "\u2838", "\u283c", "\u2834", "\u2826", "\u2827", "\u2807", "\u280f"], 90)))
+          .child(this.busy ? "removing\u2026" : this.done ? "\u21b5 close" : "click to tick \u00b7 \u21b5 remove ticked \u00b7 esc close"),
+      );
+  }
+
   render(cx) {
     const t = theme();
     if (this.opening) return this.renderOpen(t);
+    if (this.cleaning) return this.renderClean(t);
     const remove = props()?.action === "remove";
     const s = this.space();
     const r = this.repo;

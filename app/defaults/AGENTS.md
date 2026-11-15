@@ -846,9 +846,17 @@ has 120 programs (agents, editors, runtimes, tools, databases, infra);
   example pane header, not used by the default layouts), and `worktree`
   (git worktrees as spaces: the space menu's and the + menu's New worktree,
   Open worktree (the repo's checkouts, filtered; one already shown is gone
-  to) and Remove worktree open it as a dialog with props `{space, folder?,
-  action: "new" | "open" | "remove"}` (the repo: folder, else where the
-  space's first terminal is), or with `{branch, tab?, argv?, task?}` to make one at once with
+  to), Remove worktree and Clean up worktrees open it as a dialog with props `{space, folder?,
+  action: "new" | "open" | "remove" | "clean"}` (the repo: folder, else where the
+  space's first terminal is; `clean`, 560×480 from the space menu on git
+  spaces, runs `git fetch --prune origin`, lists the linked worktrees with a
+  reason each (in use by a space or terminal, folder gone, uncommitted
+  changes, merged into `origin/<base>`, branch deleted on origin, not merged),
+  ticks the removable ones that are safe, never lets in-use or dirty ones be
+  ticked, and only on Enter or Remove runs plain `git worktree remove`, one
+  `git worktree prune` for gone folders and, unless "Delete their branches
+  too" is off, `git branch -d`; never `--force` or `-D`, and what git refuses
+  is shown), or with `{branch, tab?, argv?, task?}` to make one at once with
   that first tab (with `task`, it waits for Enter instead); when `task` is given without `argv`, the dialog shows an agent picker
   (installed agents only) and starts the chosen one with `task` as its first message
   (callers passing `task` should use height 300); checkouts go to

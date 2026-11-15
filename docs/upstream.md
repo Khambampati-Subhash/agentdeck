@@ -24,3 +24,4 @@ here with why. Files we only added aren't upstream's and aren't listed.
 | `app/src/mods/render_tests.rs` | The shipped-mods render test answers `gh` and `glab` (the PR panel's CLIs) as signed out. |
 | `app/defaults/mods/worktree/main.js`, `app/defaults/AGENTS.md` | The worktree dialog: `task` prop and an agent picker when task is given without argv. With a `task`, a `branch` prop no longer creates the worktree on load; it waits for Enter. |
 | `app/defaults/mods/menu/main.js`, `app/defaults/AGENTS.md`, `app/justfile` | The space menu's "Open pull request" on git spaces opens the `propen` dialog (also the Pull requests panel's ＋); the mod guide, and its tests in `just test`. |
+| `app/defaults/mods/worktree/main.js`, `app/defaults/mods/menu/main.js`, `app/defaults/AGENTS.md` | The worktree dialog's `clean` action (its pure parts in our own `worktree/clean.js`) and the space menu's "Clean up worktrees" on git spaces, opened 560×480; the mod guide. |
