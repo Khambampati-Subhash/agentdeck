@@ -10,6 +10,7 @@ import { v_flex, h_flex, InputState, Input, Scrollbar, v_virtual_list } from "gp
 import { props, theme, notify, closeOverlay, settings } from "herdr";
 import { splitDiff } from "./diff.js";
 import { details, diffText, comment, openInBrowser, commitDiff, lineComment } from "./forge.js";
+import { sameRepo, agentsOn, tell, reviewTask, checkTask, tail } from "./agent.js";
 
 const TABS = [{ id: "files", label: "Files" }, { id: "commits", label: "Commits" }, { id: "comments", label: "Comments" }];
 const REVIEW = { APPROVED: ["✓", "done"], CHANGES_REQUESTED: ["✕", "blocked"], PENDING: ["⟳", "dim"], DISMISSED: ["–", "dim"] };
