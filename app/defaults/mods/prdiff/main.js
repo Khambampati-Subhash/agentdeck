@@ -11,7 +11,6 @@ import { props, theme, notify, closeOverlay, openOverlay, settings } from "herdr
 import { splitDiff } from "./diff.js";
 import { details, diffText, comment, openInBrowser, commitDiff, lineComment, checks, checkLog, rerun, checksInBrowser } from "./forge.js";
 import { sameRepo, agentsOn, tell, reviewTask, checkTask, tail } from "./agent.js";
-import { checksTab, logView } from "./checks.js";
 
 const TABS = [{ id: "files", label: "Files" }, { id: "commits", label: "Commits" }, { id: "comments", label: "Comments" }, { id: "checks", label: "Checks" }];
 const REVIEW = { APPROVED: ["✓", "done"], CHANGES_REQUESTED: ["✕", "blocked"], PENDING: ["⟳", "dim"], DISMISSED: ["–", "dim"] };
@@ -357,6 +356,49 @@ export default class PrDiff extends View {
     });
   }
 
+  checksTab(t) {
+    if (this.log) {
+      const stop = (_e, cx) => cx.stop_propagation();
+      const log = this.log;
+      const lines = log.text ? log.text.split("\n") : [];
+      const rerunLabel = this.p.forge === "glab" ? "Retry job" : "Re-run failed jobs";
+      const mono = settings().font_family ?? "JetBrains Mono";
+      return v_flex().size_full()
+        .child(h_flex().h(34).flex_none().px(14).gap(8).items_center().bg(t.chrome).border_b(1).border_color(t.border).text_size(12)
+          .child(div().id("prdiff-log-back").flex_none().text_color(t.accent).cursor_pointer().on_mouse_down("left", stop).on_click((_e, cx) => this.closeLog(cx)).child("‹ Back"))
+          .child(div().flex_1().min_w(0).truncate().child(log.check.name))
+          .when(log.check.state === "fail" && Boolean(log.text), (e) => e.child(div().id("prdiff-fix").px(8).py(3).rounded(5).bg(t.solid).text_color(t.solid_foreground).cursor_pointer().hover((s) => s.opacity(0.9)).on_mouse_down("left", stop).on_click((_e, cx) => this.fixWithAgent(cx)).child("Fix with agent")))
+          .child(div().id("prdiff-rerun").px(8).py(3).rounded(5).bg(t.raised).text_color(t.foreground).cursor_pointer().hover((s) => s.bg(t.hover)).on_mouse_down("left", stop).on_click((_e, cx) => this.rerunCheck(cx)).child(rerunLabel)))
+        .when(Boolean(log.error), (e) => e.child(div().p(12).text_color(t.ansi1).child(log.error)))
+        .when(Boolean(log.text), (e) => e.child(div().flex_1().min_h(0).relative().font_family(mono).text_size(11)
+          .child(v_virtual_list("prdiff-log", lines.length, 20, (i) => String(i), (range) => lines.slice(range.start, range.end).map((line) => div().w_full().h(20).flex_none().px(12).child(line || " "))).size_full())
+          .child(Scrollbar.vertical("prdiff-log").viewport_from_layout().absolute().inset_0())))
+        .when(!log.text && !log.error, (e) => e.child(div().p(12).text_color(t.dim).child("Loading log…")));
+    }
+    if (this.checkError) {
+      return div().p(12).text_color(t.ansi1).child(this.checkError);
+    }
+    if (!this.checks.length) {
+      return div().p(12).text_color(t.dim).child(this.loading ? "Loading checks…" : "No checks for this pull request.");
+    }
+    const stop = (_e, cx) => cx.stop_propagation();
+    const checkDot = (c) => {
+      const colors = { pass: t.ansi2, fail: t.ansi1, pending: t.accent, skip: t.dim, cancel: t.muted };
+      const icons = { pass: "✓", fail: "✕", pending: "●", skip: "−", cancel: "✕" };
+      return div().size(16).flex_none().rounded(8).flex().items_center().justify_center().text_size(10).font_semibold().text_color(colors[c.state] ?? t.dim).child(icons[c.state] ?? "?");
+    };
+    return div().size_full().relative()
+      .child(v_flex().id("prdiff-checks").absolute().inset_0().overflow_y_scroll().children(this.checks.map((c, i) =>
+        h_flex().id(`prdiff-check-${i}`).w_full().flex_none().px(14).py(10).gap(10).items_center().border_b(1).border_color(t.border).cursor_pointer().hover((s) => s.bg(t.hover)).on_mouse_down("left", stop).on_click((_e, cx) => this.openLog(i, cx))
+          .child(checkDot(c))
+          .child(div().flex_1().min_w(0).truncate().child(c.name))
+          .child(div().text_size(11).text_color(t.dim).child(c.workflow))
+          .child(div().flex_none().text_size(11).text_color(t.dim).child("›"))))
+        .child(h_flex().h(30).flex_none().px(14).items_center().border_t(1).border_color(t.border).text_size(11)
+          .child(div().id("prdiff-checks-browser").text_color(t.accent).cursor_pointer().hover((s) => s.text_color(t.working)).on_mouse_down("left", stop).on_click((_e, cx) => this.checksInBrowser(cx)).child("Open checks in browser"))))
+      .child(Scrollbar.vertical("prdiff-checks").absolute().inset_0());
+  }
+
   sendToAgent(text, label, cx) {
     const branch = this.pr.branch || this.pr.headRefName;
     cx.spawn(async (cx) => {
@@ -412,7 +454,7 @@ export default class PrDiff extends View {
     const stop = (_e, cx) => cx.stop_propagation();
     const icon = (id, label, tip, click) => div().id(id).text_size(14).px(4).rounded(6).cursor_pointer().text_color(t.muted).hover((s) => s.bg(t.raised).text_color(t.foreground)).tooltip(tip).on_mouse_down("left", stop).on_click(click).child(label);
     const counts = { files: this.files.length, commits: this.commits.length, comments: this.comments.length, checks: this.checks.filter((c) => c.state === "fail").length };
-    const body = this.tab === "commits" ? this.commitsTab(t) : this.tab === "comments" ? this.commentsTab(t) : this.tab === "checks" ? checksTab(this, t) : this.filesTab(t);
+    const body = this.tab === "commits" ? this.commitsTab(t) : this.tab === "comments" ? this.commentsTab(t) : this.tab === "checks" ? this.checksTab(t) : this.filesTab(t);
     return v_flex()
       .id("prdiff")
       .size_full()

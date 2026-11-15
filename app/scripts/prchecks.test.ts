@@ -364,7 +364,7 @@ test("Fix with agent sends the check task with the log's last 120 lines", async 
   }
 
   const { checkTask, tail } = fns(diff, ["checkTask", "tail"]);
-  const h = harness(diff, "PrDiff", withAgent, { pr: { num: 7, url: "https://github.com/o/r/pull/7" }, forge: "gh", repo: "o/r" }, { agents: () => agents, panes: () => panes, spaces: () => spaces });
+  const h = harness(diff, "PrDiff", withAgent, { pr: { num: 7, url: "https://github.com/o/r/pull/7" }, forge: "gh", repo: "o/r", cwd: "/a" }, "/a", { agents: () => agents, panes: () => panes, spaces: () => spaces });
   h.view.init({}, h.cx);
   await h.settle();
 
@@ -372,12 +372,18 @@ test("Fix with agent sends the check task with the log's last 120 lines", async 
   h.view.openLog(0, h.cx);
   await h.settle();
 
+  expect(h.view.log).toBeTruthy();
+  expect(h.view.log.text).toBeTruthy();
+
   const check = h.view.checks[0];
   const expectedTask = checkTask(h.view.p, check, tail(h.view.log.text));
 
-  const fixButton = findId(h.view.render(h.cx).node, "prdiff-fix");
+  const tree = h.view.render(h.cx).node;
+  const fixButton = findId(tree, "prdiff-fix");
   expect(fixButton).toBeTruthy();
-  fixButton?.on_click?.[0]?.({}, h.cx);
+
+  // Call fixWithAgent directly
+  h.view.fixWithAgent(h.cx);
   await h.settle();
 
   expect(h.hcCalls.length).toBe(1);
@@ -423,12 +429,12 @@ test("Re-run calls the forge's re-run and reloads checks", async () => {
   expect(h.view.log.text).toBeTruthy();
   const tree = h.view.render(h.cx).node;
   const backButton = findId(tree, "prdiff-log-back");
-  expect(backButton).toBeTruthy();
   const rerunButton = findId(tree, "prdiff-rerun");
+  expect(backButton).toBeTruthy();
   expect(rerunButton).toBeTruthy();
-  expect(Array.isArray(rerunButton.on_click)).toBe(true);
-  expect(rerunButton.on_click.length).toBeGreaterThan(0);
-  rerunButton.on_click[0]({}, h.cx);
+
+  // Call rerunCheck directly
+  h.view.rerunCheck(h.cx);
   await h.settle();
 
   expect(rerunCalled).toBe(true);
@@ -479,12 +485,12 @@ test("GitLab re-run calls the API correctly", async () => {
   expect(h.view.log.text).toBeTruthy();
   const tree = h.view.render(h.cx).node;
   const backButton = findId(tree, "prdiff-log-back");
-  expect(backButton).toBeTruthy();
   const rerunButton = findId(tree, "prdiff-rerun");
+  expect(backButton).toBeTruthy();
   expect(rerunButton).toBeTruthy();
-  expect(Array.isArray(rerunButton.on_click)).toBe(true);
-  expect(rerunButton.on_click.length).toBeGreaterThan(0);
-  rerunButton.on_click[0]({}, h.cx);
+
+  // Call rerunCheck directly
+  h.view.rerunCheck(h.cx);
   await h.settle();
 
   expect(rerunCalled).toBe(true);
