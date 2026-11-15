@@ -169,6 +169,9 @@ export default class PrBoard extends View {
     const st = statusOf(pr), on = i === this.sel, every = this.scope[this.forge] === "all";
     const lines = pr.add || pr.del ? `+${pr.add} −${pr.del}` : "";
     const where = pr.branch ? (pr.base ? `${pr.branch} → ${pr.base}` : pr.branch) : "";
+    const ciIcon = pr.ci === "pass" ? "✓" : pr.ci === "fail" ? "✕" : pr.ci === "pending" ? "●" : null;
+    const ciColor = pr.ci === "pass" ? t.done : pr.ci === "fail" ? t.blocked : pr.ci === "pending" ? t.working : null;
+    const ciTip = pr.ci === "pass" ? "Checks passed" : pr.ci === "fail" ? "Checks failing" : pr.ci === "pending" ? "Checks running" : null;
     return v_flex().id(`pr-${pr.repo}-${pr.num}`).w_full().flex_none().px(10).py(8).gap(4).rounded(8).cursor_pointer()
       .when(on, (e) => e.bg(t.selected)).hover((s) => s.bg(t.hover))
       .on_click((_e, cx) => { cx.stop_propagation(); this.sel = i; this.open(pr); cx.notify(); })
@@ -177,6 +180,7 @@ export default class PrBoard extends View {
         .child(div().flex_none().text_size(11).text_color(t.dim).child(`#${pr.num}`))
         .child(div().flex_none().px(4).py(1).rounded(4).bg((t[st.color] ?? t.muted) + "22").font_semibold().text_color(t[st.color] ?? t.muted).child(st.text))
         .child(div().flex_1())
+        .when(pr.ci, (e) => e.child(div().id(`pr-ci-${pr.repo}-${pr.num}`).flex_none().text_color(ciColor).tooltip(ciTip).child(ciIcon)))
         .when(pr.files > 0, (e) => e.child(div().flex_none().text_color(t.dim).child(`${pr.files} files`))))
       .child(div().w_full().text_size(13).text_color(t.foreground).truncate().child(pr.title))
       .child(h_flex().w_full().gap(8).items_center().text_size(10.5).text_color(t.dim)

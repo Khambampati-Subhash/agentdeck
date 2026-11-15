@@ -38,6 +38,16 @@ export async function me(forge, opts) {
 
 const repoOfUrl = (url) => /^https?:\/\/[^/]+\/(.+?)\/(?:-\/merge_requests|pull)\/\d+/.exec(url ?? "")?.[1] ?? "";
 
+// CI status rollup: GitHub's statusCheckRollup -> "pass" | "fail" | "pending" | null.
+export function rollup(items) {
+  if (!items || !Array.isArray(items) || items.length === 0) return null;
+  const FAIL = /FAILURE|TIMED_OUT|CANCELLED|ACTION_REQUIRED|STARTUP_FAILURE/;
+  const PENDING = /PENDING|EXPECTED/;
+  if (items.some((it) => FAIL.test(it.conclusion ?? "") || /FAILURE|ERROR/.test(it.state ?? ""))) return "fail";
+  if (items.some((it) => (it.status && it.status !== "COMPLETED") || PENDING.test(it.state ?? ""))) return "pending";
+  return "pass";
+}
+
 function fromGitHub(p, me) {
   const has = (users) => Boolean(me) && Array.isArray(users) && users.some((u) => login(u) === me);
   return {
@@ -45,7 +55,7 @@ function fromGitHub(p, me) {
     branch: p.headRefName ?? null, base: p.baseRefName ?? null, add: p.additions ?? 0, del: p.deletions ?? 0, files: p.changedFiles ?? 0,
     draft: Boolean(p.isDraft), decision: p.reviewDecision ?? "",
     review: has(p.reviewRequests), assigned: has(p.assignees), mine: Boolean(me) && login(p.author) === me,
-    url: p.url, at: p.updatedAt,
+    url: p.url, at: p.updatedAt, ci: rollup(p.statusCheckRollup),
   };
 }
 
@@ -57,11 +67,11 @@ function fromGitLab(m, me) {
     draft: Boolean(m.draft ?? m.work_in_progress) || /^(draft:|\[draft\]|wip:)/i.test(m.title ?? ""),
     decision: m.detailed_merge_status ?? "",
     review: has(m.reviewers), assigned: has(m.assignees), mine: Boolean(me) && login(m.author) === me,
-    url: m.web_url, at: m.updated_at,
+    url: m.web_url, at: m.updated_at, ci: null,
   };
 }
 
-const GH_REPO = ["pr", "list", "--state", "open", "--limit", "60", "--json", "number,title,author,headRefName,baseRefName,additions,deletions,changedFiles,isDraft,reviewDecision,reviewRequests,assignees,updatedAt,url"];
+const GH_REPO = ["pr", "list", "--state", "open", "--limit", "60", "--json", "number,title,author,headRefName,baseRefName,additions,deletions,changedFiles,isDraft,reviewDecision,reviewRequests,assignees,updatedAt,url,statusCheckRollup"];
 const GH_SEARCH = ["search", "prs", "--state", "open", "--limit", "50", "--json", "number,title,repository,url,updatedAt,isDraft,author,assignees"];
 const GL_REPO = ["mr", "list", "--per-page", "60", "--output", "json"];
 const GL_ALL = "merge_requests?state=opened&per_page=50&scope=";
