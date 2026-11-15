@@ -20,7 +20,7 @@ export function problem(forge, e) {
   return text || `${forge} failed`;
 }
 
-async function run(forge, args, opts) {
+export async function ask(forge, args, opts) {
   const r = await exec(forge, args, { timeout: 60000, ...opts });
   if (r.code !== 0) throw new Error(r.stderr || r.stdout || `${forge} failed`);
   return JSON.parse(r.stdout || "null");
@@ -31,12 +31,22 @@ export async function me(forge, opts) {
   const store = `prboard.me.${forge}${opts.on ? "@" + opts.on : ""}`;
   const known = localStorage.getItem(store);
   if (known) return known;
-  const who = login(await run(forge, ["api", "user"], { ...opts, timeout: 15000 }));
+  const who = login(await ask(forge, ["api", "user"], { ...opts, timeout: 15000 }));
   if (who) localStorage.setItem(store, who);
   return who || null;
 }
 
 const repoOfUrl = (url) => /^https?:\/\/[^/]+\/(.+?)\/(?:-\/merge_requests|pull)\/\d+/.exec(url ?? "")?.[1] ?? "";
+
+// CI status rollup: GitHub's statusCheckRollup -> "pass" | "fail" | "pending" | null.
+export function rollup(items) {
+  if (!items || !Array.isArray(items) || items.length === 0) return null;
+  const FAIL = /FAILURE|TIMED_OUT|CANCELLED|ACTION_REQUIRED|STARTUP_FAILURE/;
+  const PENDING = /PENDING|EXPECTED/;
+  if (items.some((it) => FAIL.test(it.conclusion ?? "") || /FAILURE|ERROR/.test(it.state ?? ""))) return "fail";
+  if (items.some((it) => (it.status && it.status !== "COMPLETED") || PENDING.test(it.state ?? ""))) return "pending";
+  return "pass";
+}
 
 function fromGitHub(p, me) {
   const has = (users) => Boolean(me) && Array.isArray(users) && users.some((u) => login(u) === me);
@@ -45,7 +55,7 @@ function fromGitHub(p, me) {
     branch: p.headRefName ?? null, base: p.baseRefName ?? null, add: p.additions ?? 0, del: p.deletions ?? 0, files: p.changedFiles ?? 0,
     draft: Boolean(p.isDraft), decision: p.reviewDecision ?? "",
     review: has(p.reviewRequests), assigned: has(p.assignees), mine: Boolean(me) && login(p.author) === me,
-    url: p.url, at: p.updatedAt,
+    url: p.url, at: p.updatedAt, ci: rollup(p.statusCheckRollup),
   };
 }
 
@@ -57,19 +67,19 @@ function fromGitLab(m, me) {
     draft: Boolean(m.draft ?? m.work_in_progress) || /^(draft:|\[draft\]|wip:)/i.test(m.title ?? ""),
     decision: m.detailed_merge_status ?? "",
     review: has(m.reviewers), assigned: has(m.assignees), mine: Boolean(me) && login(m.author) === me,
-    url: m.web_url, at: m.updated_at,
+    url: m.web_url, at: m.updated_at, ci: null,
   };
 }
 
-const GH_REPO = ["pr", "list", "--state", "open", "--limit", "60", "--json", "number,title,author,headRefName,baseRefName,additions,deletions,changedFiles,isDraft,reviewDecision,reviewRequests,assignees,updatedAt,url"];
+const GH_REPO = ["pr", "list", "--state", "open", "--limit", "60", "--json", "number,title,author,headRefName,baseRefName,additions,deletions,changedFiles,isDraft,reviewDecision,reviewRequests,assignees,updatedAt,url,statusCheckRollup"];
 const GH_SEARCH = ["search", "prs", "--state", "open", "--limit", "50", "--json", "number,title,repository,url,updatedAt,isDraft,author,assignees"];
 const GL_REPO = ["mr", "list", "--per-page", "60", "--output", "json"];
 const GL_ALL = "merge_requests?state=opened&per_page=50&scope=";
 
 // The folder's open PRs or MRs.
 export async function listRepo(forge, me, opts) {
-  if (forge === "gh") return (await run("gh", GH_REPO, opts) ?? []).map((p) => fromGitHub(p, me));
-  return (await run("glab", GL_REPO, opts) ?? []).map((m) => fromGitLab(m, me));
+  if (forge === "gh") return (await ask("gh", GH_REPO, opts) ?? []).map((p) => fromGitHub(p, me));
+  return (await ask("glab", GL_REPO, opts) ?? []).map((m) => fromGitLab(m, me));
 }
 
 // Every repo's: one ask per column, merged, each row marked by the asks that found it.
@@ -77,7 +87,7 @@ export async function listAll(forge, me, opts) {
   const asks = forge === "gh"
     ? [["review", [...GH_SEARCH, "--review-requested", "@me"]], ["assigned", [...GH_SEARCH, "--assignee", "@me"]], ["mine", [...GH_SEARCH, "--author", "@me"]]]
     : [["review", ["api", `${GL_ALL}all&reviewer_username=${encodeURIComponent(me ?? "")}`]], ["assigned", ["api", `${GL_ALL}assigned_to_me`]], ["mine", ["api", `${GL_ALL}created_by_me`]]];
-  const found = await Promise.all(asks.filter(([why]) => why !== "review" || forge === "gh" || me).map(async ([why, args]) => [why, await run(forge, args, opts) ?? []]));
+  const found = await Promise.all(asks.filter(([why]) => why !== "review" || forge === "gh" || me).map(async ([why, args]) => [why, await ask(forge, args, opts) ?? []]));
   const rows = new Map();
   for (const [why, list] of found) {
     for (const raw of list) {

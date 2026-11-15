@@ -7,11 +7,13 @@
 
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input, Scrollbar, v_virtual_list } from "gpui-base";
-import { props, theme, notify, closeOverlay, settings } from "herdr";
+import { props, theme, notify, closeOverlay, openOverlay, settings } from "herdr";
 import { splitDiff } from "./diff.js";
-import { details, diffText, comment, openInBrowser, commitDiff, lineComment } from "./forge.js";
+import { details, diffText, comment, openInBrowser, commitDiff, lineComment, checks, checkLog, rerun, checksInBrowser } from "./forge.js";
+import { agentsOn, tell, reviewTask, checkTask, tail } from "./agent.js";
+import { checksTab } from "./checks.js";
 
-const TABS = [{ id: "files", label: "Files" }, { id: "commits", label: "Commits" }, { id: "comments", label: "Comments" }];
+const TABS = [{ id: "files", label: "Files" }, { id: "commits", label: "Commits" }, { id: "comments", label: "Comments" }, { id: "checks", label: "Checks" }];
 const REVIEW = { APPROVED: ["✓", "done"], CHANGES_REQUESTED: ["✕", "blocked"], PENDING: ["⟳", "dim"], DISMISSED: ["–", "dim"] };
 
 function chipOf(pr) {
@@ -44,7 +46,8 @@ export default class PrDiff extends View {
     this.overlay = p.overlay;
     this.tab = "files"; this.files = []; this.file = 0; this.line = null; this.commit = null; this.refs = {};
     this.people = { author: "", assignees: [], reviewers: [] }; this.commits = []; this.comments = [];
-    this.error = null; this.loading = false; this.note = null; this.errorNote = null;
+    this.checks = []; this.checkError = null; this.log = null;
+    this.error = null; this.loading = false; this.note = null; this.errorNote = null; this.sending = null;
     this.handle = cx.focus_handle();
     this.typing = false; this.message = ""; this.busy = false;
     this.input = InputState.new({ placeholder: "Comment on #" + (this.pr.num ?? "") + " · Enter to post" });
@@ -52,6 +55,7 @@ export default class PrDiff extends View {
     this.input.on("submit", (_e, cx) => this.postComment(cx));
     this.input.on("focus", (_e, cx) => { this.typing = true; cx.notify(); });
     this.input.on("blur", (_e, cx) => { this.typing = false; cx.notify(); });
+    cx.timer.every(30000, () => { if (this.checks.some((c) => c.state === "pending")) this.loadChecks(cx); });
     this.refresh(cx);
   }
 
@@ -63,7 +67,7 @@ export default class PrDiff extends View {
       const problems = [];
       await Promise.all([
         diffText(this.p).then((text) => this.setFiles(splitDiff(text)), (e) => problems.push(message(e))),
-        this.loadDetails().then((errors) => problems.push(...errors)),
+        this.loadDetails().then((errors) => { problems.push(...errors); return this.loadChecks(cx); }),
       ]);
       this.error = problems.length ? problems.join("\n") : null;
       this.loading = false;
@@ -164,6 +168,69 @@ export default class PrDiff extends View {
   web(cx) {
     cx.spawn(async (cx) => {
       try { await openInBrowser(this.p); } catch (e) { this.errorNote = message(e); cx.notify(); }
+    });
+  }
+
+  loadChecks(cx) {
+    cx.spawn(async (cx) => {
+      try {
+        const list = await checks(this.p, this.refs);
+        this.checks = list.sort((a, b) => {
+          const order = { fail: 0, pending: 1, pass: 2, skip: 3, cancel: 4 };
+          return (order[a.state] ?? 99) - (order[b.state] ?? 99);
+        });
+        this.checkError = null;
+      } catch (e) {
+        this.checkError = message(e);
+      }
+      cx.notify();
+    });
+  }
+
+  openLog(i, cx) {
+    const check = this.checks[i];
+    if (!check) return;
+    const log = { check, text: null, error: null };
+    this.log = log;
+    cx.spawn(async (cx) => {
+      try { log.text = tail(await checkLog(this.p, check), 300, 60000); } catch (e) { log.error = message(e); }
+      if (this.log === log) cx.notify();
+    });
+    cx.notify();
+  }
+
+  closeLog(cx) {
+    this.log = null;
+    cx?.notify();
+  }
+
+  fixWithAgent(cx) {
+    if (!this.log || !this.log.text) return;
+    this.sendToAgent(checkTask(this.p, this.log.check, tail(this.log.text)), `CI check "${this.log.check.name}"`, cx);
+  }
+
+  rerunCheck(cx) {
+    if (!this.log || this.rerunning) return;
+    const check = this.log.check;
+    this.rerunning = true;
+    cx.spawn(async (cx) => {
+      try {
+        await rerun(this.p, check);
+        this.errorNote = null;
+        notify({ title: `Re-running ${check.name}`, level: "info" });
+        this.loadChecks(cx);
+      } catch (e) {
+        this.errorNote = message(e);
+        cx.notify();
+      }
+      this.rerunning = false;
+    });
+  }
+
+  checksInBrowser(cx) {
+    cx.spawn(async (cx) => {
+      try { await checksInBrowser(this.p); this.errorNote = null; } catch (e) { this.errorNote = message(e); }
+      cx.notify();
     });
   }
 
@@ -274,6 +341,7 @@ export default class PrDiff extends View {
   }
 
   commentsTab(t) {
+    const stop = (_e, cx) => cx.stop_propagation();
     return this.listTab(t, "prdiff-comments", this.comments, "No comments yet.", (c, i) => {
       const mark = c.state ? chipOf({ decision: c.state }) : null;
       return h_flex().id(`prdiff-comment-${i}`).w_full().flex_none().px(14).py(10).gap(10).items_start().border_b(1).border_color(t.border)
@@ -284,8 +352,54 @@ export default class PrDiff extends View {
             .when(Boolean(c.path), (e) => e.child(div().text_color(t.accent).child(`${c.path}:${c.line}`)))
             .when(Boolean(mark), (e) => e.child(div().px(4).rounded(4).bg((t[mark?.color] ?? t.muted) + "22").font_semibold().text_color(t[mark?.color] ?? t.muted).child(mark?.text ?? "")))
             .child(div().text_color(t.dim).child(since(c.at))))
-          .child(div().w_full().text_size(12.5).text_color(t.muted).child(c.body.length > 4000 ? c.body.slice(0, 4000) + "…" : c.body)));
+          .child(div().w_full().text_size(12.5).text_color(t.muted).child(c.body.length > 4000 ? c.body.slice(0, 4000) + "…" : c.body)))
+        .child(div().id(`prdiff-send-${i}`).flex_none().px(6).py(3).text_size(11).rounded(5).bg(t.raised).text_color(t.muted).cursor_pointer().hover((s) => s.bg(t.hover).text_color(t.foreground)).on_mouse_down("left", stop).on_click((_e, cx) => this.sendToAgent(reviewTask(this.p, c), `Review comment by @${c.author}`, cx)).child("→ Agent"));
     });
+  }
+
+  sendToAgent(text, label, cx) {
+    const branch = this.pr.branch || this.pr.headRefName;
+    cx.spawn(async (cx) => {
+      const targets = await agentsOn(branch, this.p.repo);
+      if (targets.length === 1) {
+        try {
+          await tell(targets[0].address, text);
+          notify({ title: `Sent to ${targets[0].name}`, level: "success" });
+        } catch (e) {
+          this.errorNote = message(e);
+          cx.notify();
+        }
+      } else {
+        this.sending = { text, label, targets };
+        cx.notify();
+      }
+    });
+  }
+
+  sendTo(i, cx) {
+    const s = this.sending, t = s?.targets[i];
+    if (!t || s.busy) return;
+    s.busy = true;
+    cx.spawn(async (cx) => {
+      try {
+        await tell(t.address, s.text);
+        notify({ title: `Sent to ${t.name}`, level: "success" });
+      } catch (e) { this.errorNote = message(e); }
+      if (this.sending === s) this.sending = null;
+      cx.notify();
+    });
+  }
+
+  startAgent(cx) {
+    if (!this.p.cwd) {
+      this.note = "Open the board on This repo to start an agent here.";
+      cx.notify();
+      return;
+    }
+    const branch = this.pr.branch || this.pr.headRefName;
+    openOverlay({ mod: "worktree", kind: "dialog", width: 440, height: 300, props: { folder: this.p.cwd, machine: this.p.on, action: "new", branch, task: this.sending.text } });
+    this.sending = null;
+    cx.notify();
   }
 
   render() {
@@ -295,8 +409,8 @@ export default class PrDiff extends View {
     const target = this.line ? this.lineLabel() : null;
     const stop = (_e, cx) => cx.stop_propagation();
     const icon = (id, label, tip, click) => div().id(id).text_size(14).px(4).rounded(6).cursor_pointer().text_color(t.muted).hover((s) => s.bg(t.raised).text_color(t.foreground)).tooltip(tip).on_mouse_down("left", stop).on_click(click).child(label);
-    const counts = { files: this.files.length, commits: this.commits.length, comments: this.comments.length };
-    const body = this.tab === "commits" ? this.commitsTab(t) : this.tab === "comments" ? this.commentsTab(t) : this.filesTab(t);
+    const counts = { files: this.files.length, commits: this.commits.length, comments: this.comments.length, checks: this.checks.filter((c) => c.state === "fail").length };
+    const body = this.tab === "commits" ? this.commitsTab(t) : this.tab === "comments" ? this.commentsTab(t) : this.tab === "checks" ? checksTab(this, t) : this.filesTab(t);
     return v_flex()
       .id("prdiff")
       .size_full()
@@ -322,13 +436,21 @@ export default class PrDiff extends View {
         .child(icon("prdiff-refresh", "↻", "Refresh", (_e, cx) => { this.refresh(cx); cx.notify(); }))
         .child(icon("prdiff-close", "✕", "Close", () => closeOverlay(this.overlay))))
       .child(this.peopleLine(t))
-      // Tabs: Files · Commits · Comments, each with its count
-      .child(h_flex().h(34).flex_none().px(10).gap(2).items_center().border_b(1).border_color(t.border).text_size(12)
+      // Tabs: Files · Commits · Comments · Checks, each with its count
+      .child(h_flex().id("prdiff-tabs").h(34).flex_none().px(10).gap(2).items_center().border_b(1).border_color(t.border).text_size(12)
         .children(TABS.map((tab) => h_flex().id(`prdiff-tab-${tab.id}`).h(24).px(8).gap(5).items_center().rounded(6).cursor_pointer()
           .bg(this.tab === tab.id ? t.raised : t.background).text_color(this.tab === tab.id ? t.foreground : t.muted).hover((s) => s.bg(t.hover))
           .on_mouse_down("left", stop).on_click((_e, cx) => { this.tab = tab.id; cx.notify(); })
           .child(tab.label).when(counts[tab.id] > 0, (e) => e.child(div().text_color(t.dim).child(String(counts[tab.id])))))))
       .child(div().flex_1().min_h(0).relative().child(body))
+      .when(Boolean(this.sending), (e) => e.child(h_flex().px(12).py(6).gap(8).items_center().border_t(1).border_color(t.border).text_size(11)
+        .child(div().text_color(t.muted).child(this.sending.label + ":"))
+        .when(this.sending.targets.length === 0, (e) => e.child(div().text_color(t.dim).child(`No agent is on ${this.pr.branch || this.pr.headRefName}.`))
+          .child(div().id("prdiff-start-agent").px(8).py(3).rounded(5).bg(t.solid).text_color(t.solid_foreground).cursor_pointer().hover((s) => s.opacity(0.9)).on_mouse_down("left", stop).on_click((_e, cx) => this.startAgent(cx)).child("Start one")))
+        .when(this.sending.targets.length > 0, (e) => e.child(div().text_color(t.dim).child("Send to:"))
+          .children(this.sending.targets.map((tgt, i) => div().id(`prdiff-target-${i}`).px(8).py(3).rounded(5).bg(t.raised).text_color(t.foreground).cursor_pointer().hover((s) => s.bg(t.hover)).on_mouse_down("left", stop).on_click((_e, cx) => this.sendTo(i, cx)).child(tgt.name))))
+        .child(div().flex_1())
+        .child(div().id("prdiff-sending-close").flex_none().text_color(t.dim).cursor_pointer().hover((s) => s.text_color(t.foreground)).on_mouse_down("left", stop).on_click((_e, cx) => { this.sending = null; cx.notify(); }).child("×"))))
       .when(Boolean(this.error), (e) => e.child(div().px(12).py(6).border_t(1).border_color(t.border).text_size(11).text_color(t.ansi1).child(this.error)))
       .when(Boolean(this.note) || Boolean(this.errorNote), (e) => e.child(div().px(12).pt(4).text_size(11).text_color(this.errorNote ? t.ansi1 : t.done).child(this.errorNote || this.note)))
       // Footer: comment

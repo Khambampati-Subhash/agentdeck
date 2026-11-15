@@ -97,7 +97,7 @@ async function gitlab(p) {
   return {
     pr: mr.status === "fulfilled" ? { title: m.title, branch: m.source_branch, base: m.target_branch, decision: m.detailed_merge_status ?? "", draft: Boolean(m.draft) } : {},
     people: { author: name(m.author), assignees: (m.assignees ?? []).map(name), reviewers },
-    refs: { base: m.diff_refs?.base_sha, start: m.diff_refs?.start_sha, head: m.diff_refs?.head_sha },
+    refs: { base: m.diff_refs?.base_sha, start: m.diff_refs?.start_sha, head: m.diff_refs?.head_sha, pipeline: m.head_pipeline?.id ?? null },
     commits: ok(commits, []).map((c) => ({ sha: c.id ?? c.short_id ?? "", title: c.title ?? "", author: c.author_name ?? "", at: c.created_at })),
     comments: ok(notes, []).filter((n) => !n.system).map((n) => {
       const at = n.position, line = at?.new_line ?? at?.old_line;
@@ -108,3 +108,70 @@ async function gitlab(p) {
 }
 
 export const details = (p) => (p.forge === "glab" ? gitlab(p) : github(p));
+
+export async function checks(p, refs) {
+  if (p.forge === "glab") {
+    if (!refs.pipeline) return [];
+    const jobs = await api(p, `${glProject(p)}/pipelines/${refs.pipeline}/jobs?per_page=100`);
+    return jobs.map((j) => {
+      const statusMap = { success: "pass", failed: "fail", canceled: "cancel", skipped: "skip", manual: "skip" };
+      return {
+        name: `${j.stage}: ${j.name}`,
+        state: statusMap[j.status] ?? "pending",
+        workflow: j.stage ?? "",
+        link: j.web_url ?? "",
+        job: String(j.id),
+        run: String(refs.pipeline),
+        at: j.started_at ?? j.created_at ?? null,
+      };
+    });
+  }
+  const r = await exec(p.forge, ["pr", "checks", num(p), ...repoFlag(p), "--json", "name,state,bucket,link,workflow,startedAt,completedAt"], { cwd: p.cwd ?? undefined, on: p.on ?? undefined, timeout: 60000 });
+  if (r.code !== 0) {
+    if ((r.stderr || "").includes("no checks reported")) return [];
+  }
+  // Exit 1 (a check failed) or 8 (pending) still prints the list; anything
+  // else (signed out, offline, no such PR) is an error, not "No checks".
+  let list = null;
+  try { list = JSON.parse(r.stdout || (r.code === 0 ? "[]" : "null")); } catch {}
+  if (!Array.isArray(list)) throw new Error((r.stderr || r.stdout || "gh pr checks failed").trim());
+  return list.map((c) => {
+    const stateMap = { skipping: "skip" };
+    const match = (c.link || "").match(/\/actions\/runs\/(\d+)(?:\/job\/(\d+))?/);
+    return {
+      name: c.name ?? "",
+      state: stateMap[c.bucket] ?? c.bucket ?? "pending",
+      workflow: c.workflow ?? "",
+      link: c.link ?? "",
+      job: match?.[2] ?? null,
+      run: match?.[1] ?? null,
+      at: c.completedAt ?? c.startedAt ?? null,
+    };
+  });
+}
+
+export async function checkLog(p, check) {
+  if (!check.job) throw new Error("This check's log is on its own site: open checks in browser.");
+  if (p.forge === "glab") {
+    return cli(p, ["api", `${glProject(p)}/jobs/${check.job}/trace`, ...hostFlag(p)]);
+  }
+  const failed = await cli(p, ["run", "view", "--job", check.job, "--log-failed", ...repoFlag(p)]);
+  if (failed.trim()) return failed;
+  return cli(p, ["run", "view", "--job", check.job, "--log", ...repoFlag(p)]);
+}
+
+// Only Actions runs (gh) and pipeline jobs (glab) can be re-run from here.
+export const canRerun = (p, check) => Boolean(p.forge === "glab" ? check.job : check.run);
+
+export async function rerun(p, check) {
+  if (!canRerun(p, check)) throw new Error("This check can't be re-run from here: open checks in browser.");
+  if (p.forge === "glab") {
+    return cli(p, ["api", "-X", "POST", `${glProject(p)}/jobs/${check.job}/retry`, ...hostFlag(p)]);
+  }
+  return cli(p, ["run", "rerun", check.run, "--failed", ...repoFlag(p)]);
+}
+
+export function checksInBrowser(p) {
+  if (p.forge === "glab") return openInBrowser(p);
+  return cli(p, ["pr", "checks", num(p), ...repoFlag(p), "--web"]);
+}
