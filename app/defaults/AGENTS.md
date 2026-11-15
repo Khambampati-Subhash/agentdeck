@@ -178,7 +178,11 @@ with a header; Files, Changes and Pull requests panels on the right,
 `files`, `changes` and `prboard` (open PRs or MRs through the person's `gh`
 or `glab`: GitHub and GitLab tabs, each over all their repos or this one;
 a Pull requests / Issues switch, the Issues view in Assigned, Mine and All
-columns with **↗** to open an issue in the browser; a pull request card opens a `prdiff` window with its people, files and per-file diff
+columns with **↗** to open an issue in the browser and **Start work** (or
+Enter on the selected issue) to open the worktree dialog on a `<num>-<slug>`
+branch with an agent picker, the issue's title, link and body as the agent's
+first message; in All repos it uses a local space cloned from the issue's
+repo, or says to open one; a pull request card opens a `prdiff` window with its people, files and per-file diff
 (click a line to comment on it), commits (open one for its own diff),
 comments (each with **→ Agent** to send it to an agent on the branch), checks
 (open one for its log, **Fix with agent** to send the failure to the agent, **Re-run** for an Actions run or pipeline job) and a comment box),

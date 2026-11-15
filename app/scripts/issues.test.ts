@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { load, harness, textOf, findId, type Reply } from "./mod-harness";
+import { load, harness, fns, textOf, findId, type Reply } from "./mod-harness";
 
 const board = await load("prboard", "PrBoard");
 
@@ -164,4 +164,132 @@ test("every exec argument is a string, issues too", async () => {
     expect(h.calls.some((c) => c.args.includes("--web"))).toBe(true);
     for (const c of h.calls) for (const a of c.args) expect(typeof a).toBe("string");
   }
+});
+
+// ---------------------------------------------------------------- start work
+
+const { branchFor, issueTask, sameRepo } = fns(board, ["branchFor", "issueTask", "sameRepo"]);
+const crash = { forge: "gh", num: 12, title: "Crash on empty config!", repo: "o/r", pid: null, labels: [], assigned: true, mine: false, url: "https://github.com/o/r/issues/12", at: "2026-11-12T00:00:00Z" };
+
+test("branchFor makes a short, safe branch", () => {
+  expect(branchFor({ num: 12, title: "Crash on empty config!" })).toBe("12-crash-on-empty-config");
+  const long = branchFor({ num: 3, title: "Ünïcode & `$(x)` / spaces   here, and a very long tail that goes on" });
+  expect(long.length).toBeLessThanOrEqual(43);
+  expect(long).toMatch(/^3-[a-z0-9]+(-[a-z0-9]+)*$/);
+  expect(branchFor({ num: 3, title: "!!!" })).toBe("3");
+  expect(branchFor({ num: 9, title: "a".repeat(60) })).toBe("9-" + "a".repeat(40));
+});
+
+test("issueTask carries the title, link and body", () => {
+  expect(issueTask(crash, "  Steps: run it.\n")).toBe(
+    "Work on GitHub issue #12 in o/r: Crash on empty config!\nhttps://github.com/o/r/issues/12\n\nSteps: run it.\n\nWork on this branch and commit as you go. Don't push or open a pull request unless asked.");
+  expect(issueTask(crash, "  ")).toContain("\n\n(no description)\n\n");
+  expect(issueTask({ ...crash, forge: "glab" }, "x")).toStartWith("Work on GitLab issue #12 in o/r:");
+  expect(issueTask(crash, "y".repeat(9000))).toContain("y".repeat(6000) + "\n\nWork on this branch");
+  expect(issueTask(crash, "y".repeat(9000))).not.toContain("y".repeat(6001));
+});
+
+test("sameRepo matches ssh and https remotes, nothing else", () => {
+  expect(sameRepo("git@github.com:A/One.git\n", "a/one")).toBe(true);
+  expect(sameRepo("https://gitlab.example.com/g/sub/r.git", "g/sub/r")).toBe(true);
+  expect(sameRepo("https://gitlab.example.com/g/sub/r/", "g/sub/r")).toBe(true);
+  expect(sameRepo("ssh://git@github.com/a/one", "a/one")).toBe(true);
+  expect(sameRepo("git@github.com:a/one-two.git", "a/one")).toBe(false);
+});
+
+// The board's replies, plus the issue's body.
+const withBody = (base: (command: string, args: string[]) => Reply) => (command: string, args: string[]): Reply => {
+  if (args[0] === "issue" && args[1] === "view" && args.includes("--json")) return { code: 0, stdout: JSON.stringify({ body: "Steps: …" }) };
+  if (args[0] === "api" && /\/issues\/\d+$/.test(args[1])) return { code: 0, stdout: JSON.stringify({ description: "From GitLab." }) };
+  return base(command, args);
+};
+
+test("Start work in This repo opens the worktree dialog with branch and task", async () => {
+  const replies = withBody((command, args) => {
+    if (args[0] === "issue" && args[1] === "list") return { code: 0, stdout: JSON.stringify([ghIssue(12, "o/r", { title: "Crash on empty config!", assignees: [{ login: "me" }] })]) };
+    return github(command, args);
+  });
+  const h = harness(board, "PrBoard", replies);
+  h.store.set("prboard.kind", "issues");
+  h.store.set("prboard.scope.gh", "repo");
+  h.view.init({}, h.cx);
+  await h.settle();
+  // Nothing is fetched or opened on load.
+  expect(h.overlays).toEqual([]);
+  expect(h.calls.some((c) => c.args.includes("body"))).toBe(false);
+  findId(h.view.render(h.cx).node, "issue-start-o/r-12").click({}, h.cx);
+  await h.settle();
+  expect(h.calls.find((c) => c.args.includes("body")).args).toEqual(["issue", "view", "12", "--repo", "o/r", "--json", "body"]);
+  expect(h.overlays.length).toBe(1);
+  const o = h.overlays[0];
+  expect([o.mod, o.kind, o.width, o.height]).toEqual(["worktree", "dialog", 440, 300]);
+  expect(o.props).toEqual({ folder: "/repo", machine: null, action: "new", branch: "12-crash-on-empty-config", task: issueTask(crash, "Steps: …") });
+});
+
+test("Enter on the selected issue starts work too", async () => {
+  const h = harness(board, "PrBoard", withBody(github));
+  h.store.set("prboard.kind", "issues");
+  h.store.set("prboard.scope.gh", "repo");
+  h.view.init({}, h.cx);
+  await h.settle();
+  h.view.render(h.cx).node.key({ key: "enter" }, h.cx);
+  await h.settle();
+  expect(h.overlays.length).toBe(1);
+  expect(h.overlays[0].props.branch).toBe("5-issue-5");
+});
+
+test("Start work in All repos finds the space cloned from that repo", async () => {
+  const origins: Record<string, string> = { "/x": "git@github.com:other/x.git\n", "/y": "git@github.com:a/one.git\n" };
+  const spaces = () => [
+    { id: "s0", active: false, folder: "/far", machine: "box" },
+    { id: "s1", active: true, folder: "/x", machine: null },
+    { id: "s1b", active: false, folder: "/x", machine: null },
+    { id: "s2", active: false, folder: "/y", machine: null },
+    { id: "s3", active: false, folder: "/z", machine: null },
+  ];
+  // The harness's replies don't see the cwd: the call, just recorded, has it.
+  let calls: any[] = [];
+  const replies = withBody((command, args) => {
+    if (command === "git" && args[0] === "remote" && calls.at(-1).cwd !== "/repo") return { code: 0, stdout: origins[calls.at(-1).cwd] ?? "" };
+    return github(command, args);
+  });
+  const h = harness(board, "PrBoard", replies, {}, "/repo", { spaces });
+  calls = h.calls;
+  h.store.set("prboard.kind", "issues");
+  h.view.init({}, h.cx);
+  await h.settle();
+  const before = h.calls.length;
+  h.view.startWork(h.view.cols.all.find((r: any) => r.repo === "a/one"), h.cx);
+  await h.settle();
+  const remotes = h.calls.slice(before).filter((c) => c.command === "git");
+  expect(remotes.map((c) => c.cwd)).toEqual(["/x", "/y"]);
+  expect(remotes.every((c) => c.args.join(" ") === "remote get-url origin")).toBe(true);
+  expect(h.overlays.length).toBe(1);
+  expect(h.overlays[0].props).toMatchObject({ folder: "/y", machine: null, action: "new", branch: "1-issue-1" });
+});
+
+test("Start work with no checkout says so and opens nothing", async () => {
+  const h = harness(board, "PrBoard", withBody(github), {}, "/repo", { spaces: () => [{ id: "s1", active: true, folder: "/x", machine: null }] });
+  h.store.set("prboard.kind", "issues");
+  h.view.init({}, h.cx);
+  await h.settle();
+  findId(h.view.render(h.cx).node, "issue-start-a/one-1").click({}, h.cx);
+  await h.settle();
+  expect(h.overlays).toEqual([]);
+  expect(h.notes[0]).toEqual({ title: "No checkout of a/one", body: "Open a space in a clone of it, then Start work again.", level: "warning" });
+});
+
+test("Start work on GitLab reads the description from the issues API", async () => {
+  const h = harness(board, "PrBoard", withBody(gitlab));
+  h.store.set("prboard.kind", "issues");
+  h.store.set("prboard.forge", "glab");
+  h.store.set("prboard.scope.glab", "repo");
+  h.store.set("prboard.column", "all");
+  h.view.init({}, h.cx);
+  await h.settle();
+  findId(h.view.render(h.cx).node, "issue-start-g/r-3").click({}, h.cx);
+  await h.settle();
+  const asked = h.calls.find((c) => c.command === "glab" && /\/issues\/3$/.test(c.args[1] ?? ""));
+  expect(asked.args).toEqual(["api", "projects/43/issues/3", "--hostname", "gitlab.example.com"]);
+  expect(h.overlays[0].props.task).toContain("Work on GitLab issue #3 in g/r: Issue 3\nhttps://gitlab.example.com/g/r/-/issues/3\n\nFrom GitLab.\n\n");
 });

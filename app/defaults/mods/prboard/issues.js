@@ -2,8 +2,8 @@
 // the folder's, or every repo's that are assigned to or opened by the person.
 // Every row comes back in one shape, whichever forge and scope it's from.
 
-import { exec } from "herdr";
-import { ask, login } from "./forge.js";
+import { exec, spaces } from "herdr";
+import { ask, login, forgeLabel } from "./forge.js";
 
 const issueRepo = (url) => /^https?:\/\/[^/]+\/(.+?)\/(?:-\/)?issues\/\d+/.exec(url ?? "")?.[1] ?? "";
 const ofUser = (users, me) => Boolean(me) && Array.isArray(users) && users.some((u) => login(u) === me);
@@ -63,4 +63,55 @@ export async function openIssue(issue) {
     : ["issue", "view", String(issue.num), "--repo", host && host !== "github.com" ? `${host}/${issue.repo}` : issue.repo, "--web"];
   const r = await exec(issue.forge, args, { timeout: 15000 });
   if (r.code !== 0) throw new Error(r.stderr || r.stdout || `${issue.forge} failed`);
+}
+
+// The issue's description, named by its repo so any folder will do.
+export async function issueBody(forge, row, opts) {
+  const host = /^https?:\/\/([^/]+)\//.exec(row.url ?? "")?.[1];
+  if (forge === "glab") {
+    const off = host && host !== "gitlab.com" ? ["--hostname", host] : [];
+    return (await ask("glab", ["api", `projects/${row.pid ?? encodeURIComponent(row.repo)}/issues/${row.num}`, ...off], opts))?.description ?? "";
+  }
+  const repo = host && host !== "github.com" ? `${host}/${row.repo}` : row.repo;
+  return (await ask("gh", ["issue", "view", String(row.num), "--repo", repo, "--json", "body"], opts))?.body ?? "";
+}
+
+// `<num>-<slug>`: the title in lowercase a-z0-9 words, at most 40 characters,
+// cut between words.
+export function branchFor(row) {
+  let slug = String(row.title ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  if (slug.length > 40) {
+    const cut = slug.slice(0, 41).lastIndexOf("-");
+    slug = cut > 0 ? slug.slice(0, cut) : slug.slice(0, 40);
+  }
+  return slug ? `${row.num}-${slug}` : String(row.num);
+}
+
+// The agent's first message. Issues are #N on both forges.
+export function issueTask(row, body) {
+  const ref = `#${row.num}`;
+  return `Work on ${forgeLabel(row.forge)} issue ${ref} in ${row.repo}: ${row.title}\n${row.url}\n\n${body.trim().slice(0, 6000) || "(no description)"}\n\nWork on this branch and commit as you go. Don't push or open a pull request unless asked.`;
+}
+
+// Whether an origin URL is the repo's. A copy of prdiff/agent.js's sameRepo,
+// because mods can't share files: keep the two the same.
+export function sameRepo(remote, repo) {
+  remote = remote.trim();
+  let path = "";
+  if (remote.startsWith("git@")) path = remote.split(":")[1] || "";
+  else if (remote.startsWith("ssh://") || remote.startsWith("https://")) path = remote.split("/").slice(3).join("/");
+  path = path.replace(/\.git$/, "").replace(/\/$/, "");
+  return path.toLowerCase() === repo.toLowerCase();
+}
+
+// A local space's folder cloned from the repo: the first whose origin is it.
+export async function findCheckout(repo) {
+  const seen = new Set();
+  for (const s of spaces()) {
+    if (s.machine !== null || !s.folder || seen.has(s.folder)) continue;
+    seen.add(s.folder);
+    const r = await exec("git", ["remote", "get-url", "origin"], { cwd: s.folder, timeout: 15000 });
+    if (r.code === 0 && sameRepo(r.stdout, repo)) return { folder: s.folder, on: null };
+  }
+  return null;
 }

@@ -2,16 +2,17 @@
 // GitLab tab, each over every repo you're part of or just this folder's,
 // split into columns by how a PR involves you. A card opens its diff,
 // commits and comments in a window (prdiff). The Issues view lists open
-// issues the same way (issues.js); ↗ opens one in the browser.
+// issues the same way (issues.js); ↗ opens one in the browser, and Start
+// work opens the worktree dialog with a branch and the issue as an agent's task.
 //
 // Data comes from the user's own CLIs (gh, glab; forge.js), run through
 // exec with their real env and login. No token lives in the app.
 
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex, Scrollbar } from "gpui-base";
-import { spaces, panes, focused, exec, theme, openOverlay, watchFolder } from "herdr";
+import { spaces, panes, focused, exec, theme, notify, openOverlay, watchFolder } from "herdr";
 import { FORGES, forgeLabel, forgeOf, problem, me, listRepo, listAll } from "./forge.js";
-import { listIssuesRepo, listIssuesAll, openIssue } from "./issues.js";
+import { listIssuesRepo, listIssuesAll, openIssue, issueBody, branchFor, issueTask, findCheckout } from "./issues.js";
 
 const COLUMNS = [
   { id: "review", label: "Review", empty: "Nothing needs your review." },
@@ -216,6 +217,24 @@ export default class PrBoard extends View {
     });
   }
 
+  // The worktree dialog on a new branch for the issue, with the issue as the
+  // agent's first message. In This repo it's this checkout; in All repos, a
+  // local space's clone of the issue's repo.
+  startWork(row, cx) {
+    const here = this.scope[row.forge] === "repo", root = this.root, { on } = location();
+    cx.spawn(async (cx) => {
+      try {
+        const at = here ? (root ? { folder: root, on } : null) : await findCheckout(row.repo);
+        if (!at) return notify({ title: "No checkout of " + row.repo, body: "Open a space in a clone of it, then Start work again.", level: "warning" });
+        const body = await issueBody(row.forge, row, here ? { cwd: root, on } : {});
+        openOverlay({
+          mod: "worktree", kind: "dialog", width: 440, height: 300,
+          props: { folder: at.folder, machine: at.on, action: "new", branch: branchFor(row), task: issueTask(row, body) },
+        });
+      } catch (e) { this.error = problem(row.forge, e); cx.notify(); }
+    });
+  }
+
   issueCard(t, row, i) {
     const on = i === this.sel, every = this.scope[this.forge] === "all";
     return v_flex().id(`issue-${row.repo}-${row.num}`).w_full().flex_none().px(10).py(8).gap(4).rounded(8).cursor_pointer()
@@ -227,7 +246,9 @@ export default class PrBoard extends View {
         .children(row.labels.slice(0, 3).map((l) => div().flex_none().px(4).py(1).rounded(4).bg(t.muted + "22").text_color(t.muted).child(l)))
         .child(div().flex_1())
         .child(div().id(`issue-web-${row.repo}-${row.num}`).flex_none().px(4).rounded(4).cursor_pointer().text_color(t.muted).hover((s) => s.bg(t.hover).text_color(t.foreground))
-          .tooltip("Open in the browser").on_click((_e, cx) => { cx.stop_propagation(); this.web(row, cx); }).child("↗")))
+          .tooltip("Open in the browser").on_click((_e, cx) => { cx.stop_propagation(); this.web(row, cx); }).child("↗"))
+        .child(div().id(`issue-start-${row.repo}-${row.num}`).flex_none().px(5).rounded(4).cursor_pointer().text_color(t.accent).hover((s) => s.bg(t.hover))
+          .tooltip("A worktree and an agent for this issue (Enter)").on_click((_e, cx) => { cx.stop_propagation(); this.sel = i; this.startWork(row, cx); cx.notify(); }).child("Start work")))
       .child(div().w_full().text_size(13).text_color(t.foreground).truncate().child(row.title))
       .child(h_flex().w_full().text_size(10.5).text_color(t.dim).child(div().flex_1()).child(div().flex_none().child(since(row.at))));
   }
@@ -246,7 +267,7 @@ export default class PrBoard extends View {
       .on_key_down((e, cx) => {
         if (e.key === "down" && list.length) this.sel = (this.sel + 1) % list.length;
         else if (e.key === "up" && list.length) this.sel = (this.sel + list.length - 1) % list.length;
-        else if (e.key === "enter" && list[this.sel] && !issues) this.open(list[this.sel]);
+        else if (e.key === "enter" && list[this.sel]) issues ? this.startWork(list[this.sel], cx) : this.open(list[this.sel]);
         else if (e.key === "r") this.refresh(cx);
         else return;
         cx.stop_propagation(); cx.notify();
@@ -271,6 +292,6 @@ export default class PrBoard extends View {
           .when(!list.length, (e) => e.child(div().p(8).text_color(t.dim).child(empty))))
         .child(Scrollbar.vertical("prboard-list").absolute().inset_0()))
       .when(Boolean(this.error) && list.length > 0, (e) => e.child(div().px(12).py(6).border_t(1).border_color(t.border).text_size(11).text_color(t.ansi1).child(this.error)))
-      .child(h_flex().h(26).flex_none().px(12).items_center().border_t(1).border_color(t.border).text_size(10.5).text_color(t.dim).child(issues ? "↑↓ select · ↗ open in the browser · R refresh" : "↑↓ select · Enter open · R refresh"));
+      .child(h_flex().h(26).flex_none().px(12).items_center().border_t(1).border_color(t.border).text_size(10.5).text_color(t.dim).child(issues ? "↑↓ select · Enter start work · ↗ open in the browser · R refresh" : "↑↓ select · Enter open · R refresh"));
   }
 }

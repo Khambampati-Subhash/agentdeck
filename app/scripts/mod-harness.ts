@@ -16,7 +16,7 @@ export async function load(name: string, cls: string) {
 let inRows = false;
 const HANDLERS = ["on_click", "on_mouse_down", "on_mouse_up", "on_hover", "on_mouse_move", "on_key_down", "on_scroll_wheel", "on_size_change"];
 export function element(kind = "div") {
-  const node = { kind, id: "", children: [] as any[], click: null as any, item: null as any, tooltip: null as any };
+  const node = { kind, id: "", children: [] as any[], click: null as any, key: null as any, item: null as any, tooltip: null as any };
   const el: any = new Proxy(node, { get: (_, method) => {
     if (method === "node") return node;
     return (...args: any[]) => {
@@ -24,6 +24,7 @@ export function element(kind = "div") {
       if (method === "id") node.id = args[0];
       if (method === "tooltip") node.tooltip = args[0];
       if (method === "on_click") node.click = args[0];
+      if (method === "on_key_down") node.key = args[0];
       if (method === "on_item_click") node.item = args[0];
       if (method === "child") node.children.push(args[0]?.node ?? args[0]);
       if (method === "children") node.children.push(...args[0].map((child: any) => child?.node ?? child));
