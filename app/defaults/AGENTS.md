@@ -182,7 +182,8 @@ columns with **↗** to open an issue in the browser and **Start work** (or
 Enter on the selected issue) to open the worktree dialog on a `<num>-<slug>`
 branch with an agent picker, the issue's title, link and body as the agent's
 first message; in All repos it uses a local space cloned from the issue's
-repo, or says to open one; a pull request card opens a `prdiff` window with its people, files and per-file diff
+repo, or says to open one; in This repo a header **＋** opens the `propen`
+dialog on the checkout; a pull request card opens a `prdiff` window with its people, files and per-file diff
 (click a line to comment on it), commits (open one for its own diff),
 comments (each with **→ Agent** to send it to an agent on the branch), checks
 (open one for its log, **Fix with agent** to send the failure to the agent, **Re-run** for an Actions run or pipeline job) and a comment box),
@@ -854,7 +855,16 @@ has 120 programs (agents, editors, runtimes, tools, databases, infra);
   `~/.herdr/worktrees/<repo>/<branch>` on the space's machine, a constant
   at its top; the
   `spaces` sidebar nests worktree spaces under their repo's and shows each
-  space's repo, branch, ahead/behind and uncommitted changes). Shipped mods
+  space's repo, branch, ahead/behind and uncommitted changes), and `propen`
+  (opens a pull or merge request from a checkout's branch: the space menu's
+  Open pull request on git spaces and the Pull requests panel's **＋** open it
+  as a 560×460 dialog with props `{folder, machine}`; it drafts a title and
+  body from the commits ahead of `origin/<base>`, warns about uncommitted
+  changes, refuses a detached HEAD or a branch with nothing ahead, offers the
+  branch's open one instead of a second, and only on Create or Enter runs
+  `git push -u origin <branch>` then `gh pr create` / `glab mr create`
+  (a draft unless Draft is turned off) and opens the new one's `prdiff`
+  window). Shipped mods
   are Herdr's; duplicate with `mod.clone` before editing.
 
 ### Check before you finish

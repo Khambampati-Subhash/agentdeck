@@ -186,6 +186,11 @@ export default class PrBoard extends View {
     });
   }
 
+  // The pull request dialog on this repo's checkout (propen).
+  newPr() {
+    openOverlay({ mod: "propen", kind: "dialog", width: 560, height: 460, props: { folder: this.root, machine: location().on } });
+  }
+
   card(t, pr, i) {
     const st = statusOf(pr), on = i === this.sel, every = this.scope[this.forge] === "all";
     const lines = pr.add || pr.del ? `+${pr.add} −${pr.del}` : "";
@@ -278,6 +283,8 @@ export default class PrBoard extends View {
       .child(h_flex().h(42).flex_none().px(14).gap(8).items_center().border_b(1).border_color(t.border)
         .child(group(KINDS.map((k) => pill(`prboard-kind-${k.id}`, k.label, this.kind === k.id, (cx) => this.setKind(k.id, cx)))))
         .child(div().flex_1())
+        .when(this.scope[this.forge] === "repo" && Boolean(this.root), (e) => e.child(div().id("prboard-new").px(6).rounded(6).cursor_pointer().text_color(t.muted).hover((s) => s.bg(t.hover).text_color(t.foreground))
+          .tooltip(`Open a ${this.forge === "glab" ? "merge" : "pull"} request from this branch`).on_click((_e, cx) => { cx.stop_propagation(); this.newPr(); }).child("＋")))
         .child(div().id("prboard-refresh").px(6).rounded(6).cursor_pointer().text_color(this.loading ? t.dim : t.muted).hover((s) => s.bg(t.hover).text_color(t.foreground))
           .tooltip("Refresh (R)").on_click((_e, cx) => { this.refresh(cx); cx.notify(); }).child("↻")))
       .child(h_flex().h(40).flex_none().px(8).gap(6).items_center().border_b(1).border_color(t.border).text_size(11.5)

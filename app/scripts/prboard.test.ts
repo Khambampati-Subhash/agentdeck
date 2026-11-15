@@ -306,6 +306,7 @@ test("a picked line takes the next comment on GitHub, on its side", async () => 
   expect(h.calls[0].args).toEqual(["api", "-X", "POST", "repos/o/r/pulls/7/comments", "-f", "body=LGTM", "-f", "commit_id=head123", "-f", "path=src/a.rs", "-F", "line=2", "-f", "side=RIGHT"]);
   expect(h.view.line).toBe(null);
   h.view.pickLine(2, h.cx); // "-old", old line 2
+  h.view.input.set_value("LGTM"); // posting cleared the box
   h.calls.length = 0;
   h.view.postComment(h.cx);
   await h.settle();

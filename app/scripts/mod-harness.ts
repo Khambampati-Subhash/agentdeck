@@ -38,12 +38,22 @@ export const textOf = (node: any): string => typeof node === "string" ? node : (
 export const findId = (node: any, id: string): any => node?.id === id ? node : (node?.children ?? []).map((c: any) => findId(c, id)).find(Boolean);
 export const findList = (node: any, id: string): any => node?.kind === "list" && node.id === id ? node : (node?.children ?? []).map((c: any) => findList(c, id)).find(Boolean);
 
+// Retained text state: set_value is what value() reads; fire(event, cx) runs
+// what on(event) registered (a test pressing Enter in it: "submit").
+const textState = (value: string) => {
+  const handlers: Record<string, any> = {};
+  return {
+    on(event: string, f: any) { handlers[event] = f; }, fire(event: string, cx: any) { handlers[event]?.({}, cx); },
+    value: () => value, set_value(next: string) { value = next; }, set_rows() {}, focus() {},
+  };
+};
+
 export type Reply = { code: number; stdout: string; stderr?: string };
 
 function buildGlobals(replies: (command: string, args: string[]) => Reply, props: any, folder: string, extra: Record<string, any>, runs: any[], hcCalls: any[], notes: any[], timers: any[]) {
   const base: any = {
     View: class {}, div: () => element(), v_flex: () => element("v"), h_flex: () => element("h"),
-    Input: { new: () => element() }, InputState: { new: () => ({ on() {}, value: () => "LGTM", set_value() {}, set_rows() {}, focus() {} }) },
+    Input: { new: () => element() }, InputState: { new: (o?: any) => textState(o?.value ?? "LGTM") },
     Scrollbar: { vertical: () => element() },
     v_virtual_list: (id: string, count: number, _h: number, key: (i: number) => string, rows: (r: any) => any[]) => {
       const list = element("list");
@@ -62,7 +72,7 @@ function buildGlobals(replies: (command: string, args: string[]) => Reply, props
     hc: (args: string[]) => { hcCalls.push(args); return { stderr: "", ...replies("hc", args) }; },
     agents: () => [],
     knownAgents: async () => [],
-    TextareaState: { new: (o?: any) => ({ on() {}, value: () => o?.value ?? "", set_value() {}, set_rows() {}, focus() {} }) },
+    TextareaState: { new: (o?: any) => textState(o?.value ?? "") },
     Textarea: { new: () => element() },
     home: () => "/home/user",
   };
