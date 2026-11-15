@@ -233,3 +233,259 @@ test("checks reload on the timer only while one is pending", async () => {
   await h.settle();
   expect(callCount).toBe(initialCallCount + 1);
 });
+
+// ---------------------------------------------------------------- log view
+
+test("a failed Actions check opens its failed steps' log, tailed and uncoloured", async () => {
+  const logLines = Array(400).fill(0).map((_, i) => `\x1b[31mLine ${i}\x1b[0m`).join("\n");
+
+  function withLog(command: string, args: string[]): Reply {
+    if (command === "git" && args[0] === "rev-parse") return { code: 0, stdout: "/repo\n" };
+    if (command === "git") return { code: 0, stdout: "git@github.com:o/r.git\n" };
+    if (command === "gh" && args[0] === "pr" && args[1] === "checks") {
+      return { code: 0, stdout: JSON.stringify([
+        { name: "test", bucket: "fail", workflow: "CI", link: "https://github.com/o/r/actions/runs/11/job/22" },
+      ]) };
+    }
+    if (command === "gh" && args[0] === "run" && args[1] === "view" && args.includes("--log-failed")) {
+      return { code: 0, stdout: logLines };
+    }
+    if (command === "gh" && args[0] === "pr" && args[1] === "view") {
+      return { code: 0, stdout: JSON.stringify({ title: "Test PR", headRefName: "fix", headRefOid: "abc123", baseRefName: "main", isDraft: false, author: { login: "me" } }) };
+    }
+    if (command === "gh" && args[0] === "pr" && args[1] === "diff") return { code: 0, stdout: "" };
+    return { code: 0, stdout: "" };
+  }
+
+  const h = harness(diff, "PrDiff", withLog, { pr: { num: 7, url: "https://github.com/o/r/pull/7" }, forge: "gh", repo: "o/r" });
+  h.view.init({}, h.cx);
+  await h.settle();
+
+  expect(h.view.checks.length).toBe(1);
+  const check = h.view.checks[0];
+
+  h.view.openLog(0, h.cx);
+  await h.settle();
+
+  expect(h.view.log).toBeTruthy();
+  expect(h.view.log.check.name).toBe("test");
+  expect(h.view.log.text).toBeTruthy();
+  expect(h.view.log.text.split("\n").length).toBe(300);
+  expect(h.view.log.text).not.toContain("\x1b");
+  expect(h.view.log.error).toBe(null);
+});
+
+test("an empty --log-failed falls back to the full log", async () => {
+  const fullLog = "all of it";
+  let fallbackCalled = false;
+
+  function withFallback(command: string, args: string[]): Reply {
+    if (command === "git" && args[0] === "rev-parse") return { code: 0, stdout: "/repo\n" };
+    if (command === "git") return { code: 0, stdout: "git@github.com:o/r.git\n" };
+    if (command === "gh" && args[0] === "pr" && args[1] === "checks") {
+      return { code: 0, stdout: JSON.stringify([
+        { name: "test", bucket: "fail", workflow: "CI", link: "https://github.com/o/r/actions/runs/11/job/22" },
+      ]) };
+    }
+    if (command === "gh" && args[0] === "run" && args[1] === "view") {
+      if (args.includes("--log-failed")) return { code: 0, stdout: "" };
+      if (args.includes("--log")) {
+        fallbackCalled = true;
+        return { code: 0, stdout: fullLog };
+      }
+    }
+    if (command === "gh" && args[0] === "pr" && args[1] === "view") {
+      return { code: 0, stdout: JSON.stringify({ title: "Test PR", headRefName: "fix", headRefOid: "abc123", baseRefName: "main", isDraft: false, author: { login: "me" } }) };
+    }
+    if (command === "gh" && args[0] === "pr" && args[1] === "diff") return { code: 0, stdout: "" };
+    return { code: 0, stdout: "" };
+  }
+
+  const h = harness(diff, "PrDiff", withFallback, { pr: { num: 7, url: "https://github.com/o/r/pull/7" }, forge: "gh", repo: "o/r" });
+  h.view.init({}, h.cx);
+  await h.settle();
+
+  h.view.openLog(0, h.cx);
+  await h.settle();
+
+  expect(fallbackCalled).toBe(true);
+  expect(h.view.log.text).toBe("all of it");
+});
+
+test("a non-Actions check says where its log is", async () => {
+  function noJob(command: string, args: string[]): Reply {
+    if (command === "git" && args[0] === "rev-parse") return { code: 0, stdout: "/repo\n" };
+    if (command === "git") return { code: 0, stdout: "git@github.com:o/r.git\n" };
+    if (command === "gh" && args[0] === "pr" && args[1] === "checks") {
+      return { code: 0, stdout: JSON.stringify([
+        { name: "external", bucket: "fail", workflow: "External", link: "https://external.com/check" },
+      ]) };
+    }
+    if (command === "gh" && args[0] === "pr" && args[1] === "view") {
+      return { code: 0, stdout: JSON.stringify({ title: "Test PR", headRefName: "fix", headRefOid: "abc123", baseRefName: "main", isDraft: false, author: { login: "me" } }) };
+    }
+    if (command === "gh" && args[0] === "pr" && args[1] === "diff") return { code: 0, stdout: "" };
+    return { code: 0, stdout: "" };
+  }
+
+  const h = harness(diff, "PrDiff", noJob, { pr: { num: 7, url: "https://github.com/o/r/pull/7" }, forge: "gh", repo: "o/r" });
+  h.view.init({}, h.cx);
+  await h.settle();
+
+  h.view.openLog(0, h.cx);
+  await h.settle();
+
+  expect(h.view.log.error).toBe("This check's log is on its own site: open checks in browser.");
+  expect(h.view.log.text).toBe(null);
+});
+
+test("Fix with agent sends the check task with the log's last 120 lines", async () => {
+  const logLines = Array(200).fill(0).map((_, i) => `Line ${i}`).join("\n");
+  const agents = [{ address: "t1", pane: "p1", space: "s1", tab_name: "Tab 1", program: { name: "Claude" } }];
+  const panes = [{ pane: "p1", branch: "fix", cwd: "/a" }];
+  const spaces = [{ id: "s1", machine: null }];
+
+  function withAgent(command: string, args: string[]): Reply {
+    if (command === "git" && args[0] === "rev-parse") return { code: 0, stdout: "/repo\n" };
+    if (command === "git" && args[0] === "remote") return { code: 0, stdout: "git@github.com:o/r.git\n" };
+    if (command === "gh" && args[0] === "pr" && args[1] === "checks") {
+      return { code: 0, stdout: JSON.stringify([
+        { name: "test", bucket: "fail", workflow: "CI", link: "https://github.com/o/r/actions/runs/11/job/22" },
+      ]) };
+    }
+    if (command === "gh" && args[0] === "run" && args[1] === "view") {
+      return { code: 0, stdout: logLines };
+    }
+    if (command === "gh" && args[0] === "pr" && args[1] === "view") {
+      return { code: 0, stdout: JSON.stringify({ title: "Test PR", headRefName: "fix", headRefOid: "abc123", baseRefName: "main", isDraft: false, author: { login: "me" } }) };
+    }
+    if (command === "gh" && args[0] === "pr" && args[1] === "diff") return { code: 0, stdout: "" };
+    return { code: 0, stdout: "" };
+  }
+
+  const { checkTask, tail } = fns(diff, ["checkTask", "tail"]);
+  const h = harness(diff, "PrDiff", withAgent, { pr: { num: 7, url: "https://github.com/o/r/pull/7" }, forge: "gh", repo: "o/r" }, { agents: () => agents, panes: () => panes, spaces: () => spaces });
+  h.view.init({}, h.cx);
+  await h.settle();
+
+  h.view.tab = "checks";
+  h.view.openLog(0, h.cx);
+  await h.settle();
+
+  const check = h.view.checks[0];
+  const expectedTask = checkTask(h.view.p, check, tail(h.view.log.text));
+
+  const fixButton = findId(h.view.render(h.cx).node, "prdiff-fix");
+  expect(fixButton).toBeTruthy();
+  fixButton?.on_click?.[0]?.({}, h.cx);
+  await h.settle();
+
+  expect(h.hcCalls.length).toBe(1);
+  expect(h.hcCalls[0][0]).toBe("send");
+  expect(h.hcCalls[0][3]).toBe(expectedTask);
+});
+
+test("Re-run calls the forge's re-run and reloads checks", async () => {
+  let rerunCalled = false;
+
+  function withRerun(command: string, args: string[]): Reply {
+    if (command === "git" && args[0] === "rev-parse") return { code: 0, stdout: "/repo\n" };
+    if (command === "git") return { code: 0, stdout: "git@github.com:o/r.git\n" };
+    if (command === "gh" && args[0] === "pr" && args[1] === "checks") {
+      return { code: 0, stdout: JSON.stringify([
+        { name: "test", bucket: "fail", workflow: "CI", link: "https://github.com/o/r/actions/runs/11/job/22" },
+      ]) };
+    }
+    if (command === "gh" && args[0] === "run" && args[1] === "view") {
+      return { code: 0, stdout: "log content" };
+    }
+    if (command === "gh" && args[0] === "run" && args[1] === "rerun") {
+      rerunCalled = true;
+      expect(args).toEqual(["run", "rerun", "11", "--failed", "--repo", "o/r"]);
+      return { code: 0, stdout: "" };
+    }
+    if (command === "gh" && args[0] === "pr" && args[1] === "view") {
+      return { code: 0, stdout: JSON.stringify({ title: "Test PR", headRefName: "fix", headRefOid: "abc123", baseRefName: "main", isDraft: false, author: { login: "me" } }) };
+    }
+    if (command === "gh" && args[0] === "pr" && args[1] === "diff") return { code: 0, stdout: "" };
+    return { code: 0, stdout: "" };
+  }
+
+  const h = harness(diff, "PrDiff", withRerun, { pr: { num: 7, url: "https://github.com/o/r/pull/7" }, forge: "gh", repo: "o/r" });
+  h.view.init({}, h.cx);
+  await h.settle();
+
+  h.view.tab = "checks";
+  h.view.openLog(0, h.cx);
+  await h.settle();
+
+  expect(h.view.log).toBeTruthy();
+  expect(h.view.log.text).toBeTruthy();
+  const tree = h.view.render(h.cx).node;
+  const backButton = findId(tree, "prdiff-log-back");
+  expect(backButton).toBeTruthy();
+  const rerunButton = findId(tree, "prdiff-rerun");
+  expect(rerunButton).toBeTruthy();
+  expect(Array.isArray(rerunButton.on_click)).toBe(true);
+  expect(rerunButton.on_click.length).toBeGreaterThan(0);
+  rerunButton.on_click[0]({}, h.cx);
+  await h.settle();
+
+  expect(rerunCalled).toBe(true);
+  expect(h.notes.length).toBeGreaterThan(0);
+  expect(h.notes[h.notes.length - 1].title).toContain("Re-running");
+});
+
+test("GitLab re-run calls the API correctly", async () => {
+  let rerunCalled = false;
+
+  function glabRerun(command: string, args: string[]): Reply {
+    if (command === "git" && args[0] === "rev-parse") return { code: 0, stdout: "/repo\n" };
+    if (command === "git") return { code: 0, stdout: "git@gitlab.example.com:g/r.git\n" };
+    if (command === "glab" && args[0] === "api" && args[1] === "user") return { code: 0, stdout: JSON.stringify({ username: "me" }) };
+    if (command === "glab" && args[0] === "api" && args[1] === "projects/43/merge_requests/5") {
+      return { code: 0, stdout: JSON.stringify({ iid: 5, title: "Test MR", source_branch: "fix", target_branch: "main", author: { username: "me" }, head_pipeline: { id: 90 } }) };
+    }
+    if (command === "glab" && args[0] === "api" && args[1].startsWith("projects/43/merge_requests/5/")) {
+      return { code: 0, stdout: "[]" };
+    }
+    if (command === "glab" && args[0] === "api" && args[1] === "projects/43/pipelines/90/jobs?per_page=100") {
+      return { code: 0, stdout: JSON.stringify([
+        { id: 5, name: "rspec", stage: "test", status: "failed", web_url: "https://gitlab.example.com/g/r/-/jobs/5", pipeline: { id: 90 } },
+      ]) };
+    }
+    if (command === "glab" && args[0] === "api" && args[1] === "projects/43/jobs/5/trace") {
+      return { code: 0, stdout: "job log" };
+    }
+    if (command === "glab" && args[0] === "api" && args.includes("-X") && args.includes("POST") && args.includes("projects/43/jobs/5/retry")) {
+      rerunCalled = true;
+      expect(args).toContain("--hostname");
+      expect(args).toContain("gitlab.example.com");
+      return { code: 0, stdout: "{}" };
+    }
+    if (command === "glab" && args[0] === "mr" && args[1] === "diff") return { code: 0, stdout: "" };
+    return { code: 0, stdout: "[]" };
+  }
+
+  const h = harness(diff, "PrDiff", glabRerun, { pr: { num: 5, url: "https://gitlab.example.com/g/r/-/merge_requests/5" }, forge: "glab", repo: "g/r", pid: 43 });
+  h.view.init({}, h.cx);
+  await h.settle();
+
+  h.view.tab = "checks";
+  h.view.openLog(0, h.cx);
+  await h.settle();
+
+  expect(h.view.log).toBeTruthy();
+  expect(h.view.log.text).toBeTruthy();
+  const tree = h.view.render(h.cx).node;
+  const backButton = findId(tree, "prdiff-log-back");
+  expect(backButton).toBeTruthy();
+  const rerunButton = findId(tree, "prdiff-rerun");
+  expect(rerunButton).toBeTruthy();
+  expect(Array.isArray(rerunButton.on_click)).toBe(true);
+  expect(rerunButton.on_click.length).toBeGreaterThan(0);
+  rerunButton.on_click[0]({}, h.cx);
+  await h.settle();
+
+  expect(rerunCalled).toBe(true);
+});

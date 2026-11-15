@@ -9,9 +9,9 @@ import { View, div } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input, Scrollbar, v_virtual_list } from "gpui-base";
 import { props, theme, notify, closeOverlay, openOverlay, settings } from "herdr";
 import { splitDiff } from "./diff.js";
-import { details, diffText, comment, openInBrowser, commitDiff, lineComment, checks } from "./forge.js";
+import { details, diffText, comment, openInBrowser, commitDiff, lineComment, checks, checkLog, rerun, checksInBrowser } from "./forge.js";
 import { sameRepo, agentsOn, tell, reviewTask, checkTask, tail } from "./agent.js";
-import { checksTab } from "./checks.js";
+import { checksTab, logView } from "./checks.js";
 
 const TABS = [{ id: "files", label: "Files" }, { id: "commits", label: "Commits" }, { id: "comments", label: "Comments" }, { id: "checks", label: "Checks" }];
 const REVIEW = { APPROVED: ["✓", "done"], CHANGES_REQUESTED: ["✕", "blocked"], PENDING: ["⟳", "dim"], DISMISSED: ["–", "dim"] };
@@ -46,7 +46,7 @@ export default class PrDiff extends View {
     this.overlay = p.overlay;
     this.tab = "files"; this.files = []; this.file = 0; this.line = null; this.commit = null; this.refs = {};
     this.people = { author: "", assignees: [], reviewers: [] }; this.commits = []; this.comments = [];
-    this.checks = []; this.checkError = null;
+    this.checks = []; this.checkError = null; this.log = null;
     this.error = null; this.loading = false; this.note = null; this.errorNote = null; this.sending = null;
     this.handle = cx.focus_handle();
     this.typing = false; this.message = ""; this.busy = false;
@@ -187,10 +187,50 @@ export default class PrDiff extends View {
     });
   }
 
-  openCheckInBrowser(c, cx) {
-    if (!c.link) return;
-    cx.spawn(async () => {
-      try { await openInBrowser({ ...this.p, pr: { ...this.p.pr, url: c.link } }); } catch {}
+  openLog(i, cx) {
+    const check = this.checks[i];
+    if (!check) return;
+    this.log = { check, text: null, error: null };
+    cx.spawn(async (cx) => {
+      try {
+        const raw = await checkLog(this.p, check);
+        this.log.text = tail(raw, 300, 60000);
+      } catch (e) {
+        this.log.error = message(e);
+      }
+      cx.notify();
+    });
+    cx.notify();
+  }
+
+  closeLog(cx) {
+    this.log = null;
+    cx?.notify();
+  }
+
+  fixWithAgent(cx) {
+    if (!this.log || !this.log.text) return;
+    this.sendToAgent(checkTask(this.p, this.log.check, tail(this.log.text)), "check", cx);
+  }
+
+  rerunCheck(cx) {
+    if (!this.log) return;
+    const check = this.log.check;
+    cx.spawn(async (cx) => {
+      try {
+        await rerun(this.p, check);
+        notify({ title: `Re-running ${check.name}`, level: "info" });
+        this.loadChecks(cx);
+      } catch (e) {
+        this.errorNote = message(e);
+        cx.notify();
+      }
+    });
+  }
+
+  checksInBrowser(cx) {
+    cx.spawn(async (cx) => {
+      try { await checksInBrowser(this.p); } catch (e) { this.errorNote = message(e); cx.notify(); }
     });
   }
 
