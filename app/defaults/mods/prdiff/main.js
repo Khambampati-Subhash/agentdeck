@@ -190,15 +190,11 @@ export default class PrDiff extends View {
   openLog(i, cx) {
     const check = this.checks[i];
     if (!check) return;
-    this.log = { check, text: null, error: null };
+    const log = { check, text: null, error: null };
+    this.log = log;
     cx.spawn(async (cx) => {
-      try {
-        const raw = await checkLog(this.p, check);
-        this.log.text = tail(raw, 300, 60000);
-      } catch (e) {
-        this.log.error = message(e);
-      }
-      cx.notify();
+      try { log.text = tail(await checkLog(this.p, check), 300, 60000); } catch (e) { log.error = message(e); }
+      if (this.log === log) cx.notify();
     });
     cx.notify();
   }
@@ -219,6 +215,7 @@ export default class PrDiff extends View {
     cx.spawn(async (cx) => {
       try {
         await rerun(this.p, check);
+        this.errorNote = null;
         notify({ title: `Re-running ${check.name}`, level: "info" });
         this.loadChecks(cx);
       } catch (e) {
@@ -230,7 +227,8 @@ export default class PrDiff extends View {
 
   checksInBrowser(cx) {
     cx.spawn(async (cx) => {
-      try { await checksInBrowser(this.p); } catch (e) { this.errorNote = message(e); cx.notify(); }
+      try { await checksInBrowser(this.p); this.errorNote = null; } catch (e) { this.errorNote = message(e); }
+      cx.notify();
     });
   }
 

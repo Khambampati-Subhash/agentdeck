@@ -180,7 +180,7 @@ or `glab`: GitHub and GitLab tabs, each over all their repos or this one;
 a card opens a `prdiff` window with its people, files and per-file diff
 (click a line to comment on it), commits (open one for its own diff),
 comments (each with **→ Agent** to send it to an agent on the branch), checks
-(open one for its log, **Fix with agent** to send the failure to the agent, **Re-run**) and a comment box),
+(open one for its log, **Fix with agent** to send the failure to the agent, **Re-run** for an Actions run or pipeline job) and a comment box),
 opened from the tab bar and remembered per space (which ones:
 shared `"workspace.panels"`, set by the welcome); a status bar,
 `workspace-status`), and as examples `terminals` ("Terminals": tabs in

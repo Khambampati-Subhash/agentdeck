@@ -148,16 +148,20 @@ export async function checks(p, refs) {
 }
 
 export async function checkLog(p, check) {
+  if (!check.job) throw new Error("This check's log is on its own site: open checks in browser.");
   if (p.forge === "glab") {
     return cli(p, ["api", `${glProject(p)}/jobs/${check.job}/trace`, ...hostFlag(p)]);
   }
-  if (!check.job) throw new Error("This check's log is on its own site: open checks in browser.");
   const failed = await cli(p, ["run", "view", "--job", check.job, "--log-failed", ...repoFlag(p)]);
   if (failed.trim()) return failed;
   return cli(p, ["run", "view", "--job", check.job, "--log", ...repoFlag(p)]);
 }
 
-export function rerun(p, check) {
+// Only Actions runs (gh) and pipeline jobs (glab) can be re-run from here.
+export const canRerun = (p, check) => Boolean(p.forge === "glab" ? check.job : check.run);
+
+export async function rerun(p, check) {
+  if (!canRerun(p, check)) throw new Error("This check can't be re-run from here: open checks in browser.");
   if (p.forge === "glab") {
     return cli(p, ["api", "-X", "POST", `${glProject(p)}/jobs/${check.job}/retry`, ...hostFlag(p)]);
   }

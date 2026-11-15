@@ -389,10 +389,14 @@ test("Fix with agent sends the check task with the log's last 120 lines", async 
   expect(h.hcCalls.length).toBe(1);
   expect(h.hcCalls[0][0]).toBe("send");
   expect(h.hcCalls[0][3]).toBe(expectedTask);
+  const sent = h.hcCalls[0][3];
+  expect(sent).toContain("```\nLine 80\n");
+  expect(sent).not.toContain("Line 79\n");
+  expect(sent).toContain("Line 199\n```");
 });
 
 test("Re-run calls the forge's re-run and reloads checks", async () => {
-  let rerunCalled = false;
+  let rerunArgs: string[] | null = null;
   let checkLoads = 0;
 
   function withRerun(command: string, args: string[]): Reply {
@@ -408,8 +412,7 @@ test("Re-run calls the forge's re-run and reloads checks", async () => {
       return { code: 0, stdout: "log content" };
     }
     if (command === "gh" && args[0] === "run" && args[1] === "rerun") {
-      rerunCalled = true;
-      expect(args).toEqual(["run", "rerun", "11", "--failed", "--repo", "o/r"]);
+      rerunArgs = args;
       return { code: 0, stdout: "" };
     }
     if (command === "gh" && args[0] === "pr" && args[1] === "view") {
@@ -440,14 +443,15 @@ test("Re-run calls the forge's re-run and reloads checks", async () => {
   rerunButton.click({}, h.cx);
   await h.settle();
 
-  expect(rerunCalled).toBe(true);
+  expect(rerunArgs).toEqual(["run", "rerun", "11", "--failed", "--repo", "o/r"]);
   expect(checkLoads).toBe(loadsBefore + 1);
   expect(h.notes.length).toBeGreaterThan(0);
   expect(h.notes[h.notes.length - 1].title).toContain("Re-running");
 });
 
 test("GitLab re-run calls the API correctly", async () => {
-  let rerunCalled = false;
+  let rerunArgs: string[] | null = null;
+  let jobLoads = 0;
 
   function glabRerun(command: string, args: string[]): Reply {
     if (command === "git" && args[0] === "rev-parse") return { code: 0, stdout: "/repo\n" };
@@ -460,6 +464,7 @@ test("GitLab re-run calls the API correctly", async () => {
       return { code: 0, stdout: "[]" };
     }
     if (command === "glab" && args[0] === "api" && args[1] === "projects/43/pipelines/90/jobs?per_page=100") {
+      jobLoads++;
       return { code: 0, stdout: JSON.stringify([
         { id: 5, name: "rspec", stage: "test", status: "failed", web_url: "https://gitlab.example.com/g/r/-/jobs/5", pipeline: { id: 90 } },
       ]) };
@@ -467,10 +472,8 @@ test("GitLab re-run calls the API correctly", async () => {
     if (command === "glab" && args[0] === "api" && args[1] === "projects/43/jobs/5/trace") {
       return { code: 0, stdout: "job log" };
     }
-    if (command === "glab" && args[0] === "api" && args.includes("-X") && args.includes("POST") && args.includes("projects/43/jobs/5/retry")) {
-      rerunCalled = true;
-      expect(args).toContain("--hostname");
-      expect(args).toContain("gitlab.example.com");
+    if (command === "glab" && args[0] === "api" && args.includes("projects/43/jobs/5/retry")) {
+      rerunArgs = args;
       return { code: 0, stdout: "{}" };
     }
     if (command === "glab" && args[0] === "mr" && args[1] === "diff") return { code: 0, stdout: "" };
@@ -493,9 +496,105 @@ test("GitLab re-run calls the API correctly", async () => {
   expect(backButton).toBeTruthy();
   expect(rerunButton).toBeTruthy();
 
+  const loadsBefore = jobLoads;
   expect(typeof rerunButton.click).toBe("function");
   rerunButton.click({}, h.cx);
   await h.settle();
 
-  expect(rerunCalled).toBe(true);
+  expect(rerunArgs).toEqual(["api", "-X", "POST", "projects/43/jobs/5/retry", "--hostname", "gitlab.example.com"]);
+  expect(jobLoads).toBe(loadsBefore + 1);
+});
+
+function twoChecks(logs: Record<string, string>) {
+  return (command: string, args: string[]): Reply => {
+    if (command === "git" && args[0] === "rev-parse") return { code: 0, stdout: "/repo\n" };
+    if (command === "git") return { code: 0, stdout: "git@github.com:o/r.git\n" };
+    if (command === "gh" && args[0] === "pr" && args[1] === "checks") {
+      return { code: 0, stdout: JSON.stringify([
+        { name: "a", bucket: "fail", workflow: "CI", link: "https://github.com/o/r/actions/runs/11/job/21" },
+        { name: "b", bucket: "fail", workflow: "CI", link: "https://github.com/o/r/actions/runs/11/job/22" },
+        { name: "external", bucket: "fail", workflow: "External", link: "https://external.com/check" },
+      ]) };
+    }
+    if (command === "gh" && args[0] === "run" && args[1] === "view") {
+      const job = args[args.indexOf("--job") + 1];
+      // Job 21's --log-failed is empty, so its load takes an extra round trip.
+      if (job === "21" && args.includes("--log-failed")) return { code: 0, stdout: "" };
+      return { code: 0, stdout: logs[job] ?? "" };
+    }
+    if (command === "gh" && args[0] === "pr" && args[1] === "view") {
+      return { code: 0, stdout: JSON.stringify({ title: "Test PR", headRefName: "fix", headRefOid: "abc123", baseRefName: "main", isDraft: false, author: { login: "me" } }) };
+    }
+    return { code: 0, stdout: "" };
+  };
+}
+
+test("Back while a log is loading drops the late result", async () => {
+  const h = harness(diff, "PrDiff", twoChecks({ "21": "log of a" }), { pr: { num: 7, url: "https://github.com/o/r/pull/7" }, forge: "gh", repo: "o/r" });
+  h.view.init({}, h.cx);
+  await h.settle();
+
+  h.view.openLog(0, h.cx);
+  h.view.closeLog(h.cx);
+  await h.settle();
+
+  expect(h.view.log).toBe(null);
+});
+
+test("opening another check mid-load keeps the first check's log out of it", async () => {
+  const h = harness(diff, "PrDiff", twoChecks({ "21": "log of a", "22": "log of b" }), { pr: { num: 7, url: "https://github.com/o/r/pull/7" }, forge: "gh", repo: "o/r" });
+  h.view.init({}, h.cx);
+  await h.settle();
+
+  h.view.openLog(0, h.cx);
+  h.view.openLog(1, h.cx);
+  await h.settle();
+
+  expect(h.view.log.check.name).toBe("b");
+  expect(h.view.log.text).toBe("log of b");
+});
+
+test("a check with no Actions run has no Re-run and never asks gh to re-run null", async () => {
+  const h = harness(diff, "PrDiff", twoChecks({}), { pr: { num: 7, url: "https://github.com/o/r/pull/7" }, forge: "gh", repo: "o/r" });
+  h.view.init({}, h.cx);
+  await h.settle();
+
+  h.view.tab = "checks";
+  h.view.openLog(2, h.cx);
+  await h.settle();
+
+  expect(h.view.log.check.run).toBe(null);
+  expect(findId(h.view.render(h.cx).node, "prdiff-rerun")).toBeFalsy();
+  h.view.rerunCheck(h.cx);
+  await h.settle();
+  expect(h.calls.some((c) => c.args[0] === "run" && c.args[1] === "rerun")).toBe(false);
+  expect(h.view.errorNote).toBeTruthy();
+});
+
+test("a later re-run that works clears the earlier error", async () => {
+  const h = harness(diff, "PrDiff", twoChecks({ "22": "log of b" }), { pr: { num: 7, url: "https://github.com/o/r/pull/7" }, forge: "gh", repo: "o/r" });
+  h.view.init({}, h.cx);
+  await h.settle();
+
+  h.view.openLog(1, h.cx);
+  await h.settle();
+  h.view.errorNote = "earlier failure";
+  h.view.rerunCheck(h.cx);
+  await h.settle();
+  expect(h.view.errorNote).toBe(null);
+
+  h.view.errorNote = "earlier failure";
+  h.view.checksInBrowser(h.cx);
+  await h.settle();
+  expect(h.view.errorNote).toBe(null);
+});
+
+test("a GitLab job without an id rejects instead of asking for jobs/null", async () => {
+  const h = harness(diff, "PrDiff", () => ({ code: 0, stdout: "[]" }), { pr: { num: 5, url: "https://gitlab.example.com/g/r/-/merge_requests/5" }, forge: "glab", repo: "g/r", pid: 43 });
+  h.view.checks = [{ name: "rspec", state: "fail", job: null, run: null }];
+  h.view.openLog(0, h.cx);
+  await h.settle();
+
+  expect(h.view.log.error).toBe("This check's log is on its own site: open checks in browser.");
+  expect(h.calls.some((c) => c.args.some((a: string) => String(a).includes("jobs/null")))).toBe(false);
 });
