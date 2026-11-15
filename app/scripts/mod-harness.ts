@@ -76,7 +76,7 @@ export function harness(source: string, cls: string, replies: (command: string, 
       every(ms: number, f: () => void) { timers.push({ ms, f }); },
       after() {},
     },
-    notify(n: any) { notes.push(n); },
+    notify() {},
     stop_propagation() {},
     spawn: (f: (cx: any) => Promise<unknown>) => { tasks.push(f(cx)); },
   };
