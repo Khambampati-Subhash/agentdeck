@@ -3,27 +3,15 @@
 import { agents, panes, spaces, exec, hc } from "herdr";
 
 /** Extract path from git remote URL and compare case-insensitively.
- *  Accepts git@host:path(.git), ssh://git@host/path(.git), https://host/path(.git)/ */
+ *  Accepts git@host:path, ssh://[user@]host[:port]/path, https:// and http://;
+ *  a trailing / goes first, then .git. prboard/issues.js and propen/git.js
+ *  have copies (mods can't share files): keep the three the same. */
 export function sameRepo(remote, repo) {
   remote = remote.trim();
   let path = "";
-
-  // git@host:path or git@host:path.git
-  if (remote.startsWith("git@")) {
-    path = remote.split(":")[1] || "";
-  }
-  // ssh://git@host/path or ssh://git@host/path.git
-  else if (remote.startsWith("ssh://")) {
-    path = remote.split("/").slice(3).join("/");
-  }
-  // https://host/path or https://host/path.git/
-  else if (remote.startsWith("https://")) {
-    path = remote.split("/").slice(3).join("/");
-  }
-
-  // Strip .git suffix and trailing slashes
-  path = path.replace(/\.git$/, "").replace(/\/$/, "");
-
+  if (remote.startsWith("git@")) path = remote.split(":")[1] || "";
+  else if (/^(ssh|https?):\/\//.test(remote)) path = remote.split("/").slice(3).join("/");
+  path = path.replace(/\/+$/, "").replace(/\.git$/, "");
   return path.toLowerCase() === repo.toLowerCase();
 }
 

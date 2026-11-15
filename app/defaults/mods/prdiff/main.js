@@ -10,7 +10,7 @@ import { v_flex, h_flex, InputState, Input, Scrollbar, v_virtual_list } from "gp
 import { props, theme, notify, closeOverlay, openOverlay, settings } from "herdr";
 import { splitDiff } from "./diff.js";
 import { details, diffText, comment, openInBrowser, commitDiff, lineComment, checks, checkLog, rerun, checksInBrowser } from "./forge.js";
-import { sameRepo, agentsOn, tell, reviewTask, checkTask, tail } from "./agent.js";
+import { agentsOn, tell, reviewTask, checkTask, tail } from "./agent.js";
 import { checksTab } from "./checks.js";
 
 const TABS = [{ id: "files", label: "Files" }, { id: "commits", label: "Commits" }, { id: "comments", label: "Comments" }, { id: "checks", label: "Checks" }];
@@ -206,12 +206,13 @@ export default class PrDiff extends View {
 
   fixWithAgent(cx) {
     if (!this.log || !this.log.text) return;
-    this.sendToAgent(checkTask(this.p, this.log.check, tail(this.log.text)), "check", cx);
+    this.sendToAgent(checkTask(this.p, this.log.check, tail(this.log.text)), `CI check "${this.log.check.name}"`, cx);
   }
 
   rerunCheck(cx) {
-    if (!this.log) return;
+    if (!this.log || this.rerunning) return;
     const check = this.log.check;
+    this.rerunning = true;
     cx.spawn(async (cx) => {
       try {
         await rerun(this.p, check);
@@ -222,6 +223,7 @@ export default class PrDiff extends View {
         this.errorNote = message(e);
         cx.notify();
       }
+      this.rerunning = false;
     });
   }
 
@@ -375,18 +377,16 @@ export default class PrDiff extends View {
   }
 
   sendTo(i, cx) {
-    const t = this.sending.targets[i];
+    const s = this.sending, t = s?.targets[i];
+    if (!t || s.busy) return;
+    s.busy = true;
     cx.spawn(async (cx) => {
       try {
-        await tell(t.address, this.sending.text);
+        await tell(t.address, s.text);
         notify({ title: `Sent to ${t.name}`, level: "success" });
-        this.sending = null;
-        cx.notify();
-      } catch (e) {
-        this.errorNote = message(e);
-        this.sending = null;
-        cx.notify();
-      }
+      } catch (e) { this.errorNote = message(e); }
+      if (this.sending === s) this.sending = null;
+      cx.notify();
     });
   }
 
@@ -448,7 +448,9 @@ export default class PrDiff extends View {
         .when(this.sending.targets.length === 0, (e) => e.child(div().text_color(t.dim).child(`No agent is on ${this.pr.branch || this.pr.headRefName}.`))
           .child(div().id("prdiff-start-agent").px(8).py(3).rounded(5).bg(t.solid).text_color(t.solid_foreground).cursor_pointer().hover((s) => s.opacity(0.9)).on_mouse_down("left", stop).on_click((_e, cx) => this.startAgent(cx)).child("Start one")))
         .when(this.sending.targets.length > 0, (e) => e.child(div().text_color(t.dim).child("Send to:"))
-          .children(this.sending.targets.map((tgt, i) => div().id(`prdiff-target-${i}`).px(8).py(3).rounded(5).bg(t.raised).text_color(t.foreground).cursor_pointer().hover((s) => s.bg(t.hover)).on_mouse_down("left", stop).on_click((_e, cx) => this.sendTo(i, cx)).child(tgt.name))))))
+          .children(this.sending.targets.map((tgt, i) => div().id(`prdiff-target-${i}`).px(8).py(3).rounded(5).bg(t.raised).text_color(t.foreground).cursor_pointer().hover((s) => s.bg(t.hover)).on_mouse_down("left", stop).on_click((_e, cx) => this.sendTo(i, cx)).child(tgt.name))))
+        .child(div().flex_1())
+        .child(div().id("prdiff-sending-close").flex_none().text_color(t.dim).cursor_pointer().hover((s) => s.text_color(t.foreground)).on_mouse_down("left", stop).on_click((_e, cx) => { this.sending = null; cx.notify(); }).child("×"))))
       .when(Boolean(this.error), (e) => e.child(div().px(12).py(6).border_t(1).border_color(t.border).text_size(11).text_color(t.ansi1).child(this.error)))
       .when(Boolean(this.note) || Boolean(this.errorNote), (e) => e.child(div().px(12).pt(4).text_size(11).text_color(this.errorNote ? t.ansi1 : t.done).child(this.errorNote || this.note)))
       // Footer: comment

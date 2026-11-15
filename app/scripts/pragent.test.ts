@@ -13,6 +13,9 @@ test("sameRepo reads ssh, https and nested GitLab paths", () => {
   expect(sameRepo("git@github.com:O/R.git\n", "o/r")).toBe(true);
   expect(sameRepo("https://gitlab.example.com/g/sub/r/", "g/sub/r")).toBe(true);
   expect(sameRepo("ssh://git@github.com/o/r2.git", "o/r")).toBe(false);
+  expect(sameRepo("https://h/o/r.git/", "o/r")).toBe(true);
+  expect(sameRepo("http://h/o/r", "o/r")).toBe(true);
+  expect(sameRepo("ssh://git@h:2222/o/r.git", "o/r")).toBe(true);
 });
 
 test("agentsOn keeps only agents on the branch in a checkout of the same repo", async () => {
@@ -310,5 +313,55 @@ test("no agent and no folder explains what to do", async () => {
   await h.settle();
 
   expect(h.view.note).toBe("Open the board on This repo to start an agent here.");
+  expect(h.overlays.length).toBe(0);
+});
+
+test("Send to: a double click sends once, and × dismisses the strip", async () => {
+  const agents = [
+    { address: "t1", pane: "p1", tab_name: "1", program: { name: "Claude Code" }, space: "s1" },
+    { address: "t2", pane: "p2", tab_name: "2", program: { name: "Claude Code" }, space: "s1" },
+  ];
+  const panes = [{ pane: "p1", branch: "fix", cwd: "/repo" }, { pane: "p2", branch: "fix", cwd: "/repo2" }];
+  const replies = (command: string, args: string[]) => {
+    if (command === "git" && args[0] === "remote") return { code: 0, stdout: "git@github.com:o/r.git\n" };
+    return ghPr(command, args);
+  };
+  const h = harness(source, "PrDiff", replies, ghProps, "/repo", { agents: () => agents, panes: () => panes, spaces: () => [{ id: "s1", machine: null }] });
+  h.view.init({}, h.cx);
+  await h.settle();
+  h.view.tab = "comments";
+  findId(h.view.render(h.cx).node, "prdiff-send-1").click(null, h.cx);
+  await h.settle();
+  const target = findId(h.view.render(h.cx).node, "prdiff-target-0");
+  target.click(null, h.cx);
+  target.click(null, h.cx);
+  await h.settle();
+  expect(h.hcCalls.length).toBe(1);
+  expect(h.view.sending).toBe(null);
+
+  // The strip's × clears it without sending.
+  findId(h.view.render(h.cx).node, "prdiff-send-1").click(null, h.cx);
+  await h.settle();
+  expect(h.view.sending.targets.length).toBe(2);
+  findId(h.view.render(h.cx).node, "prdiff-sending-close").click(null, h.cx);
+  expect(h.view.sending).toBe(null);
+  expect(findId(h.view.render(h.cx).node, "prdiff-target-0")).toBeFalsy();
+  expect(h.hcCalls.length).toBe(1);
+});
+
+test("No agent: × dismisses the strip too", async () => {
+  const replies = (command: string, args: string[]) => {
+    if (command === "git" && args[0] === "remote") return { code: 0, stdout: "git@github.com:o/r.git\n" };
+    return ghPr(command, args);
+  };
+  const h = harness(source, "PrDiff", replies, ghProps, "/repo", { agents: () => [], panes: () => [], spaces: () => [] });
+  h.view.init({}, h.cx);
+  await h.settle();
+  h.view.tab = "comments";
+  findId(h.view.render(h.cx).node, "prdiff-send-1").click(null, h.cx);
+  await h.settle();
+  expect(findId(h.view.render(h.cx).node, "prdiff-start-agent")).toBeTruthy();
+  findId(h.view.render(h.cx).node, "prdiff-sending-close").click(null, h.cx);
+  expect(h.view.sending).toBe(null);
   expect(h.overlays.length).toBe(0);
 });

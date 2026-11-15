@@ -11,7 +11,7 @@ export function checksTab(v, t) {
     return div().p(12).text_color(t.ansi1).child(v.checkError);
   }
   if (!v.checks.length) {
-    return div().p(12).text_color(t.dim).child(v.loading ? "Loading checks…" : "No checks for this pull request.");
+    return div().p(12).text_color(t.dim).child(v.loading ? "Loading checks…" : `No checks for this ${v.p.forge === "glab" ? "merge" : "pull"} request.`);
   }
   const stop = (_e, cx) => cx.stop_propagation();
   return div().size_full().relative()

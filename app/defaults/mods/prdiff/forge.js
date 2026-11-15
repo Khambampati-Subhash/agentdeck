@@ -129,9 +129,12 @@ export async function checks(p, refs) {
   const r = await exec(p.forge, ["pr", "checks", num(p), ...repoFlag(p), "--json", "name,state,bucket,link,workflow,startedAt,completedAt"], { cwd: p.cwd ?? undefined, on: p.on ?? undefined, timeout: 60000 });
   if (r.code !== 0) {
     if ((r.stderr || "").includes("no checks reported")) return [];
-    try { JSON.parse(r.stdout || "null"); } catch { throw new Error((r.stderr || r.stdout || "gh pr checks failed").trim()); }
   }
-  const list = JSON.parse(r.stdout || "[]");
+  // Exit 1 (a check failed) or 8 (pending) still prints the list; anything
+  // else (signed out, offline, no such PR) is an error, not "No checks".
+  let list = null;
+  try { list = JSON.parse(r.stdout || (r.code === 0 ? "[]" : "null")); } catch {}
+  if (!Array.isArray(list)) throw new Error((r.stderr || r.stdout || "gh pr checks failed").trim());
   return list.map((c) => {
     const stateMap = { skipping: "skip" };
     const match = (c.link || "").match(/\/actions\/runs\/(\d+)(?:\/job\/(\d+))?/);

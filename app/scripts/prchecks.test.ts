@@ -159,6 +159,47 @@ test("no checks reported is an empty list, not an error", async () => {
   expect(h.view.checkError).toBe(null);
 });
 
+test("a failed gh pr checks with nothing on stdout is an error, not No checks", async () => {
+  function signedOut(command: string, args: string[]): Reply {
+    if (command === "git" && args[0] === "rev-parse") return { code: 0, stdout: "/repo\n" };
+    if (command === "git") return { code: 0, stdout: "git@github.com:o/r.git\n" };
+    if (command === "gh" && args[0] === "pr" && args[1] === "checks") return { code: 1, stdout: "", stderr: "HTTP 401: Bad credentials" };
+    if (command === "gh" && args[0] === "pr" && args[1] === "view") {
+      return { code: 0, stdout: JSON.stringify({ title: "Test PR", headRefName: "fix", headRefOid: "abc123", baseRefName: "main", isDraft: false, author: { login: "me" } }) };
+    }
+    return { code: 0, stdout: "" };
+  }
+  const h = harness(diff, "PrDiff", signedOut, { pr: { num: 7, url: "https://github.com/o/r/pull/7" }, forge: "gh", repo: "o/r" });
+  h.view.init({}, h.cx);
+  await h.settle();
+  expect(h.view.checks).toEqual([]);
+  expect(h.view.checkError).toContain("HTTP 401");
+
+  // Exit 1 with something on stdout that isn't a list is an error too.
+  const notList = (command: string, args: string[]): Reply =>
+    command === "gh" && args[1] === "checks" ? { code: 1, stdout: "null", stderr: "boom" } : signedOut(command, args);
+  const h2 = harness(diff, "PrDiff", notList, { pr: { num: 7, url: "https://github.com/o/r/pull/7" }, forge: "gh", repo: "o/r" });
+  h2.view.init({}, h2.cx);
+  await h2.settle();
+  expect(h2.view.checkError).toContain("boom");
+});
+
+test("GitLab with no pipeline says merge request", async () => {
+  function noPipeline(command: string, args: string[]): Reply {
+    if (command === "git" && args[0] === "rev-parse") return { code: 0, stdout: "/repo\n" };
+    if (command === "git") return { code: 0, stdout: "git@gitlab.example.com:g/r.git\n" };
+    if (command === "glab" && args[0] === "api" && args[1] === "projects/43/merge_requests/5") {
+      return { code: 0, stdout: JSON.stringify({ iid: 5, title: "Test MR", source_branch: "fix", target_branch: "main", author: { username: "me" } }) };
+    }
+    return { code: 0, stdout: "[]" };
+  }
+  const h = harness(diff, "PrDiff", noPipeline, { pr: { num: 5, url: "https://gitlab.example.com/g/r/-/merge_requests/5" }, forge: "glab", repo: "g/r", pid: 43 });
+  h.view.init({}, h.cx);
+  await h.settle();
+  h.view.tab = "checks";
+  expect(textOf(h.view.render(h.cx).node)).toContain("No checks for this merge request.");
+});
+
 test("GitLab checks are the head pipeline's jobs", async () => {
   function gitlabChecks(command: string, args: string[]): Reply {
     if (command === "git" && args[0] === "rev-parse") return { code: 0, stdout: "/repo\n" };
@@ -597,4 +638,49 @@ test("a GitLab job without an id rejects instead of asking for jobs/null", async
 
   expect(h.view.log.error).toBe("This check's log is on its own site: open checks in browser.");
   expect(h.calls.some((c) => c.args.some((a: string) => String(a).includes("jobs/null")))).toBe(false);
+});
+
+// A failing Actions check with a log, on branch fix with no agent on it.
+function failing(rerunArgs: string[][]) {
+  return (command: string, args: string[]): Reply => {
+    if (command === "git" && args[0] === "rev-parse") return { code: 0, stdout: "/repo\n" };
+    if (command === "git") return { code: 0, stdout: "git@github.com:o/r.git\n" };
+    if (command === "gh" && args[1] === "checks") return { code: 0, stdout: JSON.stringify([{ name: "test", bucket: "fail", workflow: "CI", link: "https://github.com/o/r/actions/runs/11/job/22" }]) };
+    if (command === "gh" && args[0] === "run" && args[1] === "view") return { code: 0, stdout: "log content" };
+    if (command === "gh" && args[0] === "run" && args[1] === "rerun") { rerunArgs.push(args); return { code: 0, stdout: "" }; }
+    if (command === "gh" && args[1] === "view") return { code: 0, stdout: JSON.stringify({ title: "Test PR", headRefName: "fix", headRefOid: "abc", baseRefName: "main", isDraft: false, author: { login: "me" } }) };
+    return { code: 0, stdout: "" };
+  };
+}
+
+test("Fix with agent names the check in the Send strip", async () => {
+  const h = harness(diff, "PrDiff", failing([]), { pr: { num: 7, url: "https://github.com/o/r/pull/7" }, forge: "gh", repo: "o/r", cwd: "/repo" }, "/repo", { agents: () => [], panes: () => [], spaces: () => [] });
+  h.view.init({}, h.cx);
+  await h.settle();
+  h.view.tab = "checks";
+  h.view.openLog(0, h.cx);
+  await h.settle();
+  findId(h.view.render(h.cx).node, "prdiff-fix").click({}, h.cx);
+  await h.settle();
+  expect(h.view.sending.label).toBe('CI check "test"');
+  expect(textOf(h.view.render(h.cx).node)).toContain('CI check "test":');
+});
+
+test("Re-run clicked twice re-runs once", async () => {
+  const reruns: string[][] = [];
+  const h = harness(diff, "PrDiff", failing(reruns), { pr: { num: 7, url: "https://github.com/o/r/pull/7" }, forge: "gh", repo: "o/r" });
+  h.view.init({}, h.cx);
+  await h.settle();
+  h.view.tab = "checks";
+  h.view.openLog(0, h.cx);
+  await h.settle();
+  const button = findId(h.view.render(h.cx).node, "prdiff-rerun");
+  button.click({}, h.cx);
+  button.click({}, h.cx);
+  await h.settle();
+  expect(reruns.length).toBe(1);
+  // Once it's done, another click works.
+  findId(h.view.render(h.cx).node, "prdiff-rerun").click({}, h.cx);
+  await h.settle();
+  expect(reruns.length).toBe(2);
 });
