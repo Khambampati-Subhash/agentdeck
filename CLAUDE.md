@@ -6,9 +6,8 @@ window) and `core/` is [herdr-core](https://github.com/herdrdev/herdr-core)
 (`hc`, the runtime that keeps every terminal alive). Both are Apache-2.0;
 see `NOTICE.md`.
 
-**Status (2026-11-18):** P0 (import, build) and P1 (no link to herdr.dev,
-PR #2) are on `main`, as is the forge loop (PR #1). P2, the rename, is done on
-branch `p2-rename`: `agentdeck` and `agentdeck-core`/`adk`, `~/.config/agentdeck`,
+**Status (2026-11-19):** P0 (import, build), P1 (no link to herdr.dev,
+PR #2), the forge loop (PR #1) and P2, the rename (PR #3), are on `main`. P2: `agentdeck` and `agentdeck-core`/`adk`, `~/.config/agentdeck`,
 `AGENTDECK_HOME`/`ADK_*`, our own bundle ids; `just side-by-side` shows it and
 stock Herdr apart. Worktree spaces nest under their repo's first space.
 Open items are in `docs/plan.md`.

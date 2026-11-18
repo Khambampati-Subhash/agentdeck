@@ -78,7 +78,7 @@ Found 2026-11-10: even builds from source fetch the bundled changelog's
 The first scratch run downloaded two. The P0 "no sockets" check missed it
 because it was a one-off `lsof` snapshot.
 
-## P2: rename to AgentDeck (done 2026-11-18, branch `p2-rename`)
+## P2: rename to AgentDeck (merged 2026-11-19, PR #3)
 
 Not a blind text replace. A `herdr`→`agentos` sed was tried on 2026-11-10 and
 discarded (saved at `/var/tmp/agentos-saved/`). It broke the build (files
