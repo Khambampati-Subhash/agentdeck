@@ -1,0 +1,8 @@
+{
+  "name": "agentdeck",
+  "owner": { "name": "AgentDeck" },
+  "description": "AgentDeck's integrations for Claude Code",
+  "plugins": [
+    { "name": "agentdeck-status", "description": "Claude Code status in AgentDeck's Agents tab", "version": "0.1.0", "source": "./" }
+  ]
+}

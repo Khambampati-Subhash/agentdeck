@@ -1,0 +1,7 @@
+{
+  "name": "agentdeck-status",
+  "version": "0.1.0",
+  "description": "Reports Claude Code's state (working, needs you, done) to AgentDeck over OSC 7501, so its sessions show in the Agents tab.",
+  "author": { "name": "AgentDeck" },
+  "license": "Apache-2.0"
+}
