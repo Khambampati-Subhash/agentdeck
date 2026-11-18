@@ -2,7 +2,7 @@
 set shell := ["bash", "-cu"]
 export PATH := env_var("HOME") + "/.local/bin:" + env_var("PATH")
 
-dev_root := "/var/tmp/agentos-dev"
+dev_root := "/var/tmp/agentdeck-dev"
 
 default:
     @just --list
@@ -32,18 +32,22 @@ check: offline
 # Opens our build in a scratch home and core session, never the real Herdr setup.
 dev: build
     mkdir -p {{dev_root}}/app
-    test -f {{dev_root}}/app/settings.json || printf '{ "core": "%s" }\n' "$PWD/core/target/debug/herdr-core" > {{dev_root}}/app/settings.json
-    cd {{dev_root}} && HERDR_APP_HOME={{dev_root}}/app HC_SESSION=aos "{{justfile_directory()}}/app/target/debug/herdr-app"
+    test -f {{dev_root}}/app/settings.json || printf '{ "core": "%s" }\n' "$PWD/core/target/debug/agentdeck-core" > {{dev_root}}/app/settings.json
+    cd {{dev_root}} && AGENTDECK_HOME={{dev_root}}/app ADK_SESSION=adk-dev "{{justfile_directory()}}/app/target/debug/agentdeck"
 
-# Builds a release and installs it as ~/Applications/AgentDeck.app (shares nothing with an installed Herdr).
-install-app:
-    scripts/install-mac-app
+# Builds a release and installs ~/Applications/AgentDeck.app, plus agentdeck and adk in ~/.local/bin.
+install *args:
+    scripts/install-mac-app {{args}}
 
-# Talk to the dev core: `just hc ls`.
-hc *args:
-    HC_SESSION=aos core/target/debug/herdr-core {{args}}
+# Copies settings from the AgentOS install into ~/.config/agentdeck (asks first).
+migrate *args:
+    scripts/migrate-agentos {{args}}
+
+# Talk to the dev core: `just adk ls`.
+adk *args:
+    ADK_SESSION=adk-dev core/target/debug/agentdeck-core {{args}}
 
 # Stops the dev core (its terminals end) and removes the scratch home.
 dev-clean:
-    -HC_SESSION=aos core/target/debug/herdr-core server stop
+    -ADK_SESSION=adk-dev core/target/debug/agentdeck-core server stop
     rm -rf {{dev_root}}

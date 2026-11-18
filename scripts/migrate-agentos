@@ -1,0 +1,67 @@
+#!/usr/bin/env python3
+"""Copies settings from the install before the rename (AgentOS) into
+AgentDeck's home. Only when you run it; it never changes the source.
+
+  scripts/migrate-agentos [--from DIR] [--to DIR] [--core PATH] [--force] [--yes]
+
+Copies settings.json, keys.json, mods/ and layouts/. Running terminals stay
+in the old "agentos" core: this prints how to reach it, and never stops it.
+"""
+import argparse
+import json
+import os
+import shutil
+import sys
+
+HOME = os.path.expanduser("~")
+ENTRIES = ["settings.json", "keys.json", "mods", "layouts"]
+
+
+def main():
+    p = argparse.ArgumentParser(description="Copy AgentOS settings into AgentDeck.")
+    p.add_argument("--from", dest="src", default=f"{HOME}/Library/Application Support/AgentOS")
+    p.add_argument("--to", default=os.environ.get("AGENTDECK_HOME") or f"{HOME}/.config/agentdeck")
+    p.add_argument("--core", default=f"{HOME}/Applications/AgentDeck.app/Contents/Helpers/AgentDeck Core.app/Contents/MacOS/agentdeck-core")
+    p.add_argument("--force", action="store_true", help="copy over existing AgentDeck settings")
+    p.add_argument("--yes", action="store_true", help="don't ask")
+    a = p.parse_args()
+
+    if not os.path.isdir(a.src):
+        sys.exit(f"migrate-agentos: nothing to migrate: {a.src} doesn't exist")
+    found = [e for e in ENTRIES if os.path.exists(os.path.join(a.src, e))]
+    if not found:
+        sys.exit(f"migrate-agentos: nothing to migrate in {a.src}")
+    if os.path.exists(os.path.join(a.to, "settings.json")) and not a.force:
+        sys.exit(f"migrate-agentos: {a.to} already has settings; --force copies over them")
+
+    print(f"From {a.src}\nto   {a.to}:")
+    for e in found:
+        print(f"  {e}")
+    if not a.yes and input("Copy? [y/N] ").strip().lower() != "y":
+        sys.exit("migrate-agentos: nothing copied")
+
+    old_core = None
+    os.makedirs(a.to, exist_ok=True)
+    for e in found:
+        src, dst = os.path.join(a.src, e), os.path.join(a.to, e)
+        if os.path.isdir(src):
+            shutil.copytree(src, dst, dirs_exist_ok=True)
+        elif e == "settings.json":
+            with open(src) as f:
+                settings = json.load(f)
+            # The old core only runs the old session: point at AgentDeck's.
+            old_core = settings.get("core")
+            if old_core:
+                settings["core"] = a.core
+            with open(dst, "w") as f:
+                json.dump(settings, f, indent=2)
+                f.write("\n")
+        else:
+            shutil.copy2(src, dst)
+    print("Copied. Open AgentDeck to use them.")
+    print("Terminals from before still run in the old core (it keeps running until you stop it):")
+    print(f'  HC_SESSION=agentos "{old_core or "<the old core>"}" ls')
+
+
+if __name__ == "__main__":
+    main()
