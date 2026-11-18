@@ -42,7 +42,7 @@ mod window;
 use gpui::*;
 
 const HELP: &str = "\
-herdr-app: the Herdr desktop app. With no arguments it opens the window.
+herdr-app: the AgentDeck desktop app. With no arguments it opens the window.
 
 Usage:
   herdr-app                        open the window
@@ -212,7 +212,7 @@ pub fn open_main(core: std::sync::Arc<hc::Core>, requests: async_channel::Receiv
                 // macOS: always see-through, so a layout can draw its own title bar
                 // live; the app drags the window (window/titlebar.rs).
                 titlebar: Some(TitlebarOptions {
-                    title: Some("Herdr".into()),
+                    title: Some("AgentDeck".into()),
                     // Windows: hidden for good (it can't change live); the app draws it.
                     appears_transparent: cfg!(any(target_os = "macos", windows)),
                     traffic_light_position: cfg!(target_os = "macos").then(|| point(px(12.0), px(7.0))),
@@ -227,6 +227,6 @@ pub fn open_main(core: std::sync::Arc<hc::Core>, requests: async_channel::Receiv
                 ..Default::default()
             };
             cx.open_window(options, |window, cx| cx.new(|cx| window::AppWindow::new(core, requests, window, cx)))
-                .expect("cannot open the Herdr window");
+                .expect("cannot open the AgentDeck window");
             cx.activate(true);
 }

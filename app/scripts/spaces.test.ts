@@ -1,6 +1,6 @@
 import { test, expect, spyOn } from "bun:test";
 import { readFile } from "node:fs/promises";
-import { mkdtempSync, mkdirSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, rmSync, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 const source = (await readFile(new URL("../defaults/mods/spaces/main.js", import.meta.url), "utf8"))
@@ -42,7 +42,8 @@ function harness(replies: unknown[] = [], storage = new Map<string, string>(), s
 }
 
 test("git grouping reads refs for normal, detached, unborn and bare worktrees", async () => {
-  const root = mkdtempSync(join(tmpdir(), "herdr-spaces-"));
+  // Real path: on macOS the temp folder is a link, and git reports where it leads.
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "herdr-spaces-")));
   const git = (cwd: string, ...args: string[]) => {
     const result = Bun.spawnSync(["git", ...args], { cwd, env: { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_NOSYSTEM: "1", GIT_AUTHOR_NAME: "Test", GIT_AUTHOR_EMAIL: "test@example.com", GIT_COMMITTER_NAME: "Test", GIT_COMMITTER_EMAIL: "test@example.com" } });
     if (result.exitCode) throw new Error(result.stderr.toString());
@@ -214,6 +215,18 @@ test("unshown spaces are preserved and orphan worktrees stay in model order", ()
   expect(h.rows().map((r: any) => r.w.id)).toEqual(["orphan", "main", "a"]);
   h.flush();
   expect(h.order()).toEqual(["new", "orphan", "main", "a"]);
+});
+
+test("worktrees of a repo with no main-checkout space group under its first one", () => {
+  const h = orderedHarness(["base", "other", "topic", "fix"]);
+  h.git("base", "repo", true);
+  h.git("topic", "repo", true);
+  h.git("fix", "repo", true);
+  h.git("other", "elsewhere", false);
+  const rows = h.rows();
+  expect(rows.map((r: any) => [r.w.id, r.tree])).toEqual([["base", null], ["topic", "├─"], ["fix", "└─"], ["other", null]]);
+  h.flush();
+  expect(h.order()).toEqual(["base", "topic", "fix", "other"]);
 });
 
 test("machines and duplicate main-checkout spaces keep their own order", () => {

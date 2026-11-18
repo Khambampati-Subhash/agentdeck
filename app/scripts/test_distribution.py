@@ -32,7 +32,7 @@ class DistributionTests(unittest.TestCase):
         path.chmod(0o755)
 
     def run_script(self, script, os_name, arch, *args, releases="https://releases.example"):
-        # AgentOS installers have no default server: each run names a test one, or none.
+        # AgentDeck installers have no default server: each run names a test one, or none.
         env = dict(os.environ, PATH=f"{self.bin}:{os.environ['PATH']}", TEST_OS=os_name, TEST_ARCH=arch)
         env.pop("HERDR_RELEASES_URL", None)
         if releases is not None:
@@ -47,7 +47,7 @@ class DistributionTests(unittest.TestCase):
             with self.subTest(value=value):
                 result = self.run_script("distribution/install.sh", "Linux", "x86_64", releases=value)
                 self.assertEqual(result.returncode, 1)
-                self.assertIn("set HERDR_RELEASES_URL to an AgentOS release server; AgentOS has no default", result.stderr)
+                self.assertIn("set HERDR_RELEASES_URL to an AgentDeck release server; AgentDeck has no default", result.stderr)
                 self.assertNotIn("unexpected download", result.stderr)
 
     def test_intel_mac_installer_stops_before_download(self):

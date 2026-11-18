@@ -3,7 +3,7 @@
 #
 #   HERDR_RELEASES_URL=<release server> sh install.sh
 #
-# AgentOS has no release server of its own, so there is no default.
+# AgentDeck has no release server of its own, so there is no default.
 #
 # Linux: the app into ~/.local/share/herdr-app, `herdr-app` in ~/.local/bin,
 # a launcher entry and icon. macOS: Herdr.app into ~/Applications, keeping
@@ -52,7 +52,7 @@ sha256() {
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
-[ -n "$releases" ] || fail "set HERDR_RELEASES_URL to an AgentOS release server; AgentOS has no default"
+[ -n "$releases" ] || fail "set HERDR_RELEASES_URL to an AgentDeck release server; AgentDeck has no default"
 curl -fsSL "$releases/app/latest.json" -o "$tmp/latest.json" || fail "cannot reach $releases"
 # Read without jq: the manifest is flat enough for sed once spaces are gone.
 entry=$(tr -d '\n ' < "$tmp/latest.json" | sed -n "s/.*\"$target\":{\([^}]*\)}.*/\1/p")

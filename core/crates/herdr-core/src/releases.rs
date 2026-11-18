@@ -2,7 +2,7 @@
 //! `core/<version>/manifest.json` for one version) and its checked
 //! downloads. curl, sha256sum/shasum (Windows: its own crypto) and tar do
 //! the work: no HTTP or crypto code in hc for something run this rarely.
-//! AgentOS has no release server of its own: only one `HERDR_RELEASES_URL`
+//! AgentDeck has no release server of its own: only one `HERDR_RELEASES_URL`
 //! names is ever asked (tests point it at local files).
 
 use crate::rpc::RpcError;
@@ -24,7 +24,7 @@ pub struct Target {
     pub sha256: String,
 }
 
-const NO_SERVER: &str = "no release server: AgentOS doesn't download builds";
+const NO_SERVER: &str = "no release server: AgentDeck doesn't download builds";
 
 fn base() -> Result<String, RpcError> {
     match std::env::var("HERDR_RELEASES_URL").ok().filter(|url| !url.is_empty()) {

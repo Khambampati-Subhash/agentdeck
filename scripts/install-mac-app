@@ -1,5 +1,5 @@
 #!/bin/bash
-# Builds AgentOS and installs it as a normal Mac app: ~/Applications/AgentOS.app,
+# Builds AgentDeck and installs it as a normal Mac app: ~/Applications/AgentDeck.app,
 # opened from Finder, Spotlight, Launchpad or the Dock.
 #
 # It shares nothing with an installed Herdr (upstream's app/scripts/install-macos
@@ -10,11 +10,18 @@
 #        scripts/install-mac-app --no-build (install what's already built)
 set -euo pipefail
 
-NAME="AgentOS"
+NAME="AgentDeck"
+# Kept from when the app was AgentOS, so settings and running terminals carry
+# over (P2 moves them): bundle ID, core session and settings folder.
 ID="io.github.khambampati-subhash.agentos"
 SESSION="agentos"
-HOME_DIR="$HOME/Library/Application Support/$NAME"
+HOME_DIR="$HOME/Library/Application Support/AgentOS"
+OLD_APP="$HOME/Applications/AgentOS.app"
 APP="$HOME/Applications/$NAME.app"
+# The core is its own small app inside, so macOS privacy prompts name
+# "AgentDeck Core" rather than the bare herdr-core binary.
+CORE_APP="$APP/Contents/Helpers/AgentDeck Core.app"
+CORE="$CORE_APP/Contents/MacOS/herdr-core"
 
 [[ $(uname -s) == Darwin ]] || { echo "install-mac-app: macOS only" >&2; exit 1; }
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -34,13 +41,25 @@ case "$APP" in *Herdr.app*) echo "install-mac-app: refusing to touch $APP" >&2; 
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$HOME_DIR"
 # Replace atomically so installing doesn't interrupt a running copy.
 cp "$app_bin" "$APP/Contents/MacOS/$NAME.new" && mv -f "$APP/Contents/MacOS/$NAME.new" "$APP/Contents/MacOS/$NAME"
-cp "$core_bin" "$APP/Contents/MacOS/herdr-core.new" && mv -f "$APP/Contents/MacOS/herdr-core.new" "$APP/Contents/MacOS/herdr-core"
-chmod +x "$APP/Contents/MacOS/$NAME" "$APP/Contents/MacOS/herdr-core"
+chmod +x "$APP/Contents/MacOS/$NAME"
+# Running cores keep their files: the new bundle is signed aside, then swapped in.
+staged="$APP/Contents/Helpers/.core.new.app"
+rm -rf "$staged" "$staged.old"
+mkdir -p "$APP/Contents/Helpers"
+sh "$root/core/scripts/mac-bundle" "$core_bin" "$staged"
+codesign --force --sign - "$staged"
+[[ -d $CORE_APP ]] && mv "$CORE_APP" "$staged.old"
+mv "$staged" "$CORE_APP"
+rm -rf "$staged.old" "$APP/Contents/MacOS/herdr-core" # the bare core of earlier installs
 cp "$root/app/assets/icons/Herdr.icns" "$APP/Contents/Resources/$NAME.icns"
 
 # The app's core is the one inside the bundle (kept if settings already exist).
 settings="$HOME_DIR/settings.json"
-[[ -f $settings ]] || printf '{ "core": "%s" }\n' "$APP/Contents/MacOS/herdr-core" > "$settings"
+[[ -f $settings ]] || printf '{ "core": "%s" }\n' "$CORE" > "$settings"
+# Settings from AgentOS.app or an earlier install name a bare core: use the bundled one.
+for old in "$OLD_APP/Contents/MacOS/herdr-core" "$APP/Contents/MacOS/herdr-core"; do
+  sed -i '' "s|\"$old\"|\"$CORE\"|" "$settings"
+done
 
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -66,12 +85,14 @@ PLIST
 pb() { /usr/libexec/PlistBuddy -c "$1" "$APP/Contents/Info.plist"; }
 pb "Add :LSEnvironment:HERDR_APP_HOME string $HOME_DIR"
 pb "Add :LSEnvironment:HC_SESSION string $SESSION"
-pb "Add :LSEnvironment:PATH string $APP/Contents/MacOS:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+pb "Add :LSEnvironment:PATH string $CORE_APP/Contents/MacOS:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 
-codesign --force --sign - "$APP/Contents/MacOS/herdr-core"
 codesign --force --sign - "$APP"
-/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$APP"
+lsregister=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
+"$lsregister" -f "$APP"
+"$lsregister" -f "$CORE_APP"
 echo "Installed $APP"
 echo "  settings: $HOME_DIR"
-echo "  core session: $SESSION (HC_SESSION=$SESSION $APP/Contents/MacOS/herdr-core ls)"
+echo "  core session: $SESSION (HC_SESSION=$SESSION \"$CORE\" ls)"
 echo "Open it from Spotlight or Finder: open \"$APP\""
+[[ -d $OLD_APP ]] && echo "The old $OLD_APP is still there: quit it, then move it to the Trash."

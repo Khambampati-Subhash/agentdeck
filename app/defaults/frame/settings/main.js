@@ -15,7 +15,7 @@ const SECTIONS = [
   { id: "privacy", title: "Privacy", icon: "shield" },
 ];
 
-const LOOKS = { main: "Herdr", terminals: "Terminals", win98: "Herdr 98" };
+const LOOKS = { main: "AgentDeck", terminals: "Terminals", win98: "AgentDeck 98" };
 const APPEARANCES = [
   [null, "System"],
   ["light", "Light"],
@@ -692,7 +692,7 @@ export default class Settings extends View {
   alerts(t) {
     const sounds = this.person.sounds ?? {};
     const on = sounds.enabled !== false;
-    const file = (f) => (f ? f.split(/[\\/]/).pop() : "Herdr's sound");
+    const file = (f) => (f ? f.split(/[\\/]/).pop() : "AgentDeck's sound");
     return v_flex()
       .w_full()
       .child(this.heading(t, "Sounds"))
@@ -757,14 +757,14 @@ export default class Settings extends View {
               : ["Not checked: a build from source looks for no updates.", null];
     return v_flex()
       .w_full()
-      .child(this.heading(t, "Herdr"))
-      .child(this.row(t, `Herdr ${u.app.version}`, app[0], h_flex().gap(8).flex_none()
+      .child(this.heading(t, "AgentDeck"))
+      .child(this.row(t, `AgentDeck ${u.app.version}`, app[0], h_flex().gap(8).flex_none()
         .child(this.button(t, "st-whats-new", "What's new", () => { closeOverlay(props()?.overlay); run("app.whats_new"); }))
         .when(Boolean(app[1]), (el) => el.child(app[1]))))
       .child(div().h(18))
       .child(this.heading(t, "herdr-core"))
       .child(this.row(t, `herdr-core ${c.version ?? ""}`, core[0], core[1] ?? div()))
-      .child(div().pt(12).text_size(12.5).line_height("18px").text_color(t.dim).child("Herdr looks for both every hour and tells you in the corner. herdr-core runs your terminals, so they keep running through its updates."));
+      .child(div().pt(12).text_size(12.5).line_height("18px").text_color(t.dim).child("AgentDeck looks for both every hour and tells you in the corner. AgentDeck core runs your terminals, so they keep running through its updates."));
   }
 
 
@@ -797,7 +797,7 @@ export default class Settings extends View {
     const s = telemetry();
     const on = s ? s.setting : this.person.telemetry !== false;
     const at = (secs) => new Date(secs * 1000).toLocaleString();
-    const why = s?.off_because ? `Off for now: ${s.off_because} is set where Herdr started.` : null;
+    const why = s?.off_because ? `Off for now: ${s.off_because} is set where AgentDeck started.` : null;
     const body = v_flex()
       .w_full()
       .child(this.heading(t, "Usage data"))
@@ -805,7 +805,7 @@ export default class Settings extends View {
         this.row(
           t,
           "Share anonymous usage data",
-          why ?? "Once a day: which agents and features you use, how many spaces and tabs, your system and Herdr's version. Never what's in your terminals, never names of files, folders or projects.",
+          why ?? "Once a day: which agents and features you use, how many spaces and tabs, your system and AgentDeck's version. Never what's in your terminals, never names of files, folders or projects.",
           this.toggle(t, "st-telemetry", on, (_e, cx) =>
             this.change((p) => {
               if (on) p.telemetry = false;
@@ -818,7 +818,7 @@ export default class Settings extends View {
         this.row(
           t,
           "What we send",
-          s && !s.sends ? "AgentOS never sends this: it has no telemetry server. You can still see what would be counted." : "Exactly what leaves your computer, word for word.",
+          s && !s.sends ? "AgentDeck never sends this: it has no telemetry server. You can still see what would be counted." : "Exactly what leaves your computer, word for word.",
           this.button(t, "st-telemetry-show", this.showData ? "Hide" : "Show", (_e, cx) => {
             this.showData = !this.showData;
             cx.notify();

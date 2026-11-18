@@ -96,7 +96,7 @@ fn read_env_off() -> Option<&'static str> {
     CI.iter().any(|k| set(k).is_some()).then_some("CI")
 }
 
-/// Where reports go: only a server `HERDR_TELEMETRY_URL` names. AgentOS has none.
+/// Where reports go: only a server `HERDR_TELEMETRY_URL` names. AgentDeck has none.
 fn endpoint() -> Option<String> {
     endpoint_from(std::env::var("HERDR_TELEMETRY_URL").ok())
 }

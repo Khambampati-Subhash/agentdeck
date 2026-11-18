@@ -171,7 +171,7 @@ fn login_shell_path() -> Option<std::ffi::OsString> {
 /// ~/.local/bin, or HC_INSTALL_DIR), then finds it. Err: what went wrong.
 pub fn install() -> Result<PathBuf, String> {
     let releases = crate::update::releases().ok_or_else(|| {
-        "AgentOS has no release server. Build the core (just build), then choose core/target/debug/herdr-core.".to_owned()
+        "AgentDeck has no release server. Build the core (just build), then choose core/target/debug/herdr-core.".to_owned()
     })?;
     let mut cmd = if cfg!(windows) {
         let mut c = crate::spawn::command("powershell");

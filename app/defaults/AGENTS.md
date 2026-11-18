@@ -866,7 +866,8 @@ has 120 programs (agents, editors, runtimes, tools, databases, infra);
   (callers passing `task` should use height 300); checkouts go to
   `~/.herdr/worktrees/<repo>/<branch>` on the space's machine, a constant
   at its top; the
-  `spaces` sidebar nests worktree spaces under their repo's and shows each
+  `spaces` sidebar nests a repo's worktree spaces under its main-checkout space (else its
+  first space) and shows each
   space's repo, branch, ahead/behind and uncommitted changes), and `propen`
   (opens a pull or merge request from a checkout's branch: the space menu's
   Open pull request on git spaces and the Pull requests panel's **＋** open it

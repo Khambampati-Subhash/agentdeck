@@ -1,6 +1,6 @@
 # Notice
 
-AgentOS is a modified version of Herdr by Can (`ogulcancelik`) and
+AgentDeck is a modified version of Herdr by Can (`ogulcancelik`) and
 contributors:
 
 - `app/` is from https://github.com/herdrdev/herdr-app, imported at `0ac92e4`.
@@ -11,5 +11,5 @@ Both are licensed under the Apache License 2.0 (`app/LICENSE`,
 licences ship in `app/THIRD-PARTY-NOTICES`, `app/licenses/` and
 `core/distribution/notices/`.
 
-"Herdr" is the upstream project's name. AgentOS isn't affiliated with or
+"Herdr" is the upstream project's name. AgentDeck isn't affiliated with or
 endorsed by it, and doesn't use its name or logo as its own.

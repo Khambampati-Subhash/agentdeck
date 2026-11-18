@@ -694,7 +694,10 @@ fn installer_without_a_release_server_stops_before_download() {
         let out = cmd.output().unwrap();
         assert!(!out.status.success(), "{out:?}");
         let err = String::from_utf8_lossy(&out.stderr);
-        assert!(err.contains("set HERDR_RELEASES_URL to an AgentOS release server; AgentOS has no default"), "{err}");
+        assert!(
+            err.contains("set HERDR_RELEASES_URL to an AgentDeck release server; AgentDeck has no default"),
+            "{err}"
+        );
         assert!(!s.root.join("downloaded").exists(), "curl was not run");
     }
 }

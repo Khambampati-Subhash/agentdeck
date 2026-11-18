@@ -53,10 +53,13 @@ fn executable_has_bound_core_identity_and_usage_descriptions() {
     let output = Command::new("/usr/bin/otool").args(["-P", BIN]).output().unwrap();
     assert!(output.status.success(), "{output:?}");
     let plist = String::from_utf8(output.stdout).unwrap();
-    for value in ["dev.herdr.core", "Herdr Core", "NSLocalNetworkUsageDescription", "NSAppleEventsUsageDescription"] {
+    for value in ["dev.herdr.core", "AgentDeck Core", "NSLocalNetworkUsageDescription", "NSAppleEventsUsageDescription"]
+    {
         assert!(plist.contains(value), "{plist}");
     }
     assert!(!plist.contains("@VERSION@"), "{plist}");
+    // Privacy prompts show these names and texts: they say AgentDeck, not Herdr.
+    assert!(!plist.contains("Herdr"), "{plist}");
 }
 
 #[test]

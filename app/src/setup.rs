@@ -16,9 +16,9 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 const ICON: &[u8] = include_bytes!("../assets/icons/herdr-ui-icon-clean.png");
-// AgentOS has no release server: the core and app are built from the repo.
+// AgentDeck has no release server: the core and app are built from the repo.
 const CORE_BUILD: &str = "just build, then Choose… core/target/debug/herdr-core";
-const APP_BUILD: &str = "rebuild AgentOS from its repo (just build)";
+const APP_BUILD: &str = "rebuild AgentDeck from its repo (just build)";
 
 /// What's missing before the main window can open.
 pub enum Need {
@@ -89,13 +89,13 @@ pub struct Setup {
 pub fn open(need: Need, requests: async_channel::Receiver<Request>, cx: &mut App) {
     let options = WindowOptions {
         window_bounds: Some(WindowBounds::Windowed(Bounds::centered(None, size(px(620.0), px(460.0)), cx))),
-        titlebar: Some(TitlebarOptions { title: Some("Herdr".into()), ..Default::default() }),
+        titlebar: Some(TitlebarOptions { title: Some("AgentDeck".into()), ..Default::default() }),
         app_id: Some("herdr-app".into()),
         ..Default::default()
     };
     let icon = Arc::new(Image::from_bytes(ImageFormat::Png, ICON.to_vec()));
     cx.open_window(options, |_, cx| cx.new(|_| Setup { need, state: State::Ready, requests: Some(requests), icon }))
-        .expect("cannot open the Herdr window");
+        .expect("cannot open the AgentDeck window");
     cx.activate(true);
 }
 
@@ -185,29 +185,29 @@ impl Setup {
 fn words(need: &Need) -> (String, String, String) {
     match need {
         Need::Install => (
-            "Herdr needs herdr-core".into(),
-            "herdr-core runs your terminals and agents, and keeps them alive when this window closes. Herdr couldn't find it on this computer.".into(),
+            "AgentDeck needs its core".into(),
+            "AgentDeck core runs your terminals and agents, and keeps them alive when this window closes. AgentDeck couldn't find it on this computer.".into(),
             format!("Build it yourself: {CORE_BUILD}"),
         ),
         Need::Connect(error) => (
-            "Herdr can't connect to herdr-core".into(),
+            "AgentDeck can't connect to its core".into(),
             error.clone(),
             "Once you've resolved this, try again.".into(),
         ),
         Need::Fix(Mismatch::TooOld { have, need }) => (
-            "Herdr needs a newer herdr-core".into(),
-            format!("Yours is {have}; this Herdr needs {need} or newer. Updating keeps your terminals running."),
+            "AgentDeck needs a newer core".into(),
+            format!("Yours is {have}; this AgentDeck needs {need} or newer. Updating keeps your terminals running."),
             "Or update it yourself: hc update".into(),
         ),
         Need::Fix(Mismatch::Missing(methods)) => (
-            "Herdr needs a newer herdr-core".into(),
-            format!("Your herdr-core can't do everything this Herdr needs ({}). Updating keeps your terminals running.", methods.join(", ")),
+            "AgentDeck needs a newer core".into(),
+            format!("Your core can't do everything this AgentDeck needs ({}). Updating keeps your terminals running.", methods.join(", ")),
             "Or update it yourself: hc update".into(),
         ),
         Need::Fix(Mismatch::Newer { generation }) => (
-            "This Herdr is older than your herdr-core".into(),
-            format!("Your herdr-core speaks a newer protocol (generation {generation}) than this Herdr understands. Update Herdr; your terminals keep running."),
-            format!("Update AgentOS: {APP_BUILD}"),
+            "This AgentDeck is older than its core".into(),
+            format!("Your core speaks a newer protocol (generation {generation}) than this AgentDeck understands. Update AgentDeck; your terminals keep running."),
+            format!("Update AgentDeck: {APP_BUILD}"),
         ),
     }
 }

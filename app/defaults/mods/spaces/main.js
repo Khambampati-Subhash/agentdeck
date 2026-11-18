@@ -1,4 +1,4 @@
-// Workspace spaces: stable colored avatars, worktrees under their checkout,
+// Workspace spaces: stable colored avatars, worktrees under their repo's first space,
 // grouped by machine when more than one is known. After a space's name, the repo
 // its first terminal is in now, only where unusual: branch, ahead/behind. Agent state lives in the agents list, not here. Click to
 // switch, right-click for its menu, drag to reorder.
@@ -260,15 +260,15 @@ export default class Spaces extends View {
     const ready = (w) => this.shown.has(w.id) || where(w, ps) in this.git || Date.now() - (this.born[w.id] ??= Date.now()) > 1500;
     for (const w of sp) if (!this.shown.has(w.id) && ready(w)) this.shown.add(w.id);
     const list = sp.map((w, i) => ({ w, i, g: this.git[where(w, ps)] ?? null }));
-    const mains = new Set(list.filter((r) => r.g && !r.g.linked).map((r) => r.g.repo));
-    const nested = (r) => r.g?.linked && mains.has(r.g.repo);
+    // Each repo's worktrees list under its first main-checkout space, else under its first space.
+    const heads = new Map();
+    for (const r of list) if (r.g && (!heads.has(r.g.repo) || (!r.g.linked && heads.get(r.g.repo).g.linked))) heads.set(r.g.repo, r);
+    const nested = (r) => r.g?.linked && heads.get(r.g.repo) !== r;
     const out = [];
-    const placed = new Set(); // repos whose worktrees are listed (under the first of its spaces)
     for (const r of list) {
       if (nested(r)) continue;
       out.push({ ...r, tree: null });
-      if (!r.g || r.g.linked || placed.has(r.g.repo)) continue;
-      placed.add(r.g.repo);
+      if (!r.g || heads.get(r.g.repo) !== r) continue;
       const kids = list.filter((k) => nested(k) && k.g.repo === r.g.repo);
       kids.forEach((k, n) => out.push({ ...k, tree: n === kids.length - 1 ? "└─" : "├─" }));
     }

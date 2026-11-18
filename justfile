@@ -1,4 +1,4 @@
-# AgentOS: both halves. Each half keeps its own justfile (`app/`, `core/`).
+# AgentDeck: both halves. Each half keeps its own justfile (`app/`, `core/`).
 set shell := ["bash", "-cu"]
 export PATH := env_var("HOME") + "/.local/bin:" + env_var("PATH")
 
@@ -35,7 +35,7 @@ dev: build
     test -f {{dev_root}}/app/settings.json || printf '{ "core": "%s" }\n' "$PWD/core/target/debug/herdr-core" > {{dev_root}}/app/settings.json
     cd {{dev_root}} && HERDR_APP_HOME={{dev_root}}/app HC_SESSION=aos "{{justfile_directory()}}/app/target/debug/herdr-app"
 
-# Builds a release and installs it as ~/Applications/AgentOS.app (shares nothing with an installed Herdr).
+# Builds a release and installs it as ~/Applications/AgentDeck.app (shares nothing with an installed Herdr).
 install-app:
     scripts/install-mac-app
 

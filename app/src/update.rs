@@ -10,7 +10,7 @@
 //! builds) sets `HERDR_APP_RELEASE`. `scripts/install-macos` makes a
 //! Herdr.app too, so the install's shape alone can't tell.
 //!
-//! AgentOS has no release server of its own: nothing is checked or downloaded
+//! AgentDeck has no release server of its own: nothing is checked or downloaded
 //! unless `HERDR_RELEASES_URL` names one (tests point it at a local server).
 //!
 //! The core is checked on the same clock (`core/latest.json`): a newer core
@@ -73,7 +73,7 @@ fn target() -> String {
 }
 
 /// Why nothing was downloaded: there is no default release server.
-pub const NO_SERVER: &str = "No release server: AgentOS doesn't download builds. Set HERDR_RELEASES_URL to use one.";
+pub const NO_SERVER: &str = "No release server: AgentDeck doesn't download builds. Set HERDR_RELEASES_URL to use one.";
 
 /// The release server, only when `HERDR_RELEASES_URL` names one.
 pub fn releases() -> Option<String> {

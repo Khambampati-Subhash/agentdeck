@@ -12,7 +12,8 @@ const LSREGISTER: &str =
 
 fn bundle(exe: &Path) -> Option<&Path> {
     let root = exe.parent()?.parent()?.parent()?;
-    (exe.strip_prefix(root).ok()? == Path::new(EXECUTABLE) && root.file_name()? == "Herdr Core.app").then_some(root)
+    let named = matches!(root.file_name()?.to_str()?, "Herdr Core.app" | "AgentDeck Core.app");
+    (exe.strip_prefix(root).ok()? == Path::new(EXECUTABLE) && named).then_some(root)
 }
 
 fn checked(program: &str, args: &[&std::ffi::OsStr]) -> io::Result<()> {
@@ -391,6 +392,11 @@ mod tests {
         assert_eq!(
             bundle(Path::new("/share/Herdr Core.app/Contents/MacOS/herdr-core")),
             Some(Path::new("/share/Herdr Core.app"))
+        );
+        // AgentDeck's own core bundle, inside AgentDeck.app.
+        assert_eq!(
+            bundle(Path::new("/A/AgentDeck.app/Contents/Helpers/AgentDeck Core.app/Contents/MacOS/herdr-core")),
+            Some(Path::new("/A/AgentDeck.app/Contents/Helpers/AgentDeck Core.app"))
         );
         for path in [
             "/bin/herdr-core",

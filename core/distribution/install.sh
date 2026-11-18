@@ -7,7 +7,7 @@
 # (some window managers ship one). An hc that is already there is swapped
 # the planned way (hc update --from): running terminals keep running. One
 # from a package manager is left to it. HC_VERSION=0.2.0 picks a version;
-# HERDR_RELEASES_URL is required: AgentOS has no release server of its own.
+# HERDR_RELEASES_URL is required: AgentDeck has no release server of its own.
 set -eu
 
 releases=${HERDR_RELEASES_URL:-}
@@ -39,7 +39,7 @@ sha256() {
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
-[ -n "$releases" ] || fail "set HERDR_RELEASES_URL to an AgentOS release server; AgentOS has no default"
+[ -n "$releases" ] || fail "set HERDR_RELEASES_URL to an AgentDeck release server; AgentDeck has no default"
 manifest="$releases/core/latest.json"
 [ -n "${HC_VERSION:-}" ] && manifest="$releases/core/$HC_VERSION/manifest.json"
 curl -fsSL "$manifest" -o "$tmp/manifest.json" || fail "cannot reach $manifest"

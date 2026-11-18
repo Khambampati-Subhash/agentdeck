@@ -1,4 +1,4 @@
-# AgentOS
+# AgentDeck
 
 A desktop app for terminals and coding agents. It is our fork of Herdr:
 `app/` is [herdr-app](https://github.com/herdrdev/herdr-app) (the GPUI
@@ -6,8 +6,11 @@ window) and `core/` is [herdr-core](https://github.com/herdrdev/herdr-core)
 (`hc`, the runtime that keeps every terminal alive). Both are Apache-2.0;
 see `NOTICE.md`.
 
-**Status (2026-11-10):** both upstreams imported with history (app `0ac92e4`,
-core `ce81486`). P0 is done: build, tests and a scratch window on our own core. It's not merged to `main` yet. Next is P1, cutting the link to herdr.dev. Open items are in `docs/plan.md`.
+**Status (2026-11-18):** P0 (import, build) and P1 (no link to herdr.dev,
+PR #2) are on `main`, as is the forge loop (PR #1). P2, the rename to AgentDeck, has started: the visible name says AgentDeck, while binaries, paths,
+env vars and bundle ids are still `herdr-*` (target names are in
+`docs/plan.md` § P2). Worktree spaces nest under their repo's first space.
+Open items are in `docs/plan.md`.
 Update this line at the end of every milestone.
 
 ## Docs
@@ -39,8 +42,12 @@ Update this line at the end of every milestone.
   (asking Can, PRs to `master`, Can releases, "no AI co-author lines"). Ours
   replaces it.
 - Never talk to herdr.dev. No telemetry, no feedback upload, no update checks
-  or downloads from upstream release servers. P1 enforces this in code; until
-  then, don't run the app outside a scratch home.
+  or downloads from upstream release servers. P1 enforces this in code;
+  `scripts/check-offline` fails if a herdr.dev URL comes back.
+- The product is **AgentDeck**. New user-visible text says AgentDeck, never
+  Herdr or AgentOS. Leave "Herdr" only where it means upstream (credits,
+  `NOTICE.md`, links) or is still a technical name P2 renames (`herdr-app`,
+  `HERDR_*`, paths, keymap contexts).
 - Never run the app or core against the user's real setup. Tests and manual
   runs use `HERDR_APP_HOME` and `HC_SESSION` pointing under `/var/tmp`
   (renamed in P2). Never stop, signal or restart a core you didn't start.

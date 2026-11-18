@@ -1,6 +1,6 @@
-# AgentOS plan
+# AgentDeck plan
 
-AgentOS is our fork of Herdr: the same desktop app and runtime, under our
+AgentDeck is our fork of Herdr: the same desktop app and runtime, under our
 name, with no link to herdr.dev, then improved. Order matters. We cut the link
 before anyone uses it daily, rename before we build on it, and set up
 upstream sync before the trees drift.
@@ -8,7 +8,7 @@ upstream sync before the trees drift.
 Each milestone is planned with `superpowers:writing-plans` when it starts
 and reviewed with `/code-review high` before merge.
 
-## P0: import and build (done 2026-11-10, merge pending)
+## P0: import and build (done 2026-11-10, on `main`)
 
 - [x] Clear the old AgentOS (Go agentd, Swift shell) on `herdr-rewrite`.
       History stays on `main` and the old branches.
@@ -37,13 +37,16 @@ and reviewed with `/code-review high` before merge.
 - [x] Root `justfile`: `build`, `test`, `check`, `dev` (scratch home
       `/var/tmp/agentos-dev`, core session `aos`), `hc`, `dev-clean`.
       Session names stay short: macOS caps socket paths at 103 bytes.
-- [ ] Merge `herdr-rewrite` to `main`.
+- [x] Merge `herdr-rewrite` to `main`.
 
 **Done when:** a scratch-home window opens on our own build of core, shows a
 shell, and closing and reopening the window keeps the shell. **Met 2026-11-10**:
 the window reopened onto the same space, pane and shell, with no network sockets open.
 
-## P1: cut the link to herdr.dev
+## P1: cut the link to herdr.dev (merged 2026-11-16, PR #2)
+
+On `main`; `scripts/check-offline` passes. Still to record: the full-session
+`scripts/watch-net` run below.
 
 Today the fork would update itself from upstream's servers and replace our
 build, and would send usage data there. All of these go, each removal with a test:
@@ -75,7 +78,7 @@ Found 2026-11-10: even builds from source fetch the bundled changelog's
 The first scratch run downloaded two. The P0 "no sockets" check missed it
 because it was a one-off `lsof` snapshot.
 
-## P2: rename to AgentOS
+## P2: rename to AgentDeck
 
 Not a blind text replace. A `herdr`→`agentos` sed was tried on 2026-11-10 and
 discarded (saved at `/var/tmp/agentos-saved/`). It broke the build (files
@@ -83,19 +86,19 @@ not renamed), pointed updates at `agentos.dev`, a domain we don't own, and rewro
 licence notices and upstream history. Rename names, files and paths together,
 keep third-party text and links to upstream, and only rename after P1.
 
-Names (defaults; change here before P2 starts):
+Names (chosen 2026-11-18; the product was called AgentOS before):
 
-| Upstream | AgentOS |
+| Upstream | AgentDeck |
 |---|---|
-| Herdr, Herdr.app, `herdr-app` binary | AgentOS, AgentOS.app, `agentos` |
-| herdr-core, `hc` | agentos-core, `aos` |
-| `~/.config/herdr-app`, `~/.config/herdr-core`, `~/.herdr` | `~/.config/agentos`, `~/.config/agentos-core`, `~/.agentos` |
-| `HERDR_*`, `HC_*` env vars | `AGENTOS_*`, `AOS_*` |
-| `dev.herdr.app`, `dev.herdr.core` | `dev.agentos.app`, `dev.agentos.core` |
-| labels `herdr.space`, `herdr.tab`, `herdr.pinned`, ... | `agentos.space`, ... |
-| `herdr.d.ts`, `import ... from "herdr"` | `agentos.d.ts`, `"agentos"` (keep `"herdr"` as an alias so shared mods run) |
-| Herdr 98 layout | dropped or redrawn |
-| Ram logo | **done 2026-11-10**: "window stack" icon (`app/assets/icons/herdr-ui-icon-clean.svg` is the source; the `.icns`, `.ico`, PNG and welcome logo are rendered from it). File names stay `herdr-*` until this rename; the DMG background and the sidebar's "Herdr" text still need doing |
+| Herdr, Herdr.app, `herdr-app` binary | AgentDeck, AgentDeck.app, `agentdeck` |
+| herdr-core, `hc` | agentdeck-core, `adk` |
+| `~/.config/herdr-app`, `~/.config/herdr-core`, `~/.herdr` | `~/.config/agentdeck`, `~/.config/agentdeck-core`, `~/.agentdeck` |
+| `HERDR_*`, `HC_*` env vars | `AGENTDECK_*`, `ADK_*` |
+| `dev.herdr.app`, `dev.herdr.core` | `dev.agentdeck.app`, `dev.agentdeck.core` |
+| labels `herdr.space`, `herdr.tab`, `herdr.pinned`, ... | `agentdeck.space`, ... |
+| `herdr.d.ts`, `import ... from "herdr"` | `agentdeck.d.ts`, `"agentdeck"` (keep `"herdr"` as an alias so shared mods run) |
+| Herdr 98 layout | shown as "AgentDeck 98" (2026-11-18); dropped or redrawn later |
+| Ram logo | **done 2026-11-10**: "window stack" icon (`app/assets/icons/herdr-ui-icon-clean.svg` is the source; the `.icns`, `.ico`, PNG and welcome logo are rendered from it). File names stay `herdr-*` until this rename; the DMG background still needs doing |
 
 Keep as is: OSC 7501 (the status protocol agents emit; it's a number, not a
 brand), the agent-detection files, crate-internal module names where renaming
@@ -103,22 +106,29 @@ only adds merge conflicts.
 
 - [ ] Put every product name, path, env var and bundle id behind one constants
       module per half, upstream-shaped, so later merges touch one file.
-- [ ] Binaries, bundle, Info.plist, icons, window title, menus, toasts.
+- [x] Visible name (2026-11-18): window title, menus, toasts, setup and
+      welcome text, settings, palette, sidebar, Win98 strings and
+      `scripts/install-mac-app`'s bundle (`AgentDeck.app`) say AgentDeck. Keymap
+      contexts, bundle paths and the welcome card about upstream's herdr TUI
+      are unchanged.
+- [ ] Binaries, bundle, Info.plist, icons.
 - [ ] App home, core config and state paths. A one-time migration from an
       existing `~/.config/herdr-app` is opt-in only, never automatic.
 - [ ] Product skills and guides (`SKILL.md`, `defaults/AGENTS.md`, `--skill`
       output) and the generated `.d.ts`/schema, regenerated.
-- [ ] macOS bundle signs ad hoc locally; `just install` puts AgentOS.app in
-      `~/Applications` and `agentos`/`aos` in `~/.local/bin`.
+- [ ] macOS bundle signs ad hoc locally; `just install` puts AgentDeck.app in
+      `~/Applications` and `agentdeck`/`adk` in `~/.local/bin`. Until then
+      `scripts/install-mac-app` installs `~/Applications/AgentDeck.app` but
+      keeps AgentOS's bundle id, settings folder and core session.
 
-**Done when:** AgentOS and stock Herdr run side by side on one Mac without
+**Done when:** AgentDeck and stock Herdr run side by side on one Mac without
 seeing each other's terminals, settings or core.
 
 ## P3: our build and release
 
 - [ ] GitHub Actions on our repo: macOS arm64 build and tests for both halves
       (adapted from upstream CI). Linux comes later if wanted.
-- [ ] Versioning: `agentos-vX.Y.Z` tags. Our CHANGELOG lists our changes on
+- [ ] Versioning: `agentdeck-vX.Y.Z` tags. Our CHANGELOG lists our changes on
       top of the upstream versions.
 - [ ] Optional: our own update channel (GitHub Releases) replacing what P1
       turned off.
@@ -141,8 +151,10 @@ do it, it's a mod):
       Each needs a check of what OSC 7501 and `hc` already give.
 - [ ] Our default layout and theme.
 - [ ] Anything else from daily use: keep a list here.
+  - [x] Worktree spaces group under their repo even when no space is on the
+        main checkout: they nest under the repo's first space (2026-11-18).
 - [x] The forge loop: issue → agent → PR → merged ([plan](superpowers/plans/2026-11-15-forge-loop.md),
-      spec in `docs/features.md` F13–F17). Done on branch `forge-loop`; merge pending.
+      spec in `docs/features.md` F13–F17). Merged to `main` 2026-11-16 (PR #1).
   - F13: issues on the Pull requests board, and **Start work** opens a worktree
     with an agent on the issue.
   - F14: a PR window Checks tab with logs, **Fix with agent** and **Re-run**.
@@ -152,7 +164,6 @@ do it, it's a mod):
 
 ## Open questions
 
-- Final names for the binaries (`agentos` / `aos`) and the bundle id.
 - macOS only, or also Linux and Windows builds?
 - Keep the Win98 layout and mods, or drop them (their fonts carry their own
   licences)?

@@ -7,7 +7,7 @@ tests building a fake release):
 {version, generation, notes, targets: {"<os>-<arch>": {url, sha256}}}.
 Version from crates/herdr-core/Cargo.toml, generation from api.rs; the
 notes line from $NOTES, else "herdr-core <version>". URLs under
-$RELEASES_URL/core/<version>/ (required: AgentOS has no release server).
+$RELEASES_URL/core/<version>/ (required: AgentDeck has no release server).
 """
 import hashlib, json, os, pathlib, re, sys
 
