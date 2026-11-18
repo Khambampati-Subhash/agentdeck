@@ -1,12 +1,12 @@
 #!/bin/sh
 # Runs hooks/status the way Claude Code runs a hook (piped stdio, its own
 # session, no controlling tty) inside a scratch core, and checks `hc get`.
-# Usage: integrations/claude-code/test.sh [path to herdr-core]
+# Usage: integrations/claude-code/test.sh [path to agentdeck-core]
 set -eu
 here=$(cd "$(dirname "$0")" && pwd)
-hc=${1:-$here/../../core/target/debug/herdr-core}
+hc=${1:-$here/../../core/target/debug/agentdeck-core}
 root=$(mktemp -d /var/tmp/agentdeck-claude-test.XXXXXX)
-export HOME=$root HC_SESSION=test HC_SETTLE_MS=0 \
+export HOME=$root ADK_SESSION=test HC_SETTLE_MS=0 \
   XDG_RUNTIME_DIR=$root/run XDG_STATE_HOME=$root/state XDG_CONFIG_HOME=$root/config
 trap '"$hc" server stop >/dev/null 2>&1 || true; rm -rf "$root"' EXIT
 fail=0

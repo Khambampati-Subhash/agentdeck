@@ -14,7 +14,7 @@ The plugin's hooks report for it:
 | SessionEnd | cleared |
 
 `hooks/status` writes the report to Claude's terminal, and only inside an
-AgentDeck/hc terminal (`HC_TERMINAL_ID` set), so other terminals see nothing.
+AgentDeck or Herdr terminal (`ADK_TERMINAL_ID` or `HC_TERMINAL_ID` set), so other terminals see nothing.
 Only sessions running in AgentDeck panes can show; sessions in another
 terminal app can't.
 
@@ -35,4 +35,4 @@ Restart running Claude sessions to pick it up.
 ## Test
 
 `integrations/claude-code/test.sh` runs the hook against a scratch core
-under `/var/tmp` (needs `core/target/debug/herdr-core`). No Claude run.
+under `/var/tmp` (needs `core/target/debug/agentdeck-core`). No Claude run.

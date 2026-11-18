@@ -2,8 +2,9 @@
 # Reports Claude Code's state to AgentDeck over OSC 7501: status <state> [kind].
 # Claude Code doesn't speak 7501, so its hooks do. A hook has no terminal of
 # its own (its stdio are pipes, often in a new session), so this writes to the
-# first ancestor's tty: Claude's. Outside hc (no HC_TERMINAL_ID) it does nothing.
-[ -n "${HC_TERMINAL_ID:-}" ] || exit 0
+# first ancestor's tty: Claude's. Outside an AgentDeck or Herdr terminal (no
+# ADK_TERMINAL_ID or HC_TERMINAL_ID) it does nothing.
+[ -n "${ADK_TERMINAL_ID:-${HC_TERMINAL_ID:-}}" ] || exit 0
 cat >/dev/null 2>&1 # the hook's JSON, unused
 
 body="state=$1:app=claude-code"
