@@ -116,6 +116,11 @@ only adds merge conflicts.
       Info.plist, launchd prefix. Icon file names stay `herdr-*`.
 - [ ] Core's runtime hints still say `hc …` in about 75 messages (e.g. "run
       hc server start"); the CLI is `adk`.
+- [ ] From the P2 review, deferred: the app's dormant self-update (`update.rs`)
+      still expects `Herdr.app` and a `herdr-app` version prefix (P3);
+      `core_bin::ensure_core_bundle` can never match an ad hoc core (remove);
+      `just migrate --from ~/.config/herdr-app` copies Herdr's shipped mods
+      without their install record; Windows installers still link `hc.exe`.
 - [x] App home `~/.config/agentdeck`, core config `~/.config/agentdeck-core`,
       state and sockets `~/.local/state/adk` (short: macOS caps socket paths at
       103 bytes and `agentdeck-core` overflowed it here). `just migrate` copies
