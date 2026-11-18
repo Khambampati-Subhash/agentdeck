@@ -17,7 +17,7 @@ use std::sync::Arc;
 
 const ICON: &[u8] = include_bytes!("../assets/icons/herdr-ui-icon-clean.png");
 // AgentDeck has no release server: the core and app are built from the repo.
-const CORE_BUILD: &str = "just build, then Choose… core/target/debug/herdr-core";
+const CORE_BUILD: &str = "just build, then Choose… core/target/debug/agentdeck-core";
 const APP_BUILD: &str = "rebuild AgentDeck from its repo (just build)";
 
 /// What's missing before the main window can open.
@@ -90,7 +90,7 @@ pub fn open(need: Need, requests: async_channel::Receiver<Request>, cx: &mut App
     let options = WindowOptions {
         window_bounds: Some(WindowBounds::Windowed(Bounds::centered(None, size(px(620.0), px(460.0)), cx))),
         titlebar: Some(TitlebarOptions { title: Some("AgentDeck".into()), ..Default::default() }),
-        app_id: Some("herdr-app".into()),
+        app_id: Some("agentdeck".into()),
         ..Default::default()
     };
     let icon = Arc::new(Image::from_bytes(ImageFormat::Png, ICON.to_vec()));
@@ -147,21 +147,21 @@ impl Setup {
     }
 
     fn install(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        self.run("Installing herdr-core…", || crate::core_bin::install().map(Some), window, cx);
+        self.run("Installing agentdeck-core…", || crate::core_bin::install().map(Some), window, cx);
     }
 
     fn update(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        self.run("Updating herdr-core… your terminals keep running.", || crate::core_bin::update().map(|_| None), window, cx);
+        self.run("Updating agentdeck-core… your terminals keep running.", || crate::core_bin::update().map(|_| None), window, cx);
     }
 
     fn choose(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let paths = cx.prompt_for_paths(PathPromptOptions { files: true, directories: false, multiple: false, prompt: Some("Use this herdr-core".into()) });
+        let paths = cx.prompt_for_paths(PathPromptOptions { files: true, directories: false, multiple: false, prompt: Some("Use this agentdeck-core".into()) });
         cx.spawn_in(window, async move |this, cx| {
             let Ok(Ok(Some(paths))) = paths.await else { return };
             let Some(bin) = paths.into_iter().next() else { return };
             let _ = this.update_in(cx, |this, window, cx| {
                 if crate::core_bin::version(&bin).is_none() {
-                    this.state = State::Failed(format!("{} isn't herdr-core (it should answer `--version` with `hc …`)", bin.display()));
+                    this.state = State::Failed(format!("{} isn't agentdeck-core (it should answer `--version` with `hc …`)", bin.display()));
                     cx.notify();
                     return;
                 }
@@ -246,7 +246,7 @@ impl Render for Setup {
             Need::Fix(_) => div()
                 .flex()
                 .gap(px(10.0))
-                .child(button("update", "Update herdr-core", true).when(!busy, |d| d.on_click(cx.listener(|this, _, w, cx| this.update(w, cx))))),
+                .child(button("update", "Update agentdeck-core", true).when(!busy, |d| d.on_click(cx.listener(|this, _, w, cx| this.update(w, cx))))),
         };
         div()
             .size_full()

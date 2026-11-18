@@ -209,7 +209,7 @@ fn mod_run_rejects_unknown_arguments_before_queueing_a_command(cx: &mut TestAppC
     cx.update(gpui_shell::init);
     let fixture = Fixture::new(r#"
 import { View, div } from "gpui-kit";
-import { run } from "herdr";
+import { run } from "agentdeck";
 import { note } from "fixture";
 export default class extends View {
   init() {
@@ -222,8 +222,7 @@ export default class extends View {
 }"#);
     let seen = Rc::new(RefCell::new(Vec::new()));
     let calls = seen.clone();
-    gpui_shell::policy::set_default(Policy::new()
-        .with_host_module(module(Instance { name: "test".into(), props: Value::Null }, 0)).unwrap()
+    gpui_shell::policy::set_default(with_modules(Policy::new(), Instance { name: "test".into(), props: Value::Null }, 0)
         .with_host_module(HostModule::new("fixture").function("note", move |a| {
             calls.borrow_mut().push(a.string(0)?.to_owned());
             Ok(HostValue::Null)
@@ -262,8 +261,7 @@ export default class extends View {
 }"#);
     let notes = Rc::new(RefCell::new(Vec::new()));
     let calls = notes.clone();
-    gpui_shell::policy::set_default(Policy::new()
-        .with_host_module(module(Instance { name: "focus-test".into(), props: Value::Null }, 42)).unwrap()
+    gpui_shell::policy::set_default(with_modules(Policy::new(), Instance { name: "focus-test".into(), props: Value::Null }, 42)
         .with_host_module(HostModule::new("fixture").function("note", move |a| {
             calls.borrow_mut().push(a.string(0)?.to_owned());
             Ok(HostValue::Null)

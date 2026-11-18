@@ -657,7 +657,7 @@ export default class Settings extends View {
             cx.notify();
           }))));
     }
-    if (busy === "update") row.child(div().text_size(12.5).text_color(t.dim).child("Copying this computer's herdr-core. Its terminals keep running."));
+    if (busy === "update") row.child(div().text_size(12.5).text_color(t.dim).child("Copying this computer's agentdeck-core. Its terminals keep running."));
     if (edit && !busy) {
       const cancel = this.button(t, `st-m-cancel-${m.name}`, "Cancel", (_e, cx) => { this.machineEdit = null; this.handle.focus(); cx.notify(); });
       if (edit.action === "rm") row.child(v_flex().gap(8)
@@ -751,7 +751,7 @@ export default class Settings extends View {
         : c.error
           ? [`The update failed: ${c.error}`, primary("st-core-retry", "Try again", () => run("app.update_core"))]
           : c.ready
-            ? [`${c.ready} is ready. Your terminals keep running through it.`, primary("st-core-update", "Update herdr-core", () => run("app.update_core"))]
+            ? [`${c.ready} is ready. Your terminals keep running through it.`, primary("st-core-update", "Update agentdeck-core", () => run("app.update_core"))]
             : u.checks
               ? [result, check("st-check-core")]
               : ["Not checked: a build from source looks for no updates.", null];
@@ -762,8 +762,8 @@ export default class Settings extends View {
         .child(this.button(t, "st-whats-new", "What's new", () => { closeOverlay(props()?.overlay); run("app.whats_new"); }))
         .when(Boolean(app[1]), (el) => el.child(app[1]))))
       .child(div().h(18))
-      .child(this.heading(t, "herdr-core"))
-      .child(this.row(t, `herdr-core ${c.version ?? ""}`, core[0], core[1] ?? div()))
+      .child(this.heading(t, "agentdeck-core"))
+      .child(this.row(t, `agentdeck-core ${c.version ?? ""}`, core[0], core[1] ?? div()))
       .child(div().pt(12).text_size(12.5).line_height("18px").text_color(t.dim).child("AgentDeck looks for both every hour and tells you in the corner. AgentDeck core runs your terminals, so they keep running through its updates."));
   }
 

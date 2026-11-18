@@ -47,7 +47,7 @@ fn write(path: &Path, text: &str, expected: Option<&str>) -> Result<(), String> 
     // Resolve symlinks so replacing the file does not replace the link itself.
     let target = crate::persist::resolve_target(path).map_err(|e| e.to_string())?;
     let temp = target.with_file_name(format!(
-        ".herdr-app-write-{}",
+        ".agentdeck-write-{}",
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
@@ -117,7 +117,7 @@ mod tests {
     #[test]
     fn creates_updates_and_rejects_stale_text() {
         let root = std::path::PathBuf::from("/var/tmp").join(format!(
-            "herdr-app-files-{}",
+            "agentdeck-files-{}",
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()

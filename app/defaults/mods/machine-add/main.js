@@ -1,6 +1,6 @@
 // Add a machine: the hosts in ~/.ssh/config to pick from (or type one),
 // each added with one click (`hc machine add`). When the machine needs
-// something first (herdr-core installed there, a password, a new host
+// something first (agentdeck-core installed there, a password, a new host
 // key), the picker explains what to run in a terminal. Machines that need
 // no answers are added quietly. Opened as a dialog
 // (`mod.open machine-add`); the sidebars' Add machine and the welcome
@@ -140,7 +140,7 @@ export default class MachineAdd extends View {
       } else if (["hc_missing", "incompatible", "login_needed", "auth_failed", "host_key"].includes(why.kind) || /password|passphrase|host key|permission denied|login/i.test(why.message ?? "")) {
         const quoted = shellArg(target);
         this.pending.add(target);
-        this.state[target] = `Couldn't add ${target} here: it needs you to answer something (a password, a new host key, or installing herdr-core there). Run \`hc machine add ${quoted}\` in a terminal. \`hc machine --help\` shows the options.`;
+        this.state[target] = `Couldn't add ${target} here: it needs you to answer something (a password, a new host key, or installing agentdeck-core there). Run \`hc machine add ${quoted}\` in a terminal. \`hc machine --help\` shows the options.`;
       } else this.state[target] = why.message || "it didn't work";
       await this.refresh();
       cx.notify();
@@ -153,9 +153,9 @@ export default class MachineAdd extends View {
   async checkMac(target) {
     const m = this.added.find((x) => x.target === target || x.name === target);
     if (!m) return;
-    const r = await exec("sh", ["-c", 'uname; command -v herdr-core || echo "$HOME/.local/bin/herdr-core"'], { on: m.name }).catch(() => null);
+    const r = await exec("sh", ["-c", 'uname; command -v agentdeck-core || echo "$HOME/.local/bin/agentdeck-core"'], { on: m.name }).catch(() => null);
     const [os, core] = (r?.stdout ?? "").trim().split("\n");
-    if (os === "Darwin") this.macs[target] = { name: m.name, core: core ?? "~/.local/bin/herdr-core" };
+    if (os === "Darwin") this.macs[target] = { name: m.name, core: core ?? "~/.local/bin/agentdeck-core" };
   }
 
   macCard(t, target) {
@@ -175,7 +175,7 @@ export default class MachineAdd extends View {
           .text_size(12.5)
           .line_height("18px")
           .text_color(t.muted)
-          .child("macOS asks on the Mac's own screen before an agent reads Desktop, Documents or Downloads, and waits until someone answers. Give herdr-core Full Disk Access there and it never asks again: in the list, press + and pick this file:"),
+          .child("macOS asks on the Mac's own screen before an agent reads Desktop, Documents or Downloads, and waits until someone answers. Give agentdeck-core Full Disk Access there and it never asks again: in the list, press + and pick this file:"),
       )
       .child(div().px(8).py(4).rounded(6).bg(t.background).border_1().border_color(t.border).text_size(12).text_color(t.foreground).child(mac.core))
       .child(

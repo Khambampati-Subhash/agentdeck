@@ -1,5 +1,5 @@
 //! Every command the app runs, defined once. Keys, menus, mods and
-//! `herdr-app do` all run these; key checks, `herdr-app commands` and the docs come
+//! `agentdeck do` all run these; key checks, `agentdeck commands` and the docs come
 //! from this list. Mods' own commands are `<mod>.<command>`.
 
 use serde_json::{Value, json};
@@ -90,7 +90,7 @@ pub const COMMANDS: &[Command] = &[
     cmd("app.palette", &[], "Toggle the command palette: every command by name, with its key; calling again closes it."),
     cmd("app.settings", &[opt("section")], "Open the settings (section: look, alerts, updates)."),
     cmd("app.check_updates", &[], "Look for a newer AgentDeck and core now."),
-    cmd("app.update_core", &[], "Update herdr-core to its latest release of this generation; terminals keep running."),
+    cmd("app.update_core", &[], "Update agentdeck-core to its latest release of this generation; terminals keep running."),
     cmd("app.reset", &[], "The escape hatch: set the shown layout and keys aside, back to the default screen."),
     cmd("app.theme", &[req("name")], "Use a theme (a preset or themes/<name>.json)."),
     cmd("app.zoom_in", &[], "Make everything bigger."),
@@ -152,7 +152,7 @@ pub fn missing(c: &Command, args: &Value) -> Option<&'static str> {
     })
 }
 
-/// The list as data, for `herdr-app commands` and mods.
+/// The list as data, for `agentdeck commands` and mods.
 pub fn listing() -> Value {
     Value::Array(
         COMMANDS

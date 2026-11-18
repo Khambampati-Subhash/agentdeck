@@ -801,7 +801,7 @@ impl AppWindow {
         std::thread::spawn(move || {
             if let Ok(s) = core.call("server.status", json!({})) {
                 let text = |k: &str| s.get(k).and_then(Value::as_str).map(str::to_owned);
-                crate::update::set_core(text("version").map(|v| v.trim_start_matches("hc ").to_owned()), text("installed_by"));
+                crate::update::set_core(text("version").map(|v| v.trim_start_matches(crate::brand::CORE_VERSION_PREFIX).to_owned()), text("installed_by"));
             }
         });
     }
@@ -1663,7 +1663,7 @@ impl AppWindow {
     fn load(&self, inst: Instance, window: &mut Window, cx: &mut Context<Self>) -> Copy {
         let mut copy = Copy { inst, id: 0, root: None, _watch: None, error: None };
         let (Some(runtime), Some(folder)) = (&self.runtime, self.folders.get(&copy.inst.name)) else {
-            copy.error = Some(format!("no mod folder ~/.config/herdr-app/mods/{}", copy.inst.name));
+            copy.error = Some(format!("no mod folder ~/.config/agentdeck/mods/{}", copy.inst.name));
             return copy;
         };
         copy.id = mods::prepare_load(&copy.inst);
@@ -2812,7 +2812,7 @@ impl AppWindow {
                 return json!({ "ok": true });
             }
             tracing::warn!("unknown command {name:?}");
-            return json!({ "error": format!("unknown command {name:?}: see `herdr-app commands`; a mod's are <mod>.<command> and need the mod loaded") });
+            return json!({ "error": format!("unknown command {name:?}: see `agentdeck commands`; a mod's are <mod>.<command> and need the mod loaded") });
         };
         if let Err(error) = crate::commands::validate_args(command, &args) {
             return json!({ "error": error });
@@ -3397,7 +3397,7 @@ impl AppWindow {
             "app.check_updates" => crate::update::check_now(),
             "app.update_core" => {
                 if crate::update::core().ready.is_none() && crate::update::core().error.is_none() {
-                    return self.fail("herdr-core is up to date");
+                    return self.fail("agentdeck-core is up to date");
                 }
                 crate::update::update_core();
             }
@@ -3813,7 +3813,7 @@ impl AppWindow {
         json!({ "error": "expected { do }, { ls }, { commands } or { status }" })
     }
 
-    /// Spaces, their tabs and terminals, for `herdr-app ls`. Sub-agents are listed
+    /// Spaces, their tabs and terminals, for `agentdeck ls`. Sub-agents are listed
     /// under the terminal that started them.
     fn world(&self) -> Value {
         let m = &self.model;
@@ -4413,7 +4413,7 @@ impl AppWindow {
                 .border_1().border_color(c("border")).text_size(settings::z(13.0)).text_color(c("foreground"))
                 .id("core-update-error").cursor_pointer()
                 .on_click(cx.listener(|this, _, w, cx| this.run("app.settings", json!({ "section": "updates" }), w, cx)))
-                .child(format!("herdr-core update failed: {error} · Open Updates")).into_any_element());
+                .child(format!("agentdeck-core update failed: {error} · Open Updates")).into_any_element());
         }
         out.extend(pill);
         out
@@ -4431,7 +4431,7 @@ impl AppWindow {
         match (crate::update::ready(), core) {
             (Some(a), Some(c)) => Some(format!("AgentDeck {a} and AgentDeck core {c} are ready")),
             (Some(a), None) => Some(format!("AgentDeck {a} is ready")),
-            (None, Some(c)) => Some(format!("herdr-core {c} is ready")),
+            (None, Some(c)) => Some(format!("agentdeck-core {c} is ready")),
             (None, None) => None,
         }
     }
@@ -5576,7 +5576,7 @@ mod tests {
         let _ = std::fs::remove_dir_all(&home);
         let out = std::process::Command::new(std::env::current_exe().unwrap())
             .args(["--exact", &format!("window::tests::{name}"), "--nocapture", "--test-threads=1"])
-            .env("HERDR_APP_HOME", &home)
+            .env("AGENTDECK_HOME", &home)
             .env("HERDR_TEST_WINDOW", name)
             .output()
             .unwrap();

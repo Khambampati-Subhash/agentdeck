@@ -485,7 +485,7 @@ export default class Dialog {
               .child(div().h(u(4)))
               .child(`Terminals running:  ${n}`)
               .child(`Agents at work:  ${a}`)
-              .child(`herdr-core:  ${up?.core?.version ?? "?"}`)
+              .child(`agentdeck-core:  ${up?.core?.version ?? "?"}`)
               .child("Physical memory available to agents:  64.0 MB RAM"),
           ),
       )

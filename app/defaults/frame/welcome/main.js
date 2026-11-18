@@ -7,8 +7,8 @@ import { spaces, run, theme, props, closeOverlay, setShared, shared, hc, appHome
 const I = (name) => `frame/welcome/${name}.svg`;
 const W = (name) => `mods/workspace-chrome/${name}.svg`;
 const PAGES = 4;
-const ASK = "Read ~/.config/herdr-app/AGENTS.md, then tell me what you can change in AgentDeck.";
-const MIGRATE = "Read `herdr-app --skill`, then migrate my keybinds and settings from ~/.config/herdr/config.toml";
+const ASK = "Read ~/.config/agentdeck/AGENTS.md, then tell me what you can change in AgentDeck.";
+const MIGRATE = "Read `agentdeck --skill`, then migrate my keybinds and settings from ~/.config/herdr/config.toml";
 const APPEARANCES = [
   [null, "System"],
   ["light", "Light"],
@@ -288,7 +288,7 @@ export default class Welcome extends View {
       .child(this.title(t, "AgentDeck runs your terminals in the background", "The terminals and agents you open here don't live in this window. They run in AgentDeck core, a small background program on your computer. Close AgentDeck, update it, or let it crash, and your agents keep working. Open it again and everything is where you left it, as long as the computer is on."))
       .child(this.feature(t, "bot", "Agents tell you when they need you", "A ring while one works, \u201cNeeds you\u201d when it asks something, a sound when it finishes."))
       .child(this.feature(t, "messages", "Agents can start helpers", "They show up under the agent that started them. Click one to watch it."))
-      .child(this.feature(t, "layers", "Your other machines, in the same window", "A server or a Mac mini runs its own herdr-core, so its agents keep going even while this laptop sleeps."))
+      .child(this.feature(t, "layers", "Your other machines, in the same window", "A server or a Mac mini runs its own agentdeck-core, so its agents keep going even while this laptop sleeps."))
       .child(div().h(1).bg(t.border))
       .child(h_flex().gap(10).items_center().child(div().w(84).text_size(13).text_color(t.muted).child("Appearance")).child(this.segment(t, APPEARANCES, this.appearance, (v, cx) => this.setAppearance(v, cx))))
       .child(h_flex().gap(10).items_center().child(div().w(84).text_size(13).text_color(t.muted).child("Size")).child(this.sizeControl(t)))
@@ -448,7 +448,7 @@ export default class Welcome extends View {
           .rounded(10)
           .bg(t.raised)
           .child(div().text_size(13.5).font_semibold().text_color(t.foreground).child("Your terminals, outside this window too"))
-          .child(this.para(t, "hc is herdr-core's command line. In any terminal, hc ls lists everything running and hc attach t3 jumps into one. Your agents can use it to start and watch other agents for you. Tell them to read hc's help, or make it a skill.")),
+          .child(this.para(t, "adk is agentdeck-core's command line. In any terminal, adk ls lists everything running and adk attach t3 jumps into one. Your agents can use it to start and watch other agents for you. Tell them to read adk's help, or make it a skill.")),
       )
       .child(
         v_flex()

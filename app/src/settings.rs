@@ -14,7 +14,7 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Mutex;
 
-/// A terminal palette, as herdr-app shipped them.
+/// A terminal palette, as agentdeck shipped them.
 #[derive(Clone)]
 struct Palette {
     background: u32,
@@ -370,7 +370,7 @@ pub struct Person {
     /// How big the whole app is drawn (1 = as designed). The zoom keys change it.
     pub zoom: f32,
     pub sounds: Sounds,
-    /// The herdr-core to use, when it isn't where Herdr looks (core_bin.rs).
+    /// The agentdeck-core to use, when it isn't where Herdr looks (core_bin.rs).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub core: Option<String>,
     /// Fonts for layouts that don't set their own.
@@ -483,7 +483,7 @@ pub struct Settings {
     pub theme_dark: String,
     /// Whether the window is dark now (the person's `appearance`, else the system's).
     pub dark: bool,
-    /// Any theme color by name (see `theme()` in herdr.d.ts), `#rrggbb` or `#rrggbbaa`.
+    /// Any theme color by name (see `theme()` in agentdeck.d.ts), `#rrggbb` or `#rrggbbaa`.
     pub colors: BTreeMap<String, String>,
     /// A draggable scroll position thumb at a terminal pane's right edge.
     pub pane_scrollbars: bool,
@@ -499,7 +499,7 @@ pub struct Settings {
 
 /// Attention sounds: when an agent needs you, and when one finished while you
 /// weren't looking. `done` / `blocked`: an MP3 file instead of the bundled one
-/// (absolute, or relative to ~/.config/herdr-app).
+/// (absolute, or relative to ~/.config/agentdeck).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Sounds {

@@ -1,4 +1,4 @@
-//! Finding herdr-core (`hc`) on this machine. The app doesn't carry one: it
+//! Finding agentdeck-core (`hc`) on this machine. The app doesn't carry one: it
 //! uses the core people installed, or installs the core's own release.
 //!
 //! Where it looks, in order: `core` in settings.json; this process's PATH;
@@ -22,16 +22,16 @@ pub fn install_cli_link() {
     if let Err(e) = std::thread::Builder::new().name("cli-link".into()).spawn(|| {
         let result = std::env::current_exe().and_then(|exe| cli_link::ensure(&crate::mods::home(), &exe));
         if let Err(e) = result {
-            tracing::warn!("cannot install herdr-app CLI link: {e}");
+            tracing::warn!("cannot install agentdeck CLI link: {e}");
         }
     }) {
-        tracing::warn!("cannot start herdr-app CLI setup: {e}");
+        tracing::warn!("cannot start agentdeck CLI setup: {e}");
     }
 }
 
-/// The core the app runs (`hc` until one is found).
+/// The core the app runs (`adk` until one is found).
 pub fn path() -> PathBuf {
-    BIN.lock().unwrap_or_else(std::sync::PoisonError::into_inner).clone().unwrap_or_else(|| PathBuf::from("hc"))
+    BIN.lock().unwrap_or_else(std::sync::PoisonError::into_inner).clone().unwrap_or_else(|| PathBuf::from(crate::brand::CORE_CLI))
 }
 
 /// Uses this core from now on, and puts its folder first on PATH so mods'
@@ -73,14 +73,14 @@ fn merged_path(login: Option<&std::ffi::OsStr>, usual: &[PathBuf], current: &std
     std::env::join_paths(dirs).ok()
 }
 
-/// `hc X.Y.Z` if this binary is herdr-core and runs.
+/// `adk X.Y.Z` if this binary is agentdeck-core and runs.
 pub fn version(bin: &Path) -> Option<String> {
     let out = crate::spawn::command(bin).arg("--version").stdin(Stdio::null()).stderr(Stdio::null()).output().ok()?;
     let text = String::from_utf8_lossy(&out.stdout).trim().to_owned();
-    (out.status.success() && text.starts_with("hc ")).then_some(text)
+    (out.status.success() && text.starts_with(crate::brand::CORE_VERSION_PREFIX)).then_some(text)
 }
 
-/// The first herdr-core found, or None.
+/// The first agentdeck-core found, or None.
 pub fn find(configured: Option<&str>) -> Option<PathBuf> {
     let home = crate::mods::home();
     let pick = |candidates: Vec<PathBuf>| candidates.into_iter().filter(|c| c.is_file()).find(|c| version(c).is_some());
@@ -106,19 +106,19 @@ fn expand(p: &str, home: &Path) -> PathBuf {
 
 fn names(dir: &Path) -> [PathBuf; 2] {
     let exe = std::env::consts::EXE_SUFFIX;
-    [dir.join(format!("herdr-core{exe}")), dir.join(format!("hc{exe}"))]
+    [dir.join(format!("agentdeck-core{exe}")), dir.join(format!("{}{exe}", crate::brand::CORE_CLI))]
 }
 
 fn dirs_on(path: &std::ffi::OsStr) -> impl Iterator<Item = PathBuf> + '_ {
     std::env::split_paths(path)
 }
 
-/// Where herdr-core gets installed: its own installer and Herdr 1.x's
+/// Where agentdeck-core gets installed: its own installer and Herdr 1.x's
 /// (~/.local/bin), Homebrew, mise, Nix, cargo.
 fn usual_dirs(home: &Path) -> Vec<PathBuf> {
     if cfg!(windows) {
         let local = std::env::var_os("LOCALAPPDATA").map(PathBuf::from).unwrap_or_else(|| home.join("AppData/Local"));
-        return vec![local.join("Programs/herdr-core"), home.join(".cargo/bin")];
+        return vec![local.join("Programs/agentdeck-core"), home.join(".cargo/bin")];
     }
     let mut dirs = vec![
         home.join(".local/bin"),
@@ -130,9 +130,9 @@ fn usual_dirs(home: &Path) -> Vec<PathBuf> {
         home.join(".cargo/bin"),
     ];
     if cfg!(target_os = "macos") {
-        dirs.push(home.join(".local/share/herdr-core/current/Contents/MacOS"));
-        // Older installers placed the bundle directly in herdr-core.
-        dirs.push(home.join(".local/share/herdr-core/Herdr Core.app/Contents/MacOS"));
+        dirs.push(home.join(".local/share/agentdeck-core/current/Contents/MacOS"));
+        // Older installers placed the bundle directly in agentdeck-core.
+        dirs.push(home.join(".local/share/agentdeck-core/AgentDeck Core.app/Contents/MacOS"));
     }
     dirs
 }
@@ -171,7 +171,7 @@ fn login_shell_path() -> Option<std::ffi::OsString> {
 /// ~/.local/bin, or HC_INSTALL_DIR), then finds it. Err: what went wrong.
 pub fn install() -> Result<PathBuf, String> {
     let releases = crate::update::releases().ok_or_else(|| {
-        "AgentDeck has no release server. Build the core (just build), then choose core/target/debug/herdr-core.".to_owned()
+        "AgentDeck has no release server. Build the core (just build), then choose core/target/debug/agentdeck-core.".to_owned()
     })?;
     let mut cmd = if cfg!(windows) {
         let mut c = crate::spawn::command("powershell");
@@ -195,13 +195,13 @@ pub fn install() -> Result<PathBuf, String> {
             home.join(".local/bin")
         }
     });
-    let bin = dir.join(format!("herdr-core{}", std::env::consts::EXE_SUFFIX));
-    version(&bin).map(|_| bin).ok_or_else(|| "installed, but herdr-core doesn't run".into())
+    let bin = dir.join(format!("agentdeck-core{}", std::env::consts::EXE_SUFFIX));
+    version(&bin).map(|_| bin).ok_or_else(|| "installed, but agentdeck-core doesn't run".into())
 }
 
 /// Updates the core to its latest release (`hc update`: same generation only,
 /// terminals kept). Ok: the version it runs now. Err: what it said, e.g.
-/// "belongs to Homebrew: brew upgrade herdr-core".
+/// "belongs to Homebrew: brew upgrade agentdeck-core".
 pub fn update() -> Result<String, String> {
     update_to(None)
 }
@@ -237,7 +237,7 @@ const BUNDLE_INSTALL_SCRIPT: &str = "installer=$(curl -fsSL \"$1/core/install.sh
 #[cfg(any(target_os = "macos", all(test, unix)))]
 fn bundle_completion_path(bin: &Path, home: &Path) -> bool {
     bin.starts_with(home)
-        && !bin.ends_with("Contents/MacOS/herdr-core")
+        && !bin.ends_with("Contents/MacOS/agentdeck-core")
         && !["/Cellar/", "/nix/store/", "/mise/installs/"]
             .iter().any(|marker| bin.to_string_lossy().contains(marker))
 }
@@ -260,7 +260,7 @@ fn ensure_core_bundle(version: &str) -> Result<(), String> {
     }
     // Never replace a contributor's build, package-manager core, or a host app.
     let official = crate::spawn::command("/usr/bin/codesign")
-        .args(["--verify", "--strict", "-R", "=identifier \"dev.herdr.core\" and anchor apple generic and certificate leaf[subject.OU] = \"2W9652Q7QR\""])
+        .args(["--verify", "--strict", "-R", "=identifier \"io.github.khambampati-subhash.agentdeck.core\" and anchor apple generic and certificate leaf[subject.OU] = \"2W9652Q7QR\""])
         .arg(&bin).output().is_ok_and(|out| out.status.success());
     if !official {
         return Ok(());
@@ -276,7 +276,7 @@ fn ensure_core_bundle(version: &str) -> Result<(), String> {
         &releases,
     ]);
     cmd.env("HC_BUNDLE_ONLY", "1");
-    if let Some(v) = version.strip_prefix("hc ") {
+    if let Some(v) = version.strip_prefix(crate::brand::CORE_VERSION_PREFIX) {
         cmd.env("HC_VERSION", v);
     }
     if resolved.is_absolute()
@@ -310,11 +310,11 @@ mod tests {
     #[test]
     fn the_independent_core_bundle_is_a_discovery_fallback() {
         let home = Path::new("/Users/test");
-        let dir = home.join(".local/share/herdr-core/current/Contents/MacOS");
-        let legacy = home.join(".local/share/herdr-core/Herdr Core.app/Contents/MacOS");
+        let dir = home.join(".local/share/agentdeck-core/current/Contents/MacOS");
+        let legacy = home.join(".local/share/agentdeck-core/AgentDeck Core.app/Contents/MacOS");
         let dirs = usual_dirs(home);
         assert_eq!(&dirs[dirs.len() - 2..], &[dir.clone(), legacy]);
-        assert_eq!(names(&dir)[0], dir.join("herdr-core"));
+        assert_eq!(names(&dir)[0], dir.join("agentdeck-core"));
     }
 
     #[cfg(unix)]
@@ -329,10 +329,10 @@ mod tests {
             return;
         }
         use std::os::unix::fs::PermissionsExt;
-        let root = std::env::temp_dir().join(format!("herdr-core-reselect-{}", std::process::id()));
+        let root = std::env::temp_dir().join(format!("agentdeck-core-reselect-{}", std::process::id()));
         std::fs::create_dir_all(&root).unwrap();
         let bad = root.join("bad-hc");
-        std::fs::write(&bad, "#!/bin/sh\nif [ \"$1\" = --version ]; then echo hc 0.1.18; exit; fi\nread hello\necho unusable >&2\nexit 1\n").unwrap();
+        std::fs::write(&bad, "#!/bin/sh\nif [ \"$1\" = --version ]; then echo adk 0.1.18; exit; fi\nread hello\necho unusable >&2\nexit 1\n").unwrap();
         std::fs::set_permissions(&bad, std::fs::Permissions::from_mode(0o755)).unwrap();
         for replacement in ["chosen", "installed"] {
             use_core(find(Some(bad.to_str().unwrap())).unwrap());
@@ -364,13 +364,13 @@ mod tests {
     #[test]
     fn bundle_completion_skips_managed_and_system_paths() {
         let home = Path::new("/Users/test");
-        assert!(bundle_completion_path(&home.join(".local/bin/herdr-core"), home));
+        assert!(bundle_completion_path(&home.join(".local/bin/agentdeck-core"), home));
         for bin in [
-            "/usr/local/bin/herdr-core",
-            "/opt/homebrew/Cellar/herdr-core/1/bin/herdr-core",
-            "/nix/store/abc/bin/herdr-core",
-            "/Users/test/.local/share/mise/installs/herdr-core/1/herdr-core",
-            "/Users/test/.local/share/herdr-core/current/Contents/MacOS/herdr-core",
+            "/usr/local/bin/agentdeck-core",
+            "/opt/homebrew/Cellar/agentdeck-core/1/bin/agentdeck-core",
+            "/nix/store/abc/bin/agentdeck-core",
+            "/Users/test/.local/share/mise/installs/agentdeck-core/1/agentdeck-core",
+            "/Users/test/.local/share/agentdeck-core/current/Contents/MacOS/agentdeck-core",
         ] {
             assert!(!bundle_completion_path(Path::new(bin), home), "{bin}");
         }
@@ -379,11 +379,11 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn bundle_completion_skips_unwritable_directories() {
-        assert!(bundle_completion_writable(&std::env::temp_dir().join("herdr-core")));
-        assert!(!bundle_completion_writable(Path::new("/nonexistent/herdr-core")));
+        assert!(bundle_completion_writable(&std::env::temp_dir().join("agentdeck-core")));
+        assert!(!bundle_completion_writable(Path::new("/nonexistent/agentdeck-core")));
         let root = Command::new("id").arg("-u").output().unwrap().stdout == b"0\n";
         if !root {
-            assert!(!bundle_completion_writable(Path::new("/usr/bin/herdr-core")));
+            assert!(!bundle_completion_writable(Path::new("/usr/bin/agentdeck-core")));
         }
     }
 
@@ -403,12 +403,12 @@ mod tests {
     // Fakes the binary with a shell script.
     #[cfg(unix)]
     #[test]
-    fn only_a_binary_that_says_hc_counts() {
+    fn only_a_binary_that_says_adk_counts() {
         // Runtime writes can leave a writer fd in a parallel fork, causing ETXTBSY.
         let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/core-bin");
-        assert_eq!(version(&dir.join("hc")), None);
-        let real = dir.join("herdr-core");
-        assert_eq!(version(&real).as_deref(), Some("hc 0.1.1"));
+        assert_eq!(version(&dir.join("adk")), None);
+        let real = dir.join("agentdeck-core");
+        assert_eq!(version(&real).as_deref(), Some("adk 0.1.1"));
         assert_eq!(find(Some(real.to_str().unwrap())), Some(real));
     }
 }
