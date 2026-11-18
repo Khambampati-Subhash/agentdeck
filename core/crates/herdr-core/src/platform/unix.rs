@@ -133,7 +133,7 @@ pub fn endpoints(state: &Path) -> (PathBuf, String) {
         .map(PathBuf::from)
         // Logins without XDG_RUNTIME_DIR (some ssh setups) must still find the core.
         .or_else(|| Some(PathBuf::from(format!("/run/user/{}", unsafe { libc::getuid() }))).filter(|p| p.is_dir()));
-    (run.map_or_else(|| state.to_path_buf(), |run| run.join("herdr-core")), String::new())
+    (run.map_or_else(|| state.to_path_buf(), |run| run.join(crate::brand::STATE_DIR)), String::new())
 }
 
 /// A directory only this user can enter.
@@ -231,7 +231,7 @@ pub fn swap_in(from: &Path, dest: &Path, works: impl Fn(&Path) -> bool) -> io::R
             ));
         }
     }
-    let tmp = dest.with_file_name(format!(".herdr-core.new.{}", std::process::id()));
+    let tmp = dest.with_file_name(format!(".agentdeck-core.new.{}", std::process::id()));
     let staged = std::fs::copy(from, &tmp).and_then(|_| make_executable(&tmp));
     if staged.is_err() || !works(&tmp) {
         let _ = std::fs::remove_file(&tmp);

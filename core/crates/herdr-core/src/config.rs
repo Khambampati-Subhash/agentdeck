@@ -1,4 +1,4 @@
-//! `~/.config/herdr-core/config.toml`. A missing file means defaults.
+//! `~/.config/agentdeck-core/config.toml`. A missing file means defaults.
 
 use crate::rpc::RpcError;
 use serde::Deserialize;
@@ -70,7 +70,7 @@ impl Config {
 }
 
 fn invalid(message: String) -> RpcError {
-    RpcError::new("config", message, "fix ~/.config/herdr-core/config.toml")
+    RpcError::new("config", message, "fix ~/.config/agentdeck-core/config.toml")
 }
 
 pub fn load(path: &Path) -> Result<Config, RpcError> {

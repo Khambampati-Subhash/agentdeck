@@ -10,13 +10,13 @@ use std::process::{Command, Output, Stdio};
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::{Duration, Instant};
 
-pub const BIN: &str = env!("CARGO_BIN_EXE_herdr-core");
+pub const BIN: &str = env!("CARGO_BIN_EXE_agentdeck-core");
 
 /// A program that prints every byte it receives as hex, one at a time
 /// (GNU and BSD alike; plain od waits for 16 bytes).
 pub const BYTES: &str = "stty raw -echo; while :; do dd bs=1 count=1 2>/dev/null | od -An -tx1; done";
 
-/// An isolated core: its own HC_SESSION and XDG dirs under /var/tmp.
+/// An isolated core: its own ADK_SESSION and XDG dirs under /var/tmp.
 pub struct Session {
     pub root: PathBuf,
     pub env: Vec<(String, String)>,
@@ -67,7 +67,7 @@ impl Session {
         cmd.env_clear()
             .env("PATH", std::env::var("PATH").unwrap_or_default())
             .env("HOME", &self.root)
-            .env("HC_SESSION", "test")
+            .env(herdr_core::brand::SESSION_VAR, "test")
             .env("XDG_RUNTIME_DIR", self.root.join("run"))
             .env("XDG_STATE_HOME", self.root.join("state"))
             .env("XDG_CONFIG_HOME", self.root.join("config"))
@@ -125,7 +125,7 @@ impl Session {
     }
 
     pub fn socket(&self) -> PathBuf {
-        self.root.join("run/herdr-core/test.sock")
+        self.root.join("run/adk/test.sock")
     }
 
     pub fn connect_ok(&self) -> bool {
@@ -224,7 +224,7 @@ fn procs_with(needle: &str) -> Vec<i32> {
 
 /// The env that points `local`'s core at a fake `ssh`: a target containing a host's name
 /// runs the remote command as that session's machine would (its own HOME and
-/// XDG dirs, `herdr-core` on PATH, nothing else from here); `nohc` is a
+/// XDG dirs, `agentdeck-core` on PATH, nothing else from here); `nohc` is a
 /// machine without hc; anything else can't be reached. `otp-` targets need a
 /// login first (`<target> exit` asks for code 123456; ssh's master then lets
 /// later calls in); `noisy-` targets print a banner before anything. While
@@ -237,8 +237,9 @@ pub fn fake_ssh(local: &Session, hosts: &[(&str, &Session)]) -> (String, String)
         // `<root>/fakebin` first: a test can give a machine its own `uname`.
         let bin_dir = format!("{r}/fakebin:{}", s.bin.parent().unwrap().display());
         cases.push_str(&format!(
-            "  *{host}*) exec env -i HOME={r} PATH={bin_dir}:/usr/bin:/bin HC_SESSION=test HC_SETTLE_MS=0 \
-             XDG_RUNTIME_DIR={r}/run XDG_STATE_HOME={r}/state XDG_CONFIG_HOME={r}/config sh -c \"$*\" ;;\n"
+            "  *{host}*) exec env -i HOME={r} PATH={bin_dir}:/usr/bin:/bin {}=test HC_SETTLE_MS=0 \
+             XDG_RUNTIME_DIR={r}/run XDG_STATE_HOME={r}/state XDG_CONFIG_HOME={r}/config sh -c \"$*\" ;;\n",
+            herdr_core::brand::SESSION_VAR
         ));
     }
     let script = format!(

@@ -1,6 +1,6 @@
 # macOS release signing and notarization
 
-In herdr-core's GitHub **release** environment, add these secrets with the
+In agentdeck-core's GitHub **release** environment, add these secrets with the
 **same values as herdr-app's release environment**:
 
 - `APPLE_CERTIFICATE_P12`: base64-encoded Developer ID Application certificate
@@ -14,8 +14,8 @@ Tag pushes require all five secrets. Both macOS architectures are signed with
 hardened runtime and notarized before packaging; rejection fails the release.
 Manual/untagged release builds use ad-hoc signing without production credentials.
 
-The signature uses the stable identifier `dev.herdr.core`. The executable has
-a bound Info.plist naming **Herdr Core** and explaining privacy requests made
+The signature uses the stable identifier `io.github.khambampati-subhash.agentdeck.core`. The executable has
+a bound Info.plist naming **AgentDeck Core** and explaining privacy requests made
 by terminal programs. Existing Herdr.app grants do not transfer. Grants to
 ad-hoc builds may need to be granted again on the first Developer ID release.
 Keep the signing team and identifier stable across updates. This does not
@@ -29,7 +29,7 @@ debugging or unsigned-memory exceptions. Camera, audio-input and Apple Events
 entitlements permit user-approved terminal workloads; they do not grant access
 without consent. There is no App Sandbox.
 
-`scripts/mac-bundle` assembles **Herdr Core.app** with the same Info.plist as
+`scripts/mac-bundle` assembles **AgentDeck Core.app** with the same Info.plist as
 its executable. `scripts/mac-sign` signs the executable and then the bundle.
 `scripts/mac-notarize` submits the bundle zip, waits for acceptance, and staples
 and validates its ticket. The existing macOS archive names contain the complete
@@ -40,7 +40,7 @@ The installer and new `hc update` stage and verify the complete bundle, check
 that it runs, then atomically exchange it with the installed bundle. They do
 not re-sign, strip, or add quarantine. Entry points in `HC_INSTALL_DIR` (default
 `~/.local/bin`) resolve to the newest bundle at the fixed physical path
-`~/.local/share/herdr-core/active/Herdr Core.app`, via the `current` symlink.
+`~/.local/share/agentdeck-core/active/AgentDeck Core.app`, via the `current` symlink.
 Previous bundles are kept aside while their cores or holders run; later installs
 reclaim unused previous bundles.
 Old updaters that copy only the executable remain compatible. Run `hc update`

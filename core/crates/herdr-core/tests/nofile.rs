@@ -25,7 +25,7 @@ fn low_nofile_startup_can_hold_one_hundred_terminals() {
     }
     let out = cmd.output().unwrap();
     if !out.status.success() {
-        eprintln!("core log: {:?}", std::fs::read_to_string(s.root.join("state/herdr-core/test/core.log")));
+        eprintln!("core log: {:?}", std::fs::read_to_string(s.root.join("state/adk/test/core.log")));
     }
     assert!(out.status.success(), "{out:?}");
     let status: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();

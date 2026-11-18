@@ -84,7 +84,7 @@ fn a_quick_command_returns_its_output_and_exit_code_and_leaves_no_note() {
     let mut s = Session::new();
     s.env.push(("HC_QUIET_MS".into(), "0".into()));
     let parent = run(&s, &["sh", "-c", &script(&s, "r state=idle; cat")]);
-    let out = s.cmd().env("HC_TERMINAL_ID", &parent).args(["run", "sh", "-c", "echo hi; exit 3"]).output().unwrap();
+    let out = s.cmd().env("ADK_TERMINAL_ID", &parent).args(["run", "sh", "-c", "echo hi; exit 3"]).output().unwrap();
     assert_eq!(out.status.code(), Some(3), "the program's exit code");
     assert!(String::from_utf8_lossy(&out.stdout).contains("hi"));
     std::thread::sleep(std::time::Duration::from_millis(500));

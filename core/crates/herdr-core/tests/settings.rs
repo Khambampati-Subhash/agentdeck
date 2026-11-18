@@ -6,7 +6,7 @@ use common::*;
 use std::io::BufRead;
 
 fn config(s: &Session, toml: &str) {
-    let path = s.root.join("config/herdr-core/config.toml");
+    let path = s.root.join("config/agentdeck-core/config.toml");
     std::fs::create_dir_all(path.parent().unwrap()).unwrap();
     std::fs::write(path, toml).unwrap();
 }
@@ -38,13 +38,13 @@ fn headless_size_and_history_come_from_config() {
 fn long_session_names_fit_in_a_socket_path_or_say_so() {
     // macOS allows 104 bytes for a socket path; the session name is in it twice.
     let mut s = Session::new();
-    s.env.push(("HC_SESSION".into(), "a".repeat(40)));
+    s.env.push(("ADK_SESSION".into(), "a".repeat(40)));
     let t = run(&s, &["sleep", "100"]);
     assert_eq!(s.json(&["get", &t])["state"], "live");
     s.hc(&["server", "stop"]);
 
     let mut s = Session::new();
-    s.env.push(("HC_SESSION".into(), "a".repeat(70)));
+    s.env.push(("ADK_SESSION".into(), "a".repeat(70)));
     let (code, err) = s.err(&["--json", "ls"]);
     assert_ne!(code, 0);
     assert!(err.to_string().contains("too long"), "{err}");
@@ -54,7 +54,7 @@ fn long_session_names_fit_in_a_socket_path_or_say_so() {
 fn the_socket_can_live_elsewhere() {
     let mut s = Session::new();
     let custom = s.root.join("elsewhere/core.sock");
-    s.env.push(("HC_SOCKET".into(), custom.display().to_string()));
+    s.env.push(("ADK_SOCKET".into(), custom.display().to_string()));
     s.json(&["server", "start"]);
     assert!(custom.exists() && !s.socket().exists());
 

@@ -22,7 +22,7 @@ use output::*;
 use update::*;
 
 #[derive(Parser)]
-#[command(name = "hc", version, about = "herdr-core: a terminal runtime for coding agents")]
+#[command(name = "adk", version, about = "agentdeck-core: a terminal runtime for coding agents")]
 struct Cli {
     /// JSON output even in a terminal.
     #[arg(long, global = true)]
@@ -80,11 +80,11 @@ enum Cmd {
     },
     /// Follow fact changes as they happen (one JSON line each when piped).
     Events(SubscribeParams),
-    /// Templates you can run by name (~/.config/herdr-core/templates).
+    /// Templates you can run by name (~/.config/agentdeck-core/templates).
     Templates,
     /// Swap this hc for another build and restart (terminals keep running).
     Update {
-        /// A herdr-core binary to use (default: download the latest release).
+        /// A agentdeck-core binary to use (default: download the latest release).
         #[arg(long, value_name = "FILE", conflicts_with = "version")]
         from: Option<std::path::PathBuf>,
         /// At least this release (`0.1.4`): nothing changes when this hc is
@@ -305,7 +305,7 @@ fn bare(paths: &Paths, json: bool) -> Result<Option<Out>, RpcError> {
         .into_iter()
         .map(|(name, ts)| (name, choices.iter().cloned().chain(items(&ts, false)).collect()))
         .collect();
-    let chosen = picker::pick("herdr-core", &orders).ok_or_else(cancelled)?;
+    let chosen = picker::pick("agentdeck-core", &orders).ok_or_else(cancelled)?;
     let address = if chosen.is_empty() {
         // Our shell if we have one, else the machine's own (Windows has no $SHELL).
         let argv: Vec<String> = std::env::var("SHELL").into_iter().filter(|s| !s.is_empty()).collect();
@@ -511,7 +511,7 @@ fn run(cmd: Option<Cmd>, json: bool, asked: bool) -> Result<Option<Out>, RpcErro
             let paths = match session {
                 Some(s) => {
                     // SAFETY: no other thread runs yet; a core this starts inherits it.
-                    unsafe { std::env::set_var("HC_SESSION", s) };
+                    unsafe { std::env::set_var(crate::brand::SESSION_VAR, s) };
                     Paths::from_env()?
                 }
                 None => paths,
@@ -574,10 +574,10 @@ fn run(cmd: Option<Cmd>, json: bool, asked: bool) -> Result<Option<Out>, RpcErro
         }
         Cmd::Server { action: ServerCmd::Stop } => stop(&paths)?,
         Cmd::Update { from: None, version, force } => {
-            let this = format!("hc {}", env!("CARGO_PKG_VERSION"));
+            let this = format!("adk {}", env!("CARGO_PKG_VERSION"));
             if let Some(v) = &version
                 && !force
-                && !older(&this, &format!("hc {v}"))
+                && !older(&this, &format!("adk {v}"))
                 && !crate::platform::needs_bundle_update()
             {
                 let human = format!("{this} is already {v} or newer");
@@ -587,14 +587,14 @@ fn run(cmd: Option<Cmd>, json: bool, asked: bool) -> Result<Option<Out>, RpcErro
             let scratch = crate::releases::Scratch::new()?;
             let requested = version
                 .as_deref()
-                .map(|v| if !force && !older(&this, &format!("hc {v}")) { env!("CARGO_PKG_VERSION") } else { v });
+                .map(|v| if !force && !older(&this, &format!("adk {v}")) { env!("CARGO_PKG_VERSION") } else { v });
             let m = crate::releases::manifest(requested, &scratch.0)?;
             // Apps and scripts built for this generation would break on another one.
             if m.generation != crate::api::GENERATION && !force {
                 return Err(RpcError::new(
                     "refused",
                     format!(
-                        "hc {} speaks protocol generation {}, this hc {}: apps built for it would stop working",
+                        "adk {} speaks protocol generation {}, this adk {}: apps built for it would stop working",
                         m.version,
                         m.generation,
                         crate::api::GENERATION
@@ -604,7 +604,7 @@ fn run(cmd: Option<Cmd>, json: bool, asked: bool) -> Result<Option<Out>, RpcErro
             }
             if version.is_none()
                 && !force
-                && !older(&this, &format!("hc {}", m.version))
+                && !older(&this, &format!("adk {}", m.version))
                 && !crate::platform::needs_bundle_update()
             {
                 let human = format!("{this} is up to date (latest release: {})", m.version);
@@ -769,9 +769,9 @@ fn follow_events(paths: &Paths, params: Value, json: bool) -> Result<(), RpcErro
 }
 
 fn restart(paths: &Paths, fresh: bool) -> Result<(), RpcError> {
-    if fresh && std::env::var_os("HC_TERMINAL_ID").is_some() {
+    if fresh && std::env::var_os(crate::brand::TERMINAL_ID_VAR).is_some() {
         eprintln!(
-            "hc: this shell carries Herdr's environment; run --fresh from a terminal outside Herdr or unset unwanted variables first"
+            "hc: this shell carries AgentDeck's environment; run --fresh from a terminal outside AgentDeck or unset unwanted variables first"
         );
     }
     let environment: std::collections::BTreeMap<_, _> =
@@ -964,11 +964,11 @@ mod tests {
             let item = items(&[t], false).remove(0);
             (picker::plain(&item.rest), item.short)
         };
-        let labels = serde_json::json!({"where": "herdr-core / review", "herdr.tab": "tab3", "ws": "x9"});
+        let labels = serde_json::json!({"where": "agentdeck-core / review", "herdr.tab": "tab3", "ws": "x9"});
         let (rest, short) = t(serde_json::json!({"labels": labels, "name": "rev"}));
-        assert_eq!(short, "rev \u{b7} herdr-core / review");
+        assert_eq!(short, "rev \u{b7} agentdeck-core / review");
         assert!(
-            rest.contains("herdr-core / review")
+            rest.contains("agentdeck-core / review")
                 && !rest.contains("bliss")
                 && !rest.contains("x9")
                 && !rest.contains("tab3"),
@@ -1060,8 +1060,10 @@ mod tests {
 
     #[test]
     fn older_compares_versions_as_numbers() {
-        assert!(older("hc 0.1.9", "hc 0.2.0") && older("hc 0.2.0", "hc 0.10.0"));
-        assert!(!older("hc 0.2.0", "hc 0.2.0") && !older("hc 0.10.0", "hc 0.9.9") && !older("hc dev", "hc 0.2.0"));
+        assert!(older("adk 0.1.9", "adk 0.2.0") && older("adk 0.2.0", "adk 0.10.0"));
+        assert!(
+            !older("adk 0.2.0", "adk 0.2.0") && !older("adk 0.10.0", "adk 0.9.9") && !older("adk dev", "adk 0.2.0")
+        );
     }
 
     #[test]

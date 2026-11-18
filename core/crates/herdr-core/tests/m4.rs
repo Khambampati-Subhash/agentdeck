@@ -204,7 +204,7 @@ fn a_send_waits_for_the_person_to_send_or_clear_their_draft() {
 fn invalid_delivery_durations_use_defaults_without_losing_the_terminal() {
     let s = session();
     let t = s.json(&["run", "--bg", "cat"])["address"].as_str().unwrap().to_string();
-    let config = s.root.join("config/herdr-core/config.toml");
+    let config = s.root.join("config/agentdeck-core/config.toml");
     std::fs::create_dir_all(config.parent().unwrap()).unwrap();
     for setting in ["draft_wait", "notes_quiet"] {
         for value in ["inf", "-inf", "nan", "-1", "1e100"] {
@@ -222,7 +222,7 @@ fn draft_wait_config_releases_a_send_and_zero_keeps_only_the_quiet_pause() {
     let mut s = session();
     s.env.push(("HC_DRAFT_MS".into(), "5000".into()));
     let t = s.json(&["run", "--bg", "sh", "-c", BYTES])["address"].as_str().unwrap().to_string();
-    let config = s.root.join("config/herdr-core/config.toml");
+    let config = s.root.join("config/agentdeck-core/config.toml");
     std::fs::create_dir_all(config.parent().unwrap()).unwrap();
     let mut person = Viewer::attach(&s, &t, 80, 24, json!({}));
     for (seconds, minimum, maximum) in [(2.0, 1900, 4000), (0.0, 500, 1600)] {

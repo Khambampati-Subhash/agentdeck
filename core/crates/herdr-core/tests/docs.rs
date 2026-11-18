@@ -41,7 +41,7 @@ fn documents_are_versioned_persisted_and_evented() {
 #[test]
 fn corrupt_documents_are_quarantined_without_stopping_the_core() {
     let s = Session::new();
-    let state = s.root.join("state/herdr-core/test");
+    let state = s.root.join("state/adk/test");
     std::fs::create_dir_all(&state).unwrap();
     std::fs::write(state.join("docs.json"), b"{broken").unwrap();
     s.json(&["server", "status"]);

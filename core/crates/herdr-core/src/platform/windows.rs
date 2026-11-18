@@ -352,7 +352,7 @@ pub const MAX_SOCKET_PATH: usize = 256;
 pub fn endpoints(_state: &Path) -> (PathBuf, String) {
     let user: String =
         std::env::var("USERNAME").unwrap_or_default().chars().filter(|c| c.is_ascii_alphanumeric()).collect();
-    (PathBuf::from(r"\\.\pipe\"), format!("herdr-core-{user}-"))
+    (PathBuf::from(r"\\.\pipe\"), format!("{}-{user}-", crate::brand::DIR))
 }
 
 pub fn private_dir(path: &Path) -> io::Result<()> {
@@ -389,14 +389,14 @@ pub fn make_executable(_: &Path) -> io::Result<()> {
     Ok(())
 }
 
-/// The files of a release, as they sit beside herdr-core.exe.
-const RELEASE: [&str; 3] = ["herdr-core.exe", r"conpty\conpty.dll", r"conpty\x64\OpenConsole.exe"];
+/// The files of a release, as they sit beside agentdeck-core.exe.
+const RELEASE: [&str; 3] = ["agentdeck-core.exe", r"conpty\conpty.dll", r"conpty\x64\OpenConsole.exe"];
 
-/// Puts the release whose herdr-core.exe is `from` where `dest`'s folder
+/// Puts the release whose agentdeck-core.exe is `from` where `dest`'s folder
 /// is. Windows won't overwrite a running file but will rename one: every
 /// file is staged and checked first, then each old one is moved aside and
 /// the new one moved in; any failure moves everything back. Moved-aside
-/// files go on the next update. `hc.exe`, if it is a link to herdr-core.exe,
+/// files go on the next update. `hc.exe`, if it is a link to agentdeck-core.exe,
 /// is linked to the new one.
 pub fn swap_in(from: &Path, dest: &Path, works: impl Fn(&Path) -> bool) -> io::Result<()> {
     let dir = dest.parent().ok_or_else(|| io::Error::other("no folder"))?;
@@ -424,7 +424,7 @@ pub fn swap_in(from: &Path, dest: &Path, works: impl Fn(&Path) -> bool) -> io::R
                     && hex.bytes().all(|b| b.is_ascii_hexdigit())
             })
         };
-        let ours = ["herdr-core.exe", "conpty.dll", "openconsole.exe", "hc.exe"]
+        let ours = ["agentdeck-core.exe", "conpty.dll", "openconsole.exe", "hc.exe"]
             .iter()
             .flat_map(|f| ["old", "new", "failed"].map(|w| format!("{f}.{w}-")))
             .any(|prefix| name.strip_prefix(&prefix).is_some_and(tagged));

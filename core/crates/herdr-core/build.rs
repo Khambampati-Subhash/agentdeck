@@ -9,7 +9,7 @@ fn main() {
     std::fs::write(&path, plist).unwrap();
     // Separate arguments preserve paths containing spaces.
     for arg in ["-sectcreate", "__TEXT", "__info_plist"] {
-        println!("cargo:rustc-link-arg-bin=herdr-core=-Wl,{arg}");
+        println!("cargo:rustc-link-arg-bin=agentdeck-core=-Wl,{arg}");
     }
-    println!("cargo:rustc-link-arg-bin=herdr-core={}", path.display());
+    println!("cargo:rustc-link-arg-bin=agentdeck-core={}", path.display());
 }

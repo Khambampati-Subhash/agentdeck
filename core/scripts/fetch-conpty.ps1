@@ -1,4 +1,4 @@
-# Puts Microsoft's ConPTY beside herdr-core.exe: <Dest>\conpty\conpty.dll and
+# Puts Microsoft's ConPTY beside agentdeck-core.exe: <Dest>\conpty\conpty.dll and
 # <Dest>\conpty\x64\OpenConsole.exe. Windows' own ConPTY swallows the answers
 # hc gives programs (7501, DA), so hc ships this one. Pinned and checked.
 param([Parameter(Mandatory)][string]$Dest)

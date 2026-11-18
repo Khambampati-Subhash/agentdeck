@@ -58,10 +58,10 @@ impl Releases {
         std::fs::create_dir_all(&dir).unwrap();
         let bin_dir = Path::new(BIN).parent().unwrap();
         for t in targets {
-            let tar = dir.join(format!("herdr-core-{t}.tar.gz"));
+            let tar = dir.join(format!("agentdeck-core-{t}.tar.gz"));
             if cfg!(target_os = "macos") && t.starts_with("macos-") {
-                let app = s.root.join("Herdr Core.app");
-                let standalone = s.root.join("herdr-core");
+                let app = s.root.join("AgentDeck Core.app");
+                let standalone = s.root.join("agentdeck-core");
                 std::fs::copy(BIN, &standalone).unwrap();
                 for (script, args) in [
                     ("mac-bundle", vec![PathBuf::from(BIN), app.clone()]),
@@ -86,7 +86,7 @@ impl Releases {
                     .arg(&tar)
                     .arg("-C")
                     .arg(bin_dir)
-                    .arg("herdr-core")
+                    .arg("agentdeck-core")
                     .status()
                     .unwrap()
                     .success()
@@ -140,23 +140,23 @@ fn the_install_script_installs_and_then_updates_without_stopping_anything() {
         String::from_utf8(out.stdout).unwrap()
     };
     assert!(install(&s).contains("installed"));
-    assert!(bin.join("herdr-core").is_file() && bin.join("hc").is_symlink());
+    assert!(bin.join("agentdeck-core").is_file() && bin.join("adk").is_symlink());
     if cfg!(target_os = "macos") {
-        let bundle = s.root.join(".local/share/herdr-core/active/Herdr Core.app");
+        let bundle = s.root.join(".local/share/agentdeck-core/active/AgentDeck Core.app");
         assert!(bundle.join("Contents/Info.plist").is_file());
         assert_eq!(
-            bin.join("herdr-core").canonicalize().unwrap(),
-            bundle.join("Contents/MacOS/herdr-core").canonicalize().unwrap()
+            bin.join("agentdeck-core").canonicalize().unwrap(),
+            bundle.join("Contents/MacOS/agentdeck-core").canonicalize().unwrap()
         );
     }
 
-    s.bin = bin.join("hc");
+    s.bin = bin.join("adk");
     if cfg!(target_os = "macos") {
         let (_, err) = s.err(&["update", "--from", BIN]);
         assert_eq!(err["error"]["kind"], "refused");
-        assert!(err["error"]["hint"].as_str().unwrap().contains("Herdr Core.app"));
-        let source = s.root.join("Herdr Core.app");
-        assert_eq!(s.json(&["update", "--from", source.to_str().unwrap()])["now"], format!("hc {THIS}"));
+        assert!(err["error"]["hint"].as_str().unwrap().contains("AgentDeck Core.app"));
+        let source = s.root.join("AgentDeck Core.app");
+        assert_eq!(s.json(&["update", "--from", source.to_str().unwrap()])["now"], format!("adk {THIS}"));
     }
     let t = run(&s, &["sh", "-c", "while read l; do echo got-$l; done"]);
     use std::os::unix::fs::MetadataExt;
@@ -171,12 +171,12 @@ fn the_install_script_installs_and_then_updates_without_stopping_anything() {
     if cfg!(target_os = "macos") {
         assert_eq!(s.bin.canonicalize().unwrap(), holder_path, "the newest bundle has one fixed physical path");
         assert_ne!(std::fs::metadata(&holder_path).unwrap().ino(), holder_inode, "the fixed path has the new image");
-        let previous = s.root.join(".local/share/herdr-core/versions");
+        let previous = s.root.join(".local/share/agentdeck-core/versions");
         let retained: Vec<_> = std::fs::read_dir(&previous)
             .unwrap()
             .map(|e| e.unwrap().path())
             .filter(|slot| {
-                std::fs::metadata(slot.join("Herdr Core.app/Contents/MacOS/herdr-core"))
+                std::fs::metadata(slot.join("AgentDeck Core.app/Contents/MacOS/agentdeck-core"))
                     .is_ok_and(|m| m.ino() == holder_inode)
             })
             .collect();
@@ -198,7 +198,7 @@ fn the_install_script_installs_and_then_updates_without_stopping_anything() {
             s.json(&["send", id, "third"]);
             wait_until("old shells survive repeated updates", || text(&s, id).contains(expected));
         }
-        let archived = retained[0].join("Herdr Core.app/Contents/MacOS/herdr-core");
+        let archived = retained[0].join("AgentDeck Core.app/Contents/MacOS/agentdeck-core");
         let out = s.program(archived.to_str().unwrap()).args(["server", "restart"]).output().unwrap();
         assert!(out.status.success(), "a retained executable can restart the newest core: {out:?}");
         #[cfg(target_os = "macos")]
@@ -230,9 +230,9 @@ fn a_macos_system_install_uses_the_standalone_release() {
         .output()
         .unwrap();
     assert!(out.status.success(), "{out:?}");
-    assert!(s.root.join("system-bin/herdr-core").is_file());
-    assert!(!s.root.join("system-bin/herdr-core").is_symlink());
-    assert!(!s.root.join(".local/share/herdr-core/current").exists());
+    assert!(s.root.join("system-bin/agentdeck-core").is_file());
+    assert!(!s.root.join("system-bin/agentdeck-core").is_symlink());
+    assert!(!s.root.join(".local/share/agentdeck-core/current").exists());
 }
 
 #[cfg(target_os = "linux")]
@@ -259,12 +259,12 @@ fn machine_installs_keep_the_complete_bundle_and_both_aliases() {
     for cross_arch in [false, true] {
         use std::os::unix::fs::PermissionsExt;
         let mut remote = Session::new();
-        remote.bin = remote.root.join(".local/bin/herdr-core");
+        remote.bin = remote.root.join(".local/bin/agentdeck-core");
         let mut local = Session::new();
         let target = if cross_arch { "macos-x86_64" } else { &here() };
         let r = Releases::new(&local, THIS, &[target]);
-        let source = local.root.join("Herdr Core.app/Contents/MacOS/herdr-core");
-        let installed = local.root.join(".local/bin/herdr-core");
+        let source = local.root.join("AgentDeck Core.app/Contents/MacOS/agentdeck-core");
+        let installed = local.root.join(".local/bin/agentdeck-core");
         std::fs::create_dir_all(installed.parent().unwrap()).unwrap();
         let out = local
             .program(&source)
@@ -275,7 +275,7 @@ fn machine_installs_keep_the_complete_bundle_and_both_aliases() {
             .output()
             .unwrap();
         assert!(out.status.success(), "local bundle install: {out:?}");
-        local.bin = installed.with_file_name("hc");
+        local.bin = installed.with_file_name("adk");
         assert!(local.bin.is_symlink());
         local.env.push(("HERDR_RELEASES_URL".into(), r.url.clone()));
         local.env.push(fake_ssh(&local, &[("bare", &remote)]));
@@ -292,16 +292,16 @@ fn machine_installs_keep_the_complete_bundle_and_both_aliases() {
         }
         let added = local.json(&["machine", "add", "bare", "--install"]);
         assert_eq!(added["name"], "bare");
-        let current = remote.root.join(".local/share/herdr-core/current");
+        let current = remote.root.join(".local/share/agentdeck-core/current");
         assert!(current.join("Contents/Info.plist").is_file());
-        let hc = remote.bin.with_file_name("hc");
+        let hc = remote.bin.with_file_name("adk");
         assert_eq!(hc.canonicalize().unwrap(), remote.bin.canonicalize().unwrap());
         local.json(&["machine", "update", "bare"]);
         assert_eq!(hc.canonicalize().unwrap(), remote.bin.canonicalize().unwrap());
         if !cross_arch {
             let bundled = remote.bin.canonicalize().unwrap();
             let before = std::fs::read(&bundled).unwrap();
-            local.bin = local.root.join("herdr-core");
+            local.bin = local.root.join("agentdeck-core");
             let (_, error) = local.err(&["--json", "machine", "update", "bare"]);
             assert_eq!(error["error"]["kind"], "install_failed");
             assert!(error["error"]["message"].as_str().unwrap().contains("complete bundle"), "{error}");
@@ -318,14 +318,14 @@ fn machine_installs_keep_the_complete_bundle_and_both_aliases() {
 fn a_root_remote_gets_the_independently_signed_standalone_release() {
     use std::os::unix::fs::PermissionsExt;
     let mut remote = Session::new();
-    remote.bin = remote.root.join(".local/bin/herdr-core");
+    remote.bin = remote.root.join(".local/bin/agentdeck-core");
     let tools = remote.root.join("fakebin");
     std::fs::create_dir(&tools).unwrap();
     std::fs::write(tools.join("id"), "#!/bin/sh\necho 0\n").unwrap();
     std::fs::set_permissions(tools.join("id"), std::fs::Permissions::from_mode(0o755)).unwrap();
     let mut local = Session::new();
     let r = Releases::new(&local, THIS, &[&here()]);
-    let source = local.root.join("Herdr Core.app/Contents/MacOS/herdr-core");
+    let source = local.root.join("AgentDeck Core.app/Contents/MacOS/agentdeck-core");
     local.bin = local.root.join(".local/bin/hc");
     std::fs::create_dir_all(local.bin.parent().unwrap()).unwrap();
     std::os::unix::fs::symlink(&source, &local.bin).unwrap();
@@ -337,8 +337,8 @@ fn a_root_remote_gets_the_independently_signed_standalone_release() {
             local.json(&["machine", "update", "root"]);
         }
         assert!(!remote.bin.is_symlink());
-        assert!(!remote.root.join(".local/share/herdr-core/current").exists());
-        assert_eq!(remote.bin.with_file_name("hc").canonicalize().unwrap(), remote.bin.canonicalize().unwrap());
+        assert!(!remote.root.join(".local/share/agentdeck-core/current").exists());
+        assert_eq!(remote.bin.with_file_name("adk").canonicalize().unwrap(), remote.bin.canonicalize().unwrap());
         let out = Command::new("/usr/bin/codesign").args(["--verify", "--strict"]).arg(&remote.bin).output().unwrap();
         assert!(out.status.success(), "standalone signature: {out:?}");
     }
@@ -350,17 +350,20 @@ fn a_root_remote_gets_the_independently_signed_standalone_release() {
 fn concurrent_bundle_installers_and_a_self_update_share_one_active_path() {
     let s = Session::new();
     let _r = Releases::new(&s, THIS, &[&here()]);
-    let bin = s.root.join("bin/herdr-core");
+    let bin = s.root.join("bin/agentdeck-core");
     std::fs::create_dir_all(bin.parent().unwrap()).unwrap();
-    let source = s.root.join("Herdr Core.app/Contents/MacOS/herdr-core");
+    let source = s.root.join("AgentDeck Core.app/Contents/MacOS/agentdeck-core");
     let spawn =
         || s.program(source.to_str().unwrap()).arg("--hc-install-bundle").arg(&source).arg(&bin).spawn().unwrap();
     let mut first = spawn();
     let mut second = spawn();
     assert!(first.wait().unwrap().success());
     assert!(second.wait().unwrap().success());
-    let active =
-        s.root.join(".local/share/herdr-core/active/Herdr Core.app/Contents/MacOS/herdr-core").canonicalize().unwrap();
+    let active = s
+        .root
+        .join(".local/share/agentdeck-core/active/AgentDeck Core.app/Contents/MacOS/agentdeck-core")
+        .canonicalize()
+        .unwrap();
     assert_eq!(bin.canonicalize().unwrap(), active);
     // The source may be the same active bundle being replaced. Its copied
     // candidate must be complete before exchanging the live directories.
@@ -383,9 +386,9 @@ fn a_bundle_update_preserves_read_only_aliases_to_the_active_executable() {
     use std::os::unix::fs::{PermissionsExt, symlink};
     let s = Session::new();
     let _r = Releases::new(&s, THIS, &[&here()]);
-    let bin = s.root.join("bin/herdr-core");
+    let bin = s.root.join("bin/agentdeck-core");
     std::fs::create_dir_all(bin.parent().unwrap()).unwrap();
-    let source = s.root.join("Herdr Core.app/Contents/MacOS/herdr-core");
+    let source = s.root.join("AgentDeck Core.app/Contents/MacOS/agentdeck-core");
     let path_bin = s.root.join("path-bin");
     std::fs::create_dir(&path_bin).unwrap();
     let install = |dest: &Path| {
@@ -404,10 +407,10 @@ fn a_bundle_update_preserves_read_only_aliases_to_the_active_executable() {
     let out = install(&active);
     std::fs::set_permissions(bin.parent().unwrap(), std::fs::Permissions::from_mode(0o755)).unwrap();
     assert!(out.status.success(), "already-correct links need no writes: {out:?}");
-    let alias = bin.with_file_name("hc");
+    let alias = bin.with_file_name("adk");
     std::fs::remove_file(&alias).unwrap();
     symlink(&active, &alias).unwrap();
-    let path_alias = path_bin.join("hc");
+    let path_alias = path_bin.join("adk");
     symlink(&alias, &path_alias).unwrap();
     std::fs::set_permissions(bin.parent().unwrap(), std::fs::Permissions::from_mode(0o555)).unwrap();
     std::fs::set_permissions(&path_bin, std::fs::Permissions::from_mode(0o555)).unwrap();
@@ -425,10 +428,10 @@ fn a_bundle_update_preserves_read_only_aliases_to_the_active_executable() {
 fn a_bundle_installer_never_replaces_a_host_application() {
     let s = Session::new();
     let _r = Releases::new(&s, THIS, &[&here()]);
-    let host = s.root.join("Host.app/Contents/MacOS/herdr-core");
+    let host = s.root.join("Host.app/Contents/MacOS/agentdeck-core");
     std::fs::create_dir_all(host.parent().unwrap()).unwrap();
     std::fs::copy(BIN, &host).unwrap();
-    let source = s.root.join("Herdr Core.app/Contents/MacOS/herdr-core");
+    let source = s.root.join("AgentDeck Core.app/Contents/MacOS/agentdeck-core");
     let before = std::fs::read(&host).unwrap();
     let out = s.program(source.to_str().unwrap()).arg("--hc-install-bundle").arg(&source).arg(&host).output().unwrap();
     assert!(!out.status.success());
@@ -443,7 +446,7 @@ fn a_bundle_install_preserves_an_unrelated_hc_symlink() {
     let r = Releases::new(&s, THIS, &[&here()]);
     let bin = s.root.join("bin");
     std::fs::create_dir_all(&bin).unwrap();
-    std::os::unix::fs::symlink("/usr/bin/true", bin.join("hc")).unwrap();
+    std::os::unix::fs::symlink("/usr/bin/true", bin.join("adk")).unwrap();
     let out = s
         .program("sh")
         .arg(format!("{ROOT}/../../distribution/install.sh"))
@@ -452,8 +455,8 @@ fn a_bundle_install_preserves_an_unrelated_hc_symlink() {
         .output()
         .unwrap();
     assert!(out.status.success(), "{out:?}");
-    s.bin = bin.join("herdr-core");
-    assert_eq!(std::fs::read_link(bin.join("hc")).unwrap(), Path::new("/usr/bin/true"));
+    s.bin = bin.join("agentdeck-core");
+    assert_eq!(std::fs::read_link(bin.join("adk")).unwrap(), Path::new("/usr/bin/true"));
 }
 
 #[cfg(target_os = "macos")]
@@ -462,15 +465,15 @@ fn a_bare_development_core_never_downloads_or_migrates_on_startup() {
     let mut s = Session::new();
     let bin = s.root.join(".local/bin");
     std::fs::create_dir_all(&bin).unwrap();
-    std::fs::copy(BIN, bin.join("herdr-core")).unwrap();
-    s.bin = bin.join("herdr-core");
+    std::fs::copy(BIN, bin.join("agentdeck-core")).unwrap();
+    s.bin = bin.join("agentdeck-core");
     s.env.push(("HERDR_RELEASES_URL".into(), format!("file://{}/missing", s.root.display())));
     let pid = s.json(&["server", "status"])["pid"].clone();
     let t = run(&s, &["sh", "-c", "echo no-download"]);
     wait_until("a working bare core", || text(&s, &t).contains("no-download"));
     assert_eq!(s.json(&["server", "status"])["pid"], pid);
     assert!(!s.bin.is_symlink());
-    assert!(!s.root.join(".local/share/herdr-core/Herdr Core.app").exists());
+    assert!(!s.root.join(".local/share/agentdeck-core/AgentDeck Core.app").exists());
 }
 
 #[cfg(target_os = "macos")]
@@ -480,17 +483,17 @@ fn an_explicit_bundle_upgrade_restarts_before_its_first_new_holder() {
     let r = Releases::new(&s, THIS, &[&here()]);
     let bin = s.root.join(".local/bin");
     std::fs::create_dir_all(&bin).unwrap();
-    std::fs::copy(BIN, bin.join("herdr-core")).unwrap();
-    s.bin = bin.join("herdr-core");
+    std::fs::copy(BIN, bin.join("agentdeck-core")).unwrap();
+    s.bin = bin.join("agentdeck-core");
     s.env.push(("HERDR_RELEASES_URL".into(), r.url.clone()));
     let pid = s.json(&["server", "status"])["pid"].clone();
-    s.json(&["update", "--from", s.root.join("Herdr Core.app").to_str().unwrap()]);
+    s.json(&["update", "--from", s.root.join("AgentDeck Core.app").to_str().unwrap()]);
     assert!(s.bin.is_symlink());
     assert_ne!(s.json(&["server", "status"])["pid"], pid);
     // No holder existed before migration: its first spawn must match the new
     // core, not the now-replaced bare executable's inode-based build identity.
     let t = run(&s, &["sh", "-c", "while read l; do echo got-$l; done"]);
-    assert!(s.root.join(".local/share/herdr-core/Herdr Core.app/Contents/Info.plist").is_file());
+    assert!(s.root.join(".local/share/agentdeck-core/AgentDeck Core.app/Contents/Info.plist").is_file());
     s.json(&["server", "restart"]);
     s.json(&["send", &t, "migrated"]);
     wait_until("terminal survives migration and later restart", || text(&s, &t).contains("got-migrated"));
@@ -507,8 +510,8 @@ fn install_script_downloads(s: &Session, url: &str, releases: &str, installed: b
     std::fs::create_dir_all(&stub).unwrap();
     std::fs::create_dir_all(&bin).unwrap();
     if installed {
-        std::fs::write(bin.join("herdr-core"), "#!/bin/sh\n").unwrap();
-        Command::new("chmod").arg("755").arg(bin.join("herdr-core")).status().unwrap();
+        std::fs::write(bin.join("agentdeck-core"), "#!/bin/sh\n").unwrap();
+        Command::new("chmod").arg("755").arg(bin.join("agentdeck-core")).status().unwrap();
     }
     let list = dir.join("latest.json");
     std::fs::write(
@@ -550,7 +553,7 @@ fn install_script_downloads(s: &Session, url: &str, releases: &str, installed: b
 fn the_install_script_marks_only_plain_release_downloads() {
     let s = Session::new();
     let r = "https://releases.example";
-    let tarball = format!("{r}/core/1.0.0/herdr-core-{}.tar.gz", here());
+    let tarball = format!("{r}/core/1.0.0/agentdeck-core-{}.tar.gz", here());
     assert_eq!(install_script_downloads(&s, &tarball, r, false), format!("{tarball}?src=install"));
     assert_eq!(install_script_downloads(&s, &tarball, r, true), format!("{tarball}?src=update"));
     for url in [
@@ -570,8 +573,8 @@ fn hc_update_downloads_checks_and_swaps() {
     let r = Releases::new(&s, NEWER, &[&here()]);
     let dir = s.root.join("bin");
     std::fs::create_dir_all(&dir).unwrap();
-    std::fs::copy(BIN, dir.join("herdr-core")).unwrap();
-    s.bin = dir.join("herdr-core");
+    std::fs::copy(BIN, dir.join("agentdeck-core")).unwrap();
+    s.bin = dir.join("agentdeck-core");
     s.env.push(("HERDR_RELEASES_URL".into(), r.url.clone()));
     let pid = s.json(&["server", "status"])["pid"].clone();
 
@@ -579,7 +582,7 @@ fn hc_update_downloads_checks_and_swaps() {
     assert_eq!((up["restarted"].as_bool(), up["release"].as_str()), (Some(true), Some(NEWER)), "{up}");
     assert_ne!(s.json(&["server", "status"])["pid"], pid);
 
-    let tar = r.root.join(format!("core/{NEWER}/herdr-core-{}.tar.gz", here()));
+    let tar = r.root.join(format!("core/{NEWER}/agentdeck-core-{}.tar.gz", here()));
     std::fs::write(&tar, b"not what the list says").unwrap();
     let (_, e) = s.err(&["--json", "update"]);
     assert_eq!(e["error"]["kind"], "refused", "a damaged download changes nothing: {e}");
@@ -592,8 +595,8 @@ fn hc_update_to_a_version_takes_at_least_that_one() {
     let r = Releases::new(&s, NEWER, &[&here()]);
     let dir = s.root.join("bin");
     std::fs::create_dir_all(&dir).unwrap();
-    std::fs::copy(BIN, dir.join("herdr-core")).unwrap();
-    s.bin = dir.join("herdr-core");
+    std::fs::copy(BIN, dir.join("agentdeck-core")).unwrap();
+    s.bin = dir.join("agentdeck-core");
     s.env.push(("HERDR_RELEASES_URL".into(), r.url.clone()));
     s.json(&["server", "status"]);
 
@@ -618,8 +621,8 @@ fn hc_update_never_takes_a_release_of_another_generation() {
     std::fs::write(&latest, breaking).unwrap();
     let dir = s.root.join("bin");
     std::fs::create_dir_all(&dir).unwrap();
-    std::fs::copy(BIN, dir.join("herdr-core")).unwrap(); // never the build under test
-    s.bin = dir.join("herdr-core");
+    std::fs::copy(BIN, dir.join("agentdeck-core")).unwrap(); // never the build under test
+    s.bin = dir.join("agentdeck-core");
     s.env.push(("HERDR_RELEASES_URL".into(), r.url.clone()));
     let (_, e) = s.err(&["--json", "update"]);
     assert_eq!(e["error"]["kind"], "refused", "apps built for this generation must keep working: {e}");
@@ -630,7 +633,7 @@ fn hc_update_never_takes_a_release_of_another_generation() {
 #[test]
 fn a_machine_of_another_cpu_gets_the_released_build_for_it() {
     let mut odd = Session::new();
-    odd.bin = odd.root.join("bin/herdr-core"); // no hc there yet
+    odd.bin = odd.root.join("bin/agentdeck-core"); // no hc there yet
     std::fs::create_dir_all(odd.root.join("fakebin")).unwrap();
     let other = if std::env::consts::ARCH == "aarch64" { "x86_64" } else { "aarch64" };
     let os = if std::env::consts::OS == "macos" { "Darwin" } else { "Linux" };
@@ -648,15 +651,15 @@ fn a_machine_of_another_cpu_gets_the_released_build_for_it() {
     wait_until("the offer", || text(&s, &t).contains("[Y/n]"));
     s.json(&["send", &t, "y"]);
     wait_until("added", || text(&s, &t).contains("added-0"));
-    assert!(odd.root.join(".local/bin/herdr-core").is_file());
-    odd.bin = odd.root.join(".local/bin/herdr-core");
+    assert!(odd.root.join(".local/bin/agentdeck-core").is_file());
+    odd.bin = odd.root.join(".local/bin/agentdeck-core");
     drop(r);
 }
 
 #[test]
 fn another_cpu_without_a_release_server_is_refused() {
     let mut odd = Session::new();
-    odd.bin = odd.root.join("bin/herdr-core"); // no hc there yet
+    odd.bin = odd.root.join("bin/agentdeck-core"); // no hc there yet
     std::fs::create_dir_all(odd.root.join("fakebin")).unwrap();
     let other = if std::env::consts::ARCH == "aarch64" { "x86_64" } else { "aarch64" };
     let os = if std::env::consts::OS == "macos" { "Darwin" } else { "Linux" };
@@ -670,8 +673,8 @@ fn another_cpu_without_a_release_server_is_refused() {
     s.json(&["server", "start"]);
     let (_, error) = s.err(&["machine", "add", "odd", "--install"]);
     assert_eq!(error["error"]["kind"], "unavailable", "{error}");
-    assert!(!odd.root.join(".local/bin/herdr-core").exists(), "nothing installed there");
-    assert!(!odd.root.join(".local/share/herdr-core").exists(), "nothing half-installed there");
+    assert!(!odd.root.join(".local/bin/agentdeck-core").exists(), "nothing installed there");
+    assert!(!odd.root.join(".local/share/agentdeck-core").exists(), "nothing half-installed there");
 }
 
 #[test]

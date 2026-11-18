@@ -474,7 +474,7 @@ mod tests {
     #[test]
     fn a_service_keeps_the_callers_paths_but_not_its_ssh_login() {
         let ssh = super::service_env(map(&[
-            ("HC_SESSION", "dev"),
+            (crate::brand::SESSION_VAR, "dev"),
             ("PATH", "/home/u/.local/bin"),
             ("SSH_CONNECTION", "100.1.1.1 1 100.2.2.2 22"),
             ("SSH_AUTH_SOCK", "/tmp/ssh-x/agent.1"),
@@ -482,7 +482,7 @@ mod tests {
             ("RUNTIME_DIRECTORY", "/run/user/1/hc-serve-12345678"),
             ("BASH_FUNC_f%%", "() { :; }"),
         ]));
-        assert_eq!(ssh.keys().collect::<Vec<_>>(), ["HC_SESSION", "PATH"]);
+        assert_eq!(ssh.keys().collect::<Vec<_>>(), [crate::brand::SESSION_VAR, "PATH"]);
         let desktop = super::service_env(map(&[("DISPLAY", ":0"), ("PATH", "/usr/bin")]));
         assert!(desktop.contains_key("DISPLAY"), "a desktop that doesn't tell systemd keeps its display");
     }

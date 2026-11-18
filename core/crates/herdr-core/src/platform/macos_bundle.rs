@@ -4,15 +4,13 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-pub const EXECUTABLE: &str = "Contents/MacOS/herdr-core";
-const REQUIREMENT: &str =
-    "=identifier \"dev.herdr.core\" and anchor apple generic and certificate leaf[subject.OU] = \"2W9652Q7QR\"";
+pub const EXECUTABLE: &str = "Contents/MacOS/agentdeck-core";
 const LSREGISTER: &str =
     "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister";
 
 fn bundle(exe: &Path) -> Option<&Path> {
     let root = exe.parent()?.parent()?.parent()?;
-    let named = matches!(root.file_name()?.to_str()?, "Herdr Core.app" | "AgentDeck Core.app");
+    let named = root.file_name()? == crate::brand::BUNDLE_NAME;
     (exe.strip_prefix(root).ok()? == Path::new(EXECUTABLE) && named).then_some(root)
 }
 
@@ -25,24 +23,17 @@ fn checked(program: &str, args: &[&std::ffi::OsStr]) -> io::Result<()> {
     }
 }
 
-pub fn verify(path: &Path, local: bool) -> io::Result<()> {
-    let verify = |requirement: &str| {
-        checked(
+/// Our cores are signed ad hoc with our identifier; another signature is never ours.
+pub fn verify(path: &Path, _local: bool) -> io::Result<()> {
+    let out = Command::new("/usr/bin/codesign").arg("-dv").arg(path).output()?;
+    if String::from_utf8_lossy(&out.stderr).lines().any(|line| line == "Signature=adhoc") {
+        let requirement = format!("=identifier \"{}\"", crate::brand::BUNDLE_ID);
+        return checked(
             "/usr/bin/codesign",
             &["--verify".as_ref(), "--strict".as_ref(), "-R".as_ref(), requirement.as_ref(), path.as_os_str()],
-        )
-    };
-    if verify(REQUIREMENT).is_ok() {
-        return Ok(());
+        );
     }
-    // Explicit local builds can be ad-hoc, but another team's signature is never ours.
-    if local {
-        let out = Command::new("/usr/bin/codesign").arg("-dv").arg(path).output()?;
-        if String::from_utf8_lossy(&out.stderr).lines().any(|line| line == "Signature=adhoc") {
-            return verify("=identifier \"dev.herdr.core\"");
-        }
-    }
-    Err(io::Error::other("expected Herdr's Developer ID signature (dev.herdr.core, team 2W9652Q7QR)"))
+    Err(io::Error::other(format!("expected an AgentDeck core build ({}, signed ad hoc)", crate::brand::BUNDLE_ID)))
 }
 
 struct Link {
@@ -177,7 +168,7 @@ fn activate(staged: &Path, active: &Path) -> io::Result<()> {
 /// reachable after an atomic rename into retained storage.
 pub fn install(source: &Path, dest: &Path, works: impl Fn(&Path) -> bool) -> io::Result<()> {
     if unsafe { libc::geteuid() } == 0 {
-        return Err(io::Error::other("install Herdr Core as your user, not with sudo"));
+        return Err(io::Error::other("install AgentDeck Core as your user, not with sudo"));
     }
     if dest.exists()
         && let Some(manager) = crate::client::installed_by_path(dest)
@@ -201,7 +192,7 @@ pub fn install(source: &Path, dest: &Path, works: impl Fn(&Path) -> bool) -> io:
     let base = if let Some(root) = bundle(dest) {
         base_directory(root).to_path_buf()
     } else {
-        home.join(".local/share/herdr-core")
+        home.join(".local/share/agentdeck-core")
     };
     std::fs::create_dir_all(&base)?;
     let base = base.canonicalize()?;
@@ -211,9 +202,9 @@ pub fn install(source: &Path, dest: &Path, works: impl Fn(&Path) -> bool) -> io:
     }
     let versions = base.join("versions");
     let current = base.join("current");
-    let legacy = base.join("Herdr Core.app");
+    let legacy = base.join("AgentDeck Core.app");
     std::fs::create_dir_all(&versions)?;
-    let active = base.join("active/Herdr Core.app");
+    let active = base.join("active/AgentDeck Core.app");
     std::fs::create_dir_all(active.parent().unwrap())?;
     // Keep the installed version even when no core is running. An unreadable
     // process means nothing is reclaimed, rather than risking a live bundle.
@@ -239,10 +230,10 @@ pub fn install(source: &Path, dest: &Path, works: impl Fn(&Path) -> bool) -> io:
     let mut entries = Vec::new();
     if bundle(dest).is_none() {
         entries.push(dest.to_path_buf());
-        let hc = dest.with_file_name("hc");
+        let hc = dest.with_file_name(crate::brand::CLI);
         let ours = hc.canonicalize().ok().is_some_and(|p| dest.canonicalize().ok().as_ref() == Some(&p));
-        let on_path =
-            std::env::var_os("PATH").is_some_and(|p| std::env::split_paths(&p).any(|d| d.join("hc").exists()));
+        let on_path = std::env::var_os("PATH")
+            .is_some_and(|p| std::env::split_paths(&p).any(|d| d.join(crate::brand::CLI).exists()));
         if ours || (hc.symlink_metadata().is_err() && !on_path) {
             entries.push(hc);
         }
@@ -256,7 +247,7 @@ pub fn install(source: &Path, dest: &Path, works: impl Fn(&Path) -> bool) -> io:
             dirs.extend(std::env::split_paths(&path));
         }
         for dir in dirs {
-            for name in ["herdr-core", "hc"] {
+            for name in [crate::brand::EXE, crate::brand::CLI] {
                 let entry = dir.join(name);
                 if entry.is_symlink() && entry.canonicalize().ok().as_deref() == Some(dest) && !entries.contains(&entry)
                 {
@@ -267,7 +258,7 @@ pub fn install(source: &Path, dest: &Path, works: impl Fn(&Path) -> bool) -> io:
     }
     let slot = versions.join(super::random_hex());
     std::fs::create_dir(&slot)?;
-    let staged = slot.join("Herdr Core.app");
+    let staged = slot.join("AgentDeck Core.app");
     let mut activated = false;
     let result = (|| {
         checked("/usr/bin/ditto", &[source.as_os_str(), staged.as_os_str()])?;
@@ -307,7 +298,7 @@ pub fn install(source: &Path, dest: &Path, works: impl Fn(&Path) -> bool) -> io:
         let _ = std::fs::remove_dir_all(slot);
     }
     // LaunchServices doesn't find apps in hidden folders by itself. Unknown to
-    // it, the first Local Network prompt names `herdr-core` with Apple's generic text.
+    // it, the first Local Network prompt names `agentdeck-core` with Apple's generic text.
     if result.is_ok() {
         let _ = Command::new(LSREGISTER).arg("-f").arg(&active).output();
     }
@@ -364,7 +355,7 @@ fn legacy_notice_once(state: &Path, out: &mut impl std::io::Write) {
     if super::private_dir(state).is_ok()
         && std::fs::OpenOptions::new().write(true).create_new(true).open(state.join("bundle-upgrade-notice")).is_ok()
     {
-        let _ = writeln!(out, "hc: run hc update to finish installing Herdr Core");
+        let _ = writeln!(out, "hc: run hc update to finish installing AgentDeck Core");
     }
 }
 
@@ -382,7 +373,7 @@ mod tests {
         let mut out = Vec::new();
         legacy_notice_once(&state, &mut out);
         legacy_notice_once(&state, &mut out);
-        assert_eq!(out, b"hc: run hc update to finish installing Herdr Core\n");
+        assert_eq!(out, b"hc: run hc update to finish installing AgentDeck Core\n");
         assert!(state.join("bundle-upgrade-notice").is_file());
         std::fs::remove_dir_all(root).unwrap();
     }
@@ -390,19 +381,19 @@ mod tests {
     #[test]
     fn only_the_exact_bundle_executable_has_a_bundle_root() {
         assert_eq!(
-            bundle(Path::new("/share/Herdr Core.app/Contents/MacOS/herdr-core")),
-            Some(Path::new("/share/Herdr Core.app"))
+            bundle(Path::new("/share/AgentDeck Core.app/Contents/MacOS/agentdeck-core")),
+            Some(Path::new("/share/AgentDeck Core.app"))
         );
         // AgentDeck's own core bundle, inside AgentDeck.app.
         assert_eq!(
-            bundle(Path::new("/A/AgentDeck.app/Contents/Helpers/AgentDeck Core.app/Contents/MacOS/herdr-core")),
+            bundle(Path::new("/A/AgentDeck.app/Contents/Helpers/AgentDeck Core.app/Contents/MacOS/agentdeck-core")),
             Some(Path::new("/A/AgentDeck.app/Contents/Helpers/AgentDeck Core.app"))
         );
         for path in [
-            "/bin/herdr-core",
-            "/x.app/Contents/MacOS/herdr-core",
-            "/x/Contents/MacOS/herdr-core",
-            "/Herdr Core.app/Contents/MacOS/hc",
+            "/bin/agentdeck-core",
+            "/x.app/Contents/MacOS/agentdeck-core",
+            "/x/Contents/MacOS/agentdeck-core",
+            "/AgentDeck Core.app/Contents/MacOS/adk",
         ] {
             assert!(bundle(Path::new(path)).is_none(), "{path}");
         }
@@ -432,9 +423,9 @@ mod tests {
     #[test]
     fn bundle_base_is_shared_by_active_retained_and_legacy_paths() {
         for path in [
-            "/share/core/active/Herdr Core.app",
-            "/share/core/versions/123/Herdr Core.app",
-            "/share/core/Herdr Core.app",
+            "/share/core/active/AgentDeck Core.app",
+            "/share/core/versions/123/AgentDeck Core.app",
+            "/share/core/AgentDeck Core.app",
         ] {
             assert_eq!(base_directory(Path::new(path)), Path::new("/share/core"));
         }
@@ -444,15 +435,15 @@ mod tests {
     fn atomic_activation_preserves_old_inodes_and_recovers_interrupted_slots() {
         use std::os::unix::fs::MetadataExt;
         let root = std::env::temp_dir().join(format!("hc-activation-{}", super::super::random_hex()));
-        let active = root.join("active/Herdr Core.app");
+        let active = root.join("active/AgentDeck Core.app");
         let versions = root.join("versions");
-        let first = versions.join("first/Herdr Core.app");
+        let first = versions.join("first/AgentDeck Core.app");
         std::fs::create_dir_all(&first).unwrap();
         std::fs::create_dir_all(active.parent().unwrap()).unwrap();
         std::fs::write(first.join("image"), "A").unwrap();
         activate(&first, &active).unwrap();
         let inode = std::fs::metadata(active.join("image")).unwrap().ino();
-        let second = versions.join("second/Herdr Core.app");
+        let second = versions.join("second/AgentDeck Core.app");
         std::fs::create_dir_all(&second).unwrap();
         std::fs::write(second.join("image"), "B").unwrap();
         activate(&second, &active).unwrap();
@@ -475,10 +466,10 @@ mod tests {
     #[test]
     fn reclaim_keeps_live_bundles_and_removes_unused_ones() {
         let root = std::env::temp_dir().join(format!("hc-previous-{}", super::super::random_hex()));
-        let active = root.join("active/Herdr Core.app/Contents/MacOS");
+        let active = root.join("active/AgentDeck Core.app/Contents/MacOS");
         std::fs::create_dir_all(&active).unwrap();
-        std::fs::create_dir_all(root.join("unused/Herdr Core.app")).unwrap();
-        reclaim(&root, Ok(vec![active.join("herdr-core")])).unwrap();
+        std::fs::create_dir_all(root.join("unused/AgentDeck Core.app")).unwrap();
+        reclaim(&root, Ok(vec![active.join("agentdeck-core")])).unwrap();
         assert!(active.exists());
         assert!(!root.join("unused").exists());
         std::fs::remove_dir_all(root).unwrap();

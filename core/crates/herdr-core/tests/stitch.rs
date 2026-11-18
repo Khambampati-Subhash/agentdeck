@@ -11,7 +11,7 @@ use serde_json::{Value, json};
 fn session_with_limit(ms: &str) -> Session {
     let mut s = Session::new();
     s.env.push(("HC_STITCH_MS".into(), ms.into()));
-    let config = s.root.join("config/herdr-core/config.toml");
+    let config = s.root.join("config/agentdeck-core/config.toml");
     std::fs::create_dir_all(config.parent().unwrap()).unwrap();
     std::fs::write(config, "headless = \"40x12\"\n").unwrap();
     s
@@ -90,7 +90,7 @@ fn pinned_headers_scrollbars_loading_frames_and_synchronized_output() {
 #[test]
 fn repainting_blocked_and_error_prompts_are_read_without_scrolling() {
     let s = session_with_limit("15000");
-    std::fs::write(s.root.join("config/herdr-core/config.toml"), "headless = \"200x120\"\n").unwrap();
+    std::fs::write(s.root.join("config/agentdeck-core/config.toml"), "headless = \"200x120\"\n").unwrap();
     for state in ["blocked", "error"] {
         let flag = format!("--{state}");
         let t = app(&s, &["--lines", "10", "--blink", "600", "--fixed", &flag]);

@@ -80,7 +80,7 @@ fn a_shell_that_execs_an_agent_keeps_its_status() {
 fn a_template_command_wrapper_keeps_live_status() {
     let mut s = Session::new();
     s.env.push(("HC_FOREGROUND_MS".into(), "50".into()));
-    let templates = s.root.join("config/herdr-core/templates");
+    let templates = s.root.join("config/agentdeck-core/templates");
     std::fs::create_dir_all(&templates).unwrap();
     std::fs::write(
         templates.join("agent.md"),

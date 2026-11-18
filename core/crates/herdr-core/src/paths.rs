@@ -5,7 +5,7 @@ use crate::rpc::RpcError;
 use std::io;
 use std::path::{Path, PathBuf};
 
-/// Where one core keeps its socket and state. `HC_SESSION` names an isolated core.
+/// Where one core keeps its socket and state. `ADK_SESSION` names an isolated core.
 pub struct Paths {
     pub socket: PathBuf,
     pub holder_socket: PathBuf,
@@ -15,17 +15,17 @@ pub struct Paths {
 
 impl Paths {
     pub fn from_env() -> Result<Paths, RpcError> {
-        let session = session(std::env::var("HC_SESSION").ok())?;
+        let session = session(std::env::var(crate::brand::SESSION_VAR).ok())?;
         let xdg = |var: &str, fallback: PathBuf| {
             std::env::var_os(var).filter(|v| !v.is_empty()).map_or(fallback, PathBuf::from)
         };
         let (state_home, config_home) = crate::platform::data_dirs();
-        let state = xdg("XDG_STATE_HOME", state_home).join("herdr-core").join(&session);
-        let config = xdg("XDG_CONFIG_HOME", config_home).join("herdr-core").join("config.toml");
+        let state = xdg("XDG_STATE_HOME", state_home).join(crate::brand::STATE_DIR).join(&session);
+        let config = xdg("XDG_CONFIG_HOME", config_home).join(crate::brand::DIR).join("config.toml");
         // Where sockets go (Windows: the named pipe namespace), and their name prefix.
         let (run, prefix) = crate::platform::endpoints(&state);
-        // HC_SOCKET, else `socket` in config, else the runtime dir. The holder sits beside it.
-        let chosen = std::env::var_os("HC_SOCKET")
+        // ADK_SOCKET, else `socket` in config, else the runtime dir. The holder sits beside it.
+        let chosen = std::env::var_os(crate::brand::SOCKET_VAR)
             .filter(|v| !v.is_empty())
             .map(PathBuf::from)
             .or_else(|| crate::config::load(&config).ok()?.socket.map(PathBuf::from));
@@ -42,7 +42,7 @@ impl Paths {
                 format!(
                     "the socket path for session {session:?} is too long here ({longest} bytes; this system allows {max})"
                 ),
-                "use a shorter HC_SESSION (or socket in the config)",
+                format!("use a shorter {} (or socket in the config)", crate::brand::SESSION_VAR),
             ));
         }
         Ok(Paths { socket, holder_socket, config, state })
@@ -85,7 +85,7 @@ fn session(raw: Option<String>) -> Result<String, RpcError> {
     if name == "." || name == ".." || name.chars().any(|c| c.is_control() || r#"/\:*?"<>|"#.contains(c)) {
         return Err(RpcError::new(
             "usage",
-            format!("HC_SESSION {name:?} can't be a folder name"),
+            format!("{} {name:?} can't be a folder name", crate::brand::SESSION_VAR),
             "use letters, digits, - _ .",
         ));
     }
@@ -118,5 +118,11 @@ mod tests {
         for bad in ["a/b", r"a\b", "a:b", "..", "a\tb"] {
             assert_eq!(s(Some(bad)), None, "{bad:?}");
         }
+    }
+
+    #[test]
+    fn a_bad_session_names_adk_session() {
+        let err = super::session(Some("a/b".into())).err().unwrap();
+        assert!(err.message.contains("ADK_SESSION"), "{}", err.message);
     }
 }

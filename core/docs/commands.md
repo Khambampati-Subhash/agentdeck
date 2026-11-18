@@ -56,7 +56,7 @@ kill, rm, wait and interrupt pick one when it's left out.
 Options: --json (default when piped; run and read print text), -V --version,
 --licenses (what hc includes, and their licenses).
 Per command: hc <command> --help
-Settings: ~/.config/herdr-core/config.toml. notes = false: hc types nothing
+Settings: ~/.config/agentdeck-core/config.toml. notes = false: hc types nothing
 on its own (no notes to parent agents, no <hc> tags on messages).
 shell = ["nu"] overrides the shell for new terminals and keep recovery.
 draft_wait = 60: seconds a draft holds sends and notes after your last key;
@@ -602,7 +602,7 @@ Options:
 ## hc templates
 
 ```text
-Templates you can run by name (~/.config/herdr-core/templates)
+Templates you can run by name (~/.config/agentdeck-core/templates)
 
 Usage: hc templates [OPTIONS]
 
@@ -619,7 +619,7 @@ Swap this hc for another build and restart (terminals keep running)
 Usage: hc update [OPTIONS]
 
 Options:
-      --from <FILE>      A herdr-core binary to use (default: download the latest release)
+      --from <FILE>      A agentdeck-core binary to use (default: download the latest release)
       --json             JSON output even in a terminal
       --version <X.Y.Z>  At least this release (`0.1.4`): nothing changes when this hc is already that or newer
       --force            Allow an older version (saved state only moves forward), or a release of another protocol generation

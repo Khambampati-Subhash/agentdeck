@@ -21,7 +21,7 @@ struct Fault {
 
 impl Fault {
     fn new(s: &Session, fail_handshake: bool) -> Self {
-        let dir = s.root.join("run/herdr-core");
+        let dir = s.root.join("run/adk");
         let path = std::fs::read_dir(dir)
             .unwrap()
             .flatten()

@@ -9,7 +9,7 @@ use serde_json::json;
 use std::time::{Duration, Instant};
 
 #[test]
-#[ignore = "set HC_OLD_CORE to the released 0.1.16 herdr-core binary"]
+#[ignore = "set HC_OLD_CORE to the released 0.1.16 agentdeck-core binary"]
 fn capable_stream_closes_if_the_remote_is_downgraded_on_reconnect() {
     let mut far = Session::new();
     let t = run(&far, &["sleep", "100"]);
@@ -79,7 +79,7 @@ fn fallback(s: &Session, terminal: &str, leader: &mut Viewer) {
 }
 
 #[test]
-#[ignore = "set HC_OLD_CORE to the released 0.1.16 herdr-core binary"]
+#[ignore = "set HC_OLD_CORE to the released 0.1.16 agentdeck-core binary"]
 fn mixed_version_observers_fall_back_without_replacement_paints() {
     let old = std::env::var("HC_OLD_CORE").expect("HC_OLD_CORE");
     // New local -> old owner.

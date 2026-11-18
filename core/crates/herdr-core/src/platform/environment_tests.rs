@@ -6,30 +6,30 @@ fn a_restart_restores_settings_without_reusing_paths_or_lifecycle_marks() {
         ("PATH", "saved-path"),
         ("HC_VALUE", "saved"),
         ("HOME", "old-home"),
-        ("HC_SESSION", "old-session"),
+        (crate::brand::SESSION_VAR, "old-session"),
         ("HC_SCOPE", "old-sweep"),
         ("HC_RUNTIME", "old-runtime"),
         ("HC_LAUNCHD_DIRECT", "old-bypass"),
         ("INVOCATION_ID", "old-service"),
-        ("HC_SOCKET", "old-socket"),
+        (crate::brand::SOCKET_VAR, "old-socket"),
     ]);
     let current = pairs(&[
         ("PATH", "caller-path"),
         ("HC_CALLER_ONLY", "must-not-leak"),
         ("HOME", "new-home"),
-        ("HC_SESSION", "new-session"),
+        (crate::brand::SESSION_VAR, "new-session"),
         ("HC_SCOPE", "caller-sweep"),
         ("HC_LAUNCHD_DETACH", "caller-bypass"),
         ("INVOCATION_ID", "new-service"),
-        ("HC_SOCKET", "new-socket"),
+        (crate::brand::SOCKET_VAR, "new-socket"),
     ]);
     let env = super::restored_environment(saved, current, false);
     for (key, value) in [
         ("PATH", "saved-path"),
         ("HC_VALUE", "saved"),
         ("HOME", "new-home"),
-        ("HC_SESSION", "new-session"),
-        ("HC_SOCKET", "new-socket"),
+        (crate::brand::SESSION_VAR, "new-session"),
+        (crate::brand::SOCKET_VAR, "new-socket"),
         ("HC_RUNTIME", "1"),
     ] {
         assert_eq!(env.get(std::ffi::OsStr::new(key)), Some(&std::ffi::OsString::from(value)));

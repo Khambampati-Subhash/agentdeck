@@ -215,8 +215,11 @@ pub(crate) fn terminal_env(
     cwd: &str,
     mut env: BTreeMap<String, String>,
 ) -> (BTreeMap<String, String>, String) {
-    env.insert("HC_TERMINAL_ID".into(), crate::terminals::address(id));
-    env.insert("HC_TERMINAL_SOCKET".into(), core.paths.socket.display().to_string());
+    use crate::brand::{COMPAT_TERMINAL_ID_VAR, TERMINAL_ID_VAR, TERMINAL_SOCKET_VAR};
+    env.insert(TERMINAL_ID_VAR.into(), crate::terminals::address(id));
+    // OSC 7501 reporters written for Herdr look for this one before reporting.
+    env.insert(COMPAT_TERMINAL_ID_VAR.into(), crate::terminals::address(id));
+    env.insert(TERMINAL_SOCKET_VAR.into(), core.paths.socket.display().to_string());
     let scope = crate::sweep::token();
     env.insert(crate::sweep::VAR.into(), scope.clone());
     // Preserve the requested spelling, including symlinks.
@@ -230,15 +233,16 @@ pub(crate) fn child_env(base: BTreeMap<String, String>, extra: BTreeMap<String, 
         .into_iter()
         .filter(|(k, _)| {
             !IDENTITY_VARS.contains(&k.as_str())
-                && !["HC_TERMINAL_ID", crate::sweep::VAR, crate::sweep::RUNTIME].contains(&k.as_str())
+                && !crate::brand::NOT_INHERITED.contains(&k.as_str())
+                && ![crate::sweep::VAR, crate::sweep::RUNTIME].contains(&k.as_str())
         })
         .collect();
     env.insert("TERM".into(), "xterm-256color".into());
     env.insert("COLORTERM".into(), "truecolor".into());
     env.insert("TERM_PROGRAM".into(), "ghostty".into());
     crate::platform::merge_env(&mut env, extra);
-    if let Ok(session) = std::env::var("HC_SESSION") {
-        env.insert("HC_SESSION".into(), session);
+    if let Ok(session) = std::env::var(crate::brand::SESSION_VAR) {
+        env.insert(crate::brand::SESSION_VAR.into(), session);
     }
     if let Some(lang) = crate::locale::for_programs(&env) {
         env.insert("LANG".into(), lang); // a core started from Finder has none

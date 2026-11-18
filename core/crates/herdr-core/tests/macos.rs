@@ -38,7 +38,7 @@ fn independent(s: &Session, pid: i64) -> bool {
     if coalition(pid) != coalition(std::process::id() as i64) {
         return true;
     }
-    let log = std::fs::read_to_string(s.root.join("state/herdr-core/test/core.log")).unwrap_or_default();
+    let log = std::fs::read_to_string(s.root.join("state/adk/test/core.log")).unwrap_or_default();
     if log.contains("launchctl bootstrap")
         && ["Operation not permitted", "Not privileged", "Permission denied"].iter().any(|error| log.contains(error))
     {
@@ -53,8 +53,12 @@ fn executable_has_bound_core_identity_and_usage_descriptions() {
     let output = Command::new("/usr/bin/otool").args(["-P", BIN]).output().unwrap();
     assert!(output.status.success(), "{output:?}");
     let plist = String::from_utf8(output.stdout).unwrap();
-    for value in ["dev.herdr.core", "AgentDeck Core", "NSLocalNetworkUsageDescription", "NSAppleEventsUsageDescription"]
-    {
+    for value in [
+        "io.github.khambampati-subhash.agentdeck.core",
+        "AgentDeck Core",
+        "NSLocalNetworkUsageDescription",
+        "NSAppleEventsUsageDescription",
+    ] {
         assert!(plist.contains(value), "{plist}");
     }
     assert!(!plist.contains("@VERSION@"), "{plist}");
@@ -77,11 +81,12 @@ fn launchd_core_and_program_survive_the_launcher_and_leave_no_job() {
     if !independent(&s, core) {
         return;
     }
-    let meta = std::fs::metadata(s.root.join("state/herdr-core/test/core.log")).unwrap();
+    let meta = std::fs::metadata(s.root.join("state/adk/test/core.log")).unwrap();
     assert_eq!(meta.uid(), unsafe { libc::getuid() }, "first log belongs to the caller");
     let jobs = Command::new("/bin/launchctl").arg("list").output().unwrap();
     assert!(
-        !String::from_utf8_lossy(&jobs.stdout).contains(&format!("dev.herdr.core.{launcher}.")),
+        !String::from_utf8_lossy(&jobs.stdout)
+            .contains(&format!("io.github.khambampati-subhash.agentdeck.core.{launcher}.")),
         "one-shot job removed"
     );
 
@@ -119,7 +124,7 @@ fn launchd_core_registers_the_host_shutdown_watch() {
     if !independent(&s, core) {
         return;
     }
-    let log = std::fs::read_to_string(s.root.join("state/herdr-core/test/core.log")).unwrap();
+    let log = std::fs::read_to_string(s.root.join("state/adk/test/core.log")).unwrap();
     assert!(!log.contains("cannot watch host shutdown"), "{log}");
 }
 
@@ -278,7 +283,7 @@ fn ssh_starts_directly_without_an_app_lifetime_warning() {
     s.env.push(("SSH_CONNECTION".into(), "test".into()));
     let pid = s.json(&["server", "status"])["pid"].as_i64().unwrap();
     assert_eq!(coalition(pid), coalition(std::process::id() as i64));
-    let log = std::fs::read_to_string(s.root.join("state/herdr-core/test/core.log")).unwrap();
+    let log = std::fs::read_to_string(s.root.join("state/adk/test/core.log")).unwrap();
     assert!(!log.contains("launchd startup failed"), "{log}");
 }
 
@@ -291,7 +296,7 @@ fn launchd_failure_logs_once_and_preserves_direct_start() {
     assert!(out.status.success(), "{out:?}");
     let status: Value = serde_json::from_slice(&out.stdout).unwrap();
     assert_eq!(coalition(status["pid"].as_i64().unwrap()), coalition(std::process::id() as i64));
-    let log = std::fs::read_to_string(s.root.join("state/herdr-core/test/core.log")).unwrap();
+    let log = std::fs::read_to_string(s.root.join("state/adk/test/core.log")).unwrap();
     assert_eq!(log.matches("launchd startup failed; starting directly").count(), 1, "{log}");
     assert!(log.contains("XML control character"), "{log}");
 }
@@ -306,7 +311,7 @@ fn an_old_core_hands_over_to_an_independent_fixed_core() {
         return;
     };
     let mut s = Session::new();
-    let bin = s.root.join("herdr-core");
+    let bin = s.root.join("agentdeck-core");
     std::fs::copy(&old, &bin).unwrap();
     s.bin = bin;
     let id = run(&s, &["sh", "-c", "echo before; while read line; do echo got-$line; done"]);

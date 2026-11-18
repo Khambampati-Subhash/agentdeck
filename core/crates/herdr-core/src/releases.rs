@@ -94,22 +94,22 @@ fn sha256(file: &Path) -> Option<String> {
 }
 
 /// Downloads `m`'s build for `target` (`linux-x86_64`) into `scratch`,
-/// checks it against the list, unpacks it: the path of its herdr-core.
+/// checks it against the list, unpacks it: the path of its agentdeck-core.
 /// Windows builds are a zip (the exe and its ConPTY); Windows' own tar
 /// unpacks it.
 pub fn download(m: &Manifest, target: &str, scratch: &Path, bundle: bool) -> Result<PathBuf, RpcError> {
     let tar = fetch(m, target, scratch)?;
-    let exe = if target.starts_with("windows") { "herdr-core.exe" } else { "herdr-core" };
+    let exe = if target.starts_with("windows") { "agentdeck-core.exe" } else { "agentdeck-core" };
     let ok =
         Command::new(tar_program()).arg("-xf").arg(&tar).arg("-C").arg(scratch).status().is_ok_and(|s| s.success());
     // Root executable remains in macOS archives for old updaters. New ones
     // carry the entire signed bundle through installation instead.
-    let bundled = scratch.join("Herdr Core.app/Contents/MacOS/herdr-core");
+    let bundled = scratch.join("AgentDeck Core.app/Contents/MacOS/agentdeck-core");
     let bin = if bundle && target.starts_with("macos-") && bundled.is_file() { bundled } else { scratch.join(exe) };
     if !ok || !bin.is_file() {
         return Err(RpcError::new(
             "refused",
-            format!("hc {}'s download for {target} holds no herdr-core", m.version),
+            format!("hc {}'s download for {target} holds no agentdeck-core", m.version),
             "",
         ));
     }
@@ -125,7 +125,7 @@ pub fn fetch(m: &Manifest, target: &str, scratch: &Path) -> Result<PathBuf, RpcE
         RpcError::new("refused", format!("hc {} has no build for {target}", m.version), "install hc there yourself")
     })?;
     let archive = if target.starts_with("windows") { "zip" } else { "tar.gz" };
-    let file = scratch.join(format!("herdr-core-{target}.{archive}"));
+    let file = scratch.join(format!("agentdeck-core-{target}.{archive}"));
     curl(&t.url, &file)?;
     if sha256(&file).as_deref() != Some(t.sha256.as_str()) {
         return Err(RpcError::new(

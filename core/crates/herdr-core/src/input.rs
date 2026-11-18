@@ -258,7 +258,7 @@ impl Core {
                         RpcError::new(
                             "finished",
                             format!("{} has finished", crate::terminals::address(id)),
-                            format!("hc read {}", crate::terminals::address(id)),
+                            format!("adk read {}", crate::terminals::address(id)),
                         )
                     })?;
                     t.check_program()?;

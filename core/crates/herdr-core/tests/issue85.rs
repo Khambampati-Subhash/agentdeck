@@ -7,7 +7,7 @@ use std::time::Instant;
 fn a_reporting_template_retries_until_its_output_settles() {
     let mut s = Session::new();
     s.env = vec![("HC_QUIET_MS".into(), "0".into()), ("HC_STARTED_MS".into(), "500".into())];
-    let dir = s.root.join("config/herdr-core/templates");
+    let dir = s.root.join("config/agentdeck-core/templates");
     std::fs::create_dir_all(&dir).unwrap();
     std::fs::write(dir.join("ticker.md"), r#"---
 command: sh -c 'stty -echo; printf "\033]7501;state=idle\033\\"; for i in $(seq 1 65); do echo tick; sleep 0.1; done; while read -r l; do printf "\033]7501;state=working\033\\"; echo "got:$l"; printf "\033]7501;state=done\033\\"; done'
@@ -27,7 +27,7 @@ command: sh -c 'stty -echo; printf "\033]7501;state=idle\033\\"; for i in $(seq 
 fn a_retried_first_message_stays_pending_until_the_delivered_task_finishes() {
     let mut s = Session::new();
     s.env = vec![("HC_QUIET_MS".into(), "0".into()), ("HC_STARTED_MS".into(), "100".into())];
-    let dir = s.root.join("config/herdr-core/templates");
+    let dir = s.root.join("config/agentdeck-core/templates");
     std::fs::create_dir_all(&dir).unwrap();
     let finish = s.root.join("finish");
     std::fs::write(
@@ -51,7 +51,7 @@ command: sh -c 'stty -echo; printf "\033]7501;state=done\033\\"; for i in $(seq 
     let wait = |mode: &str, timeout: &str| {
         let out = s
             .cmd()
-            .env("HC_TERMINAL_ID", &parent)
+            .env("ADK_TERMINAL_ID", &parent)
             .args(["--json", "wait", "--children", mode, "--timeout", timeout])
             .output()
             .unwrap();
@@ -76,7 +76,7 @@ command: sh -c 'stty -echo; printf "\033]7501;state=done\033\\"; for i in $(seq 
 fn an_unsent_template_message_stays_visible_in_get() {
     let mut s = Session::new();
     s.env.push(("HC_READY_MS".into(), "1200".into()));
-    let dir = s.root.join("config/herdr-core/templates");
+    let dir = s.root.join("config/agentdeck-core/templates");
     std::fs::create_dir_all(&dir).unwrap();
     std::fs::write(
         dir.join("ticker.md"),
@@ -104,7 +104,7 @@ task85
 fn a_continuously_ticking_template_uses_sends_existing_startup_age_limit() {
     let mut s = Session::new();
     s.env = vec![("HC_QUIET_MS".into(), "0".into()), ("HC_STARTED_MS".into(), "500".into())];
-    let dir = s.root.join("config/herdr-core/templates");
+    let dir = s.root.join("config/agentdeck-core/templates");
     std::fs::create_dir_all(&dir).unwrap();
     std::fs::write(
         dir.join("ticker.md"),

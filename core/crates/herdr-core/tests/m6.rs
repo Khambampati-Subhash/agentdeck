@@ -22,9 +22,9 @@ fn run(s: &Session, extra: &[&str], body: &str) -> String {
     s.json(&args)["address"].as_str().unwrap().to_string()
 }
 
-/// `hc` as if typed inside terminal `t` (its HC_TERMINAL_ID).
+/// `hc` as if typed inside terminal `t` (its ADK_TERMINAL_ID).
 fn hc_in(s: &Session, t: &str, args: &[&str]) -> Value {
-    let out = s.cmd().env("HC_TERMINAL_ID", t).args(args).output().unwrap();
+    let out = s.cmd().env("ADK_TERMINAL_ID", t).args(args).output().unwrap();
     assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
     serde_json::from_slice(&out.stdout).unwrap()
 }
@@ -38,7 +38,7 @@ fn invalid_config_keeps_pending_parent_notes_responsive_and_uses_the_default_hol
         wait_until("parent ready", || get(&s, &p)["reported"] == true);
         let mut person = common::framed::Viewer::attach(&s, &p, 80, 24, json!({}));
         let kid = run(&s, &["--parent", &p], "w news");
-        let config = s.root.join("config/herdr-core/config.toml");
+        let config = s.root.join("config/agentdeck-core/config.toml");
         std::fs::create_dir_all(config.parent().unwrap()).unwrap();
         std::fs::write(&config, format!("{setting} = inf\n")).unwrap();
         person.typed(b"my draft");
@@ -66,7 +66,7 @@ fn invalid_config_keeps_pending_parent_notes_responsive_and_uses_the_default_hol
         assert!(!text(&s, &p).contains("parent-got:"), "note submitted the draft early");
         wait_until("note with invalid config", || text(&s, &p).contains(&format!("<hc>{kid} exited")));
         assert!(start.elapsed() >= Duration::from_millis(2400), "default draft hold was skipped");
-        let log = std::fs::read_to_string(s.root.join("state/herdr-core/test/core.log")).unwrap();
+        let log = std::fs::read_to_string(s.root.join("state/adk/test/core.log")).unwrap();
         assert_eq!(log.matches("using delivery defaults").count(), 1, "{log}");
         assert!(log.contains(setting), "{log}");
     }
@@ -104,7 +104,7 @@ fn a_parent_note_waits_for_a_draft_and_survives_a_dialog_while_waiting() {
 #[test]
 fn a_terminal_is_nobodys_caller_in_another_session() {
     let s = session();
-    let other = |args: &[&str]| s.cmd().env("HC_SESSION", "other").args(args).output().unwrap();
+    let other = |args: &[&str]| s.cmd().env("ADK_SESSION", "other").args(args).output().unwrap();
     let stranger = String::from_utf8(other(&["run", "--bg", "sleep", "100"]).stdout).unwrap();
     assert!(stranger.contains("\"t1\""), "the other session has its own t1: {stranger}");
     let bin = s.bin.display().to_string();
@@ -112,7 +112,7 @@ fn a_terminal_is_nobodys_caller_in_another_session() {
         &s,
         &[],
         &format!(
-            "{bin} run --bg --name same sleep 100; HC_SESSION=other {bin} run --bg --name across sleep 100; sleep 100"
+            "{bin} run --bg --name same sleep 100; ADK_SESSION=other {bin} run --bg --name across sleep 100; sleep 100"
         ),
     );
     assert_eq!(p, "t1");
@@ -249,7 +249,7 @@ fn only_news_the_parent_has_not_seen_becomes_a_note() {
 
     let waiting = {
         let mut cmd = s.cmd();
-        cmd.env("HC_TERMINAL_ID", &p).args(["wait", &waited, "--timeout", "10"]);
+        cmd.env("ADK_TERMINAL_ID", &p).args(["wait", &waited, "--timeout", "10"]);
         std::thread::spawn(move || cmd.output().unwrap())
     };
     std::thread::sleep(Duration::from_millis(300));
@@ -308,7 +308,7 @@ fn every_wait_wakes_when_someone_messages_the_waiter() {
     // The child keeps working but reports in: the parent can't read it until its wait ends.
     let one = {
         let mut cmd = s.cmd();
-        cmd.env("HC_TERMINAL_ID", &p).args(["wait", &kid, "--timeout", "10"]);
+        cmd.env("ADK_TERMINAL_ID", &p).args(["wait", &kid, "--timeout", "10"]);
         std::thread::spawn(move || serde_json::from_slice::<Value>(&cmd.output().unwrap().stdout).unwrap())
     };
     std::thread::sleep(Duration::from_millis(300));
@@ -367,7 +367,7 @@ fn messages_between_agents_say_who_sent_them() {
 fn notes_off_means_plain_messages_too() {
     // `notes = false`: nothing hc adds on its own, tags included.
     let s = session();
-    let config = s.root.join("config/herdr-core/config.toml");
+    let config = s.root.join("config/agentdeck-core/config.toml");
     std::fs::create_dir_all(config.parent().unwrap()).unwrap();
     std::fs::write(config, "notes = false\n").unwrap();
     let echo = "stty -echo; r state=idle; while read -r l; do echo \"got:$l\"; done";
@@ -399,7 +399,7 @@ fn no_notes_into_programs_that_are_not_agents() {
 /// `hc wait --children <mode>` inside `p`, in the background.
 fn wait_children(s: &Session, p: &str, mode: &str) -> std::thread::JoinHandle<Value> {
     let mut cmd = s.cmd();
-    cmd.env("HC_TERMINAL_ID", p).args(["wait", "--children", mode, "--timeout", "10"]);
+    cmd.env("ADK_TERMINAL_ID", p).args(["wait", "--children", mode, "--timeout", "10"]);
     std::thread::spawn(move || serde_json::from_slice::<Value>(&cmd.output().unwrap().stdout).unwrap())
 }
 
@@ -498,7 +498,7 @@ fn rm_children_go_once_a_waiting_parent_has_the_exit_code() {
     let kid = run(&s, &["--parent", &p, "--rm"], "w a; exit 5");
     let waiting = {
         let mut cmd = s.cmd();
-        cmd.env("HC_TERMINAL_ID", &p).args(["wait", &kid, "--timeout", "10"]);
+        cmd.env("ADK_TERMINAL_ID", &p).args(["wait", &kid, "--timeout", "10"]);
         std::thread::spawn(move || serde_json::from_slice::<Value>(&cmd.output().unwrap().stdout).unwrap())
     };
     std::thread::sleep(Duration::from_millis(300));
