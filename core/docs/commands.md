@@ -97,7 +97,7 @@ Usage: hc connect [OPTIONS]
 
 Options:
       --json               JSON output even in a terminal
-      --session <SESSION>  The hc session to reach, like HC_SESSION (one command that reads the same in sh, cmd and PowerShell)
+      --session <SESSION>  The adk session to reach, like ADK_SESSION (one command that reads the same in sh, cmd and PowerShell)
   -h, --help               Print help
 ```
 

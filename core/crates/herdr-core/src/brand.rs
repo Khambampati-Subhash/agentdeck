@@ -28,13 +28,15 @@ pub const TERMINAL_ID_VAR: &str = "ADK_TERMINAL_ID";
 /// Terminal socket environment variable.
 pub const TERMINAL_SOCKET_VAR: &str = "ADK_TERMINAL_SOCKET";
 
-/// Compatibility terminal ID for OSC 7501 reporters.
+/// Compatibility terminal ID for OSC 7501 reporters, and the socket that tells
+/// a stock hc the ID belongs to another core.
 pub const COMPAT_TERMINAL_ID_VAR: &str = "HC_TERMINAL_ID";
+pub const COMPAT_TERMINAL_SOCKET_VAR: &str = "HC_TERMINAL_SOCKET";
 
-/// Never inherited by a terminal: the core sets its own, and Herdr's would
-/// point at another core.
+/// Never inherited by a terminal: the core sets its own, and Herdr's session
+/// would point a stock hc at the wrong core.
 pub const NOT_INHERITED: &[&str] =
-    &[TERMINAL_ID_VAR, TERMINAL_SOCKET_VAR, COMPAT_TERMINAL_ID_VAR, "HC_TERMINAL_SOCKET", "HC_SESSION"];
+    &[TERMINAL_ID_VAR, TERMINAL_SOCKET_VAR, COMPAT_TERMINAL_ID_VAR, COMPAT_TERMINAL_SOCKET_VAR, "HC_SESSION"];
 
 /// Bundle identifier for macOS.
 pub const BUNDLE_ID: &str = "io.github.khambampati-subhash.agentdeck.core";

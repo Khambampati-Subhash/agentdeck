@@ -97,6 +97,6 @@ ln -sfn "$CORE" "$HOME/.local/bin/adk"
 echo "Installed $APP"
 echo "  settings: $HOME_DIR"
 echo "  core: adk ls (links in ~/.local/bin)"
-[[ -f $OLD_HOME/settings.json ]] && echo "  settings from before the rename stay in $OLD_HOME: just migrate copies them"
+if [[ -f $OLD_HOME/settings.json ]]; then echo "  settings from before the rename stay in $OLD_HOME: just migrate copies them"; fi
 echo "Open it from Spotlight or Finder: open \"$APP\""
-[[ -d $OLD_APP ]] && echo "The old $OLD_APP is still there: quit it, then move it to the Trash."
+if [[ -d $OLD_APP ]]; then echo "The old $OLD_APP is still there: quit it, then move it to the Trash."; fi

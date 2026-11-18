@@ -678,7 +678,7 @@ fn machine_add_needing_input_keeps_the_picker_and_shows_instructions(cx: &mut Te
         let tree = session.describe(window, cx).unwrap();
         assert!(tree.contains("machine-add"), "{tree}");
         assert!(tree.contains("ma-message-host"), "{tree}");
-        assert!(tree.contains("hc machine add host"), "{tree}");
+        assert!(tree.contains("adk machine add host"), "{tree}");
         window.remove_window();
     }).unwrap();
     let calls = calls.borrow();

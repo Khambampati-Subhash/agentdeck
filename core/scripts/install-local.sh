@@ -16,5 +16,5 @@ else
   install -m 755 target/release/agentdeck-core "$bin/agentdeck-core.new"
   mv -f "$bin/agentdeck-core.new" "$bin/agentdeck-core"
 fi
-[ -e "$bin/hc" ] || [ -L "$bin/hc" ] || ln -s agentdeck-core "$bin/hc"
+[ -e "$bin/adk" ] || [ -L "$bin/adk" ] || ln -s agentdeck-core "$bin/adk"
 "$bin/agentdeck-core" server restart

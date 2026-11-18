@@ -29,5 +29,11 @@ expect "our core lists" "$(names "$ours")" adk-t
 seen() { python3 -c 'import json,sys; print(" ".join(sorted(t["name"] for t in json.load(open(sys.argv[1]))["terminals"] if t["name"].startswith(("herdr-t","adk-t")))))' "$1"; }
 expect "agentdeck-core inside a Herdr terminal" "$(seen "$sandbox/ours-in-herdr.json")" adk-t
 expect "herdr-core inside an AgentDeck terminal" "$(seen "$sandbox/herdr-in-ours.json")" herdr-t
+# A Herdr terminal started from an AgentDeck one has no parent in Herdr's core.
+"$ours" run --name cross-c -- sh -c "\"$stock\" run --bg --name herdr-child -- sleep 300" >/dev/null
+parent=$("$stock" get herdr-child --json | python3 -c 'import json,sys; print(json.load(sys.stdin).get("parent"))')
+expect "parent of a Herdr terminal started from AgentDeck" "$parent" None
+# Herdr's session variables don't steer AgentDeck's core.
+expect "our core with HC_SESSION/HC_SOCKET set" "$(HC_SESSION=elsewhere HC_SOCKET=$sandbox/no.sock names "$ours")" adk-t
 [[ -d $sandbox/.local/state/adk && -d $sandbox/.local/state/herdr-core ]] || { echo "side-by-side: expected separate state dirs" >&2; exit 1; }
 echo "side-by-side: ok"

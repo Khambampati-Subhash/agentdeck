@@ -84,7 +84,7 @@ if [ "$bundle" = 1 ] && [ -x "$tmp/AgentDeck Core.app/Contents/MacOS/agentdeck-c
     installed=$("$bin/agentdeck-core" --version)
     candidate=$("$bundled" --version)
     awk -v old="$installed" -v new="$candidate" 'BEGIN {
-      sub(/^hc /, "", old); sub(/^hc /, "", new)
+      sub(/^adk /, "", old); sub(/^adk /, "", new)
       split(old, a, /[.-]/); split(new, b, /[.-]/)
       for (i=1; i<=3; i++) { if (a[i]+0 > b[i]+0) exit 1; if (a[i]+0 < b[i]+0) exit 0 }
     }' || fail "$candidate is older than $installed; use hc update --from with --force to downgrade"

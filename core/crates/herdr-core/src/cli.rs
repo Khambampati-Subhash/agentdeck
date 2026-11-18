@@ -100,7 +100,7 @@ enum Cmd {
     Schema,
     /// Speak the protocol over stdin/stdout (`ssh box hc connect`).
     Connect {
-        /// The hc session to reach, like HC_SESSION (one command that reads
+        /// The adk session to reach, like ADK_SESSION (one command that reads
         /// the same in sh, cmd and PowerShell).
         #[arg(long)]
         session: Option<String>,

@@ -13,12 +13,12 @@ export interface ExecResult {
  *  Rejects when it can't start (not installed, no such folder, the machine is unreachable). */
 export function exec(command: string, args?: string[], options?: { cwd?: string; on?: string | null; timeout?: number }): Promise<ExecResult>;
 
-/** Runs `hc` (herdr-core) with the given arguments. Add "--json" for machine output. */
+/** Runs the app's own core (`adk`) with the given arguments. Add "--json" for machine output. */
 export function hc(args: string[]): Promise<ExecResult>;
 
 /** The user's home directory. */
 export function home(): string;
-/** The app's folder (`~/.config/herdr-app`, or `$HERDR_APP_HOME`): settings.json, keys.json, layouts/. */
+/** The app's folder (`~/.config/agentdeck`, or `$AGENTDECK_HOME`): settings.json, keys.json, layouts/. */
 export function appHome(): string;
 
 /** Reads UTF-8 text (up to 1 MiB), or null if absent. Runs off the UI thread.
@@ -39,11 +39,11 @@ export function knownAgents(options?: { on?: string | null }): Promise<(Program 
 export function pickFolder(options?: { prompt?: string }): Promise<string | null>;
 
 /** Plays "done" or "blocked" (the attention sounds, or the files settings.json names), or an MP3
- *  file (absolute, or relative to ~/.config/herdr-app). */
+ *  file (absolute, or relative to ~/.config/agentdeck). */
 export function playSound(sound: string): null;
 
 /**
- * Runs a command, the same ones keys.json binds (`herdr-app commands` lists them all with their
+ * Runs a command, the same ones keys.json binds (`agentdeck commands` lists them all with their
  * arguments). Structural commands fail while their machine's layout is unavailable.
  * Mod props are stored as given, never machine-qualified. Most commands apply right after
  * the call returns; terminal.keep/park finish in the background and toast on failure.
@@ -120,7 +120,7 @@ export interface SpaceInfo {
   named: boolean;
   /** Where its new terminals start (on its machine; empty: that machine's home). */
   folder: string;
-  /** The machine it lives on (`hc machine ls`), null for this one. */
+  /** The machine it lives on (`adk machine ls`), null for this one. */
   machine: string | null;
   /** The git branch of the terminal it shows first, if any. */
   branch: string | null;
@@ -213,7 +213,7 @@ export function panes(): PaneInfo[];
  *  are appended in model order. Without a supplied order, navigation uses model order. */
 export function setAgentOrder(addresses: string[]): null;
 
-/** Every core terminal as `hc ls --json` describes it (address, argv, name, template, parent,
+/** Every core terminal as `adk ls --json` describes it (address, argv, name, template, parent,
  *  labels, state, ...), with `status` as a plain word, the agent's report in `report`, and
  *  `program` (see Program). Parent addresses use the same machine names as `address`;
  *  parents on this computer use bare terminal IDs. Parents that cannot be mapped
@@ -242,7 +242,7 @@ export function layout(): unknown;
 /** The names of every layout in layouts/ (main first). */
 export function layouts(): string[];
 
-/** Every command the app runs: its name, arguments and what it does (as `herdr-app commands`).
+/** Every command the app runs: its name, arguments and what it does (as `agentdeck commands`).
  *  Mods' own `<mod>.<command>`s aren't listed. */
 export function commands(): { name: string; args: { name: string; required: boolean }[]; about: string }[];
 

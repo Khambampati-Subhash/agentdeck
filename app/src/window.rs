@@ -1986,7 +1986,7 @@ impl AppWindow {
                 let state = machine["state"].as_str().unwrap_or("unavailable");
                 let reason = (state != "connected").then(|| machine["why"].as_str().map(str::to_owned).unwrap_or_else(|| match state {
                     "needs_update" => format!("{name} needs a core update; run hc machine update {name}"),
-                    "needs_login" => format!("{name} needs login; run hc machine login {name}"),
+                    "needs_login" => format!("{name} needs login; run adk machine login {name}"),
                     _ => format!("{name} is {state}"),
                 }));
                 self.documents.entry(name.to_owned()).or_default().connection(state == "connected", machine["since_ms"].as_u64(), reason);

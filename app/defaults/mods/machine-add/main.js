@@ -1,5 +1,5 @@
 // Add a machine: the hosts in ~/.ssh/config to pick from (or type one),
-// each added with one click (`hc machine add`). When the machine needs
+// each added with one click (`adk machine add`). When the machine needs
 // something first (agentdeck-core installed there, a password, a new host
 // key), the picker explains what to run in a terminal. Machines that need
 // no answers are added quietly. Opened as a dialog
@@ -140,7 +140,7 @@ export default class MachineAdd extends View {
       } else if (["hc_missing", "incompatible", "login_needed", "auth_failed", "host_key"].includes(why.kind) || /password|passphrase|host key|permission denied|login/i.test(why.message ?? "")) {
         const quoted = shellArg(target);
         this.pending.add(target);
-        this.state[target] = `Couldn't add ${target} here: it needs you to answer something (a password, a new host key, or installing agentdeck-core there). Run \`hc machine add ${quoted}\` in a terminal. \`hc machine --help\` shows the options.`;
+        this.state[target] = `Couldn't add ${target} here: it needs you to answer something (a password, a new host key, or installing agentdeck-core there). Run \`adk machine add ${quoted}\` in a terminal. \`adk machine --help\` shows the options.`;
       } else this.state[target] = why.message || "it didn't work";
       await this.refresh();
       cx.notify();
@@ -217,7 +217,7 @@ export default class MachineAdd extends View {
 
   message(t, target) {
     const text = String(this.state[target]).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    const command = `hc machine add ${shellArg(target)}`;
+    const command = `adk machine add ${shellArg(target)}`;
     return v_flex().gap(5)
       .child(div().text_size(12).text_color(t.blocked).child(TextView.html(`ma-message-${target}`, `<span>${text}</span>`).selectable(true)))
       .when(this.pending.has(target), (el) => el.child(h_flex().child(div()

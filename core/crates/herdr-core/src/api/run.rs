@@ -215,10 +215,12 @@ pub(crate) fn terminal_env(
     cwd: &str,
     mut env: BTreeMap<String, String>,
 ) -> (BTreeMap<String, String>, String) {
-    use crate::brand::{COMPAT_TERMINAL_ID_VAR, TERMINAL_ID_VAR, TERMINAL_SOCKET_VAR};
+    use crate::brand::{COMPAT_TERMINAL_ID_VAR, COMPAT_TERMINAL_SOCKET_VAR, TERMINAL_ID_VAR, TERMINAL_SOCKET_VAR};
     env.insert(TERMINAL_ID_VAR.into(), crate::terminals::address(id));
-    // OSC 7501 reporters written for Herdr look for this one before reporting.
+    // OSC 7501 reporters written for Herdr look for this one before reporting;
+    // the socket beside it tells a stock hc that the id isn't one of its own.
     env.insert(COMPAT_TERMINAL_ID_VAR.into(), crate::terminals::address(id));
+    env.insert(COMPAT_TERMINAL_SOCKET_VAR.into(), core.paths.socket.display().to_string());
     env.insert(TERMINAL_SOCKET_VAR.into(), core.paths.socket.display().to_string());
     let scope = crate::sweep::token();
     env.insert(crate::sweep::VAR.into(), scope.clone());

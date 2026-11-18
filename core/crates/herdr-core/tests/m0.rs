@@ -178,7 +178,7 @@ fn help_is_for_people_and_points_agents_to_their_own() {
     let s = Session::new();
     let out = |args: &[&str]| String::from_utf8(s.hc(args).stdout).unwrap();
     let help = out(&["--help"]);
-    assert!(help.trim_end().ends_with("Agent? Run: hc --skill"), "{help}");
+    assert!(help.trim_end().ends_with("Agent? Run: adk --skill"), "{help}");
     assert_eq!(out(&["help"]), help);
     assert_eq!(out(&["-h"]), help);
     let agent = out(&["--skill"]);

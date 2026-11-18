@@ -73,8 +73,9 @@ terminal (which has `HC_SESSION` set) still uses its own core.
 - `HC_TERMINAL_ID` as well, same value: OSC 7501 reporters (our
   `integrations/claude-code` hook, Herdr's agent integrations) check it before
   reporting. Without it, agent status vanishes.
-- Not `HC_SESSION` or `HC_TERMINAL_SOCKET`: a stock `hc` in an AgentDeck pane
-  would look for that session in Herdr's directories.
+- `HC_TERMINAL_SOCKET` set to our socket (changed after review): without it a
+  stock `hc` trusts `HC_TERMINAL_ID` as one of its own terminals. Never
+  `HC_SESSION`: a stock `hc` would look for that session in Herdr's dirs.
 - The Claude Code hook accepts `ADK_TERMINAL_ID` or `HC_TERMINAL_ID`.
 
 **Unchanged:** internal knobs and test variables (`HC_QUIET_MS`,
