@@ -7,9 +7,10 @@ window) and `core/` is [herdr-core](https://github.com/herdrdev/herdr-core)
 see `NOTICE.md`.
 
 **Status (2026-11-18):** P0 (import, build) and P1 (no link to herdr.dev,
-PR #2) are on `main`, as is the forge loop (PR #1). P2, the rename to AgentDeck, has started: the visible name says AgentDeck, while binaries, paths,
-env vars and bundle ids are still `herdr-*` (target names are in
-`docs/plan.md` § P2). Worktree spaces nest under their repo's first space.
+PR #2) are on `main`, as is the forge loop (PR #1). P2, the rename, is done on
+branch `p2-rename`: `agentdeck` and `agentdeck-core`/`adk`, `~/.config/agentdeck`,
+`AGENTDECK_HOME`/`ADK_*`, our own bundle ids; `just side-by-side` shows it and
+stock Herdr apart. Worktree spaces nest under their repo's first space.
 Open items are in `docs/plan.md`.
 Update this line at the end of every milestone.
 
@@ -46,11 +47,11 @@ Update this line at the end of every milestone.
   `scripts/check-offline` fails if a herdr.dev URL comes back.
 - The product is **AgentDeck**. New user-visible text says AgentDeck, never
   Herdr or AgentOS. Leave "Herdr" only where it means upstream (credits,
-  `NOTICE.md`, links) or is still a technical name P2 renames (`herdr-app`,
-  `HERDR_*`, paths, keymap contexts).
+  `NOTICE.md`, links, the `"herdr"` mod alias) or is an internal name kept on
+  purpose (crates, labels, keymap contexts; see `docs/upstream.md`).
 - Never run the app or core against the user's real setup. Tests and manual
-  runs use `HERDR_APP_HOME` and `HC_SESSION` pointing under `/var/tmp`
-  (renamed in P2). Never stop, signal or restart a core you didn't start.
+  runs use `AGENTDECK_HOME` and `ADK_SESSION` pointing under `/var/tmp`
+  (stock Herdr's are `HERDR_APP_HOME` and `HC_SESSION`). Never stop, signal or restart a core you didn't start.
 - No live agent runs or captures without the user's OK. Real-agent smokes
   cost money. Use fixture programs (`core/crates/herdr-core/tests/fake_tui.py`,
   `app/scripts/bench.py` fixtures).
@@ -73,10 +74,12 @@ After cloning: `git submodule update --init --depth 1` (Ghostty).
 - App: `cd app && cargo build --locked`, `just test` (needs Bun), `cargo test --locked`.
 - After a rebuild, the first core test run can time out on macOS (first-launch
   scan of new binaries). Rerun before debugging; see P0 in `docs/plan.md`.
-- Dev window on our build: `just dev` (scratch home, core session `aos`); `just hc ls`.
-  The user has the real Herdr installed: never use the default session or `~/.config/herdr-app`.
-- Mod check: `app/target/debug/herdr-app check <mod folder>`.
-- Screenshot a running scratch window: `herdr-app shot out.png`.
+- Dev window on our build: `just dev` (scratch home, core session `adk-dev`); `just adk ls`.
+  The user has the real Herdr installed: never use its default session or `~/.config/herdr-app`.
+- Install: `just install` (~/Applications/AgentDeck.app, `agentdeck` and `adk` in ~/.local/bin); `just migrate` copies the old AgentOS settings.
+- Side by side with stock Herdr: `just side-by-side`.
+- Mod check: `app/target/debug/agentdeck check <mod folder>`.
+- Screenshot a running scratch window: `agentdeck shot out.png`.
 
 ## Workflow
 

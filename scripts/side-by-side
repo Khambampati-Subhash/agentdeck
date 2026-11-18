@@ -1,0 +1,33 @@
+#!/bin/bash
+# AgentDeck and stock Herdr side by side (P2's done-when), in a sandbox HOME:
+# each core sees only its own terminals, even when one's CLI runs inside the
+# other's terminal. Fixture programs only; stops only the cores it started.
+#
+# Usage: scripts/side-by-side [stock herdr-core]   (default /var/tmp/agentdeck-stock/herdr-core)
+set -euo pipefail
+root="$(cd "$(dirname "$0")/.." && pwd)"
+stock=${1:-/var/tmp/agentdeck-stock/herdr-core}
+ours="$root/core/target/debug/agentdeck-core"
+[[ -x $stock && -x $ours ]] || { echo "side-by-side: need $stock and $ours (just build)" >&2; exit 1; }
+
+sandbox=$(mktemp -d /var/tmp/sbs.XXXX) # short: macOS caps socket paths
+for v in $(env | grep -oE '^(HC|ADK|HERDR|AGENTDECK|XDG)_[A-Z_]*'); do unset "$v"; done
+export HOME=$sandbox HC_SETTLE_MS=0
+trap '"$stock" server stop >/dev/null 2>&1 || true; "$ours" server stop >/dev/null 2>&1 || true; rm -rf "$sandbox"' EXIT
+
+names() { "$1" ls --json | python3 -c 'import json,sys; print(" ".join(sorted(t["name"] for t in json.load(sys.stdin)["terminals"])))'; }
+expect() { [[ $2 == "$3" ]] || { echo "side-by-side: $1: want '$3', got '$2'" >&2; exit 1; }; }
+
+"$stock" run --bg --name herdr-t -- sleep 300 >/dev/null
+"$ours" run --bg --name adk-t -- sleep 300 >/dev/null
+expect "stock core lists" "$(names "$stock")" herdr-t
+expect "our core lists" "$(names "$ours")" adk-t
+
+# Each CLI run inside the other's terminal, with that terminal's environment.
+"$stock" run --name cross-a -- sh -c "\"$ours\" ls --json > $sandbox/ours-in-herdr.json" >/dev/null
+"$ours" run --name cross-b -- sh -c "\"$stock\" ls --json > $sandbox/herdr-in-ours.json" >/dev/null
+seen() { python3 -c 'import json,sys; print(" ".join(sorted(t["name"] for t in json.load(open(sys.argv[1]))["terminals"] if t["name"].startswith(("herdr-t","adk-t")))))' "$1"; }
+expect "agentdeck-core inside a Herdr terminal" "$(seen "$sandbox/ours-in-herdr.json")" adk-t
+expect "herdr-core inside an AgentDeck terminal" "$(seen "$sandbox/herdr-in-ours.json")" herdr-t
+[[ -d $sandbox/.local/state/adk && -d $sandbox/.local/state/herdr-core ]] || { echo "side-by-side: expected separate state dirs" >&2; exit 1; }
+echo "side-by-side: ok"

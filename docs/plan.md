@@ -78,7 +78,7 @@ Found 2026-11-10: even builds from source fetch the bundled changelog's
 The first scratch run downloaded two. The P0 "no sockets" check missed it
 because it was a one-off `lsof` snapshot.
 
-## P2: rename to AgentDeck
+## P2: rename to AgentDeck (done 2026-11-18, branch `p2-rename`)
 
 Not a blind text replace. A `herdr`→`agentos` sed was tried on 2026-11-10 and
 discarded (saved at `/var/tmp/agentos-saved/`). It broke the build (files
@@ -94,8 +94,8 @@ Names (chosen 2026-11-18; the product was called AgentOS before):
 | herdr-core, `hc` | agentdeck-core, `adk` |
 | `~/.config/herdr-app`, `~/.config/herdr-core`, `~/.herdr` | `~/.config/agentdeck`, `~/.config/agentdeck-core`, `~/.agentdeck` |
 | `HERDR_*`, `HC_*` env vars | `AGENTDECK_*`, `ADK_*` |
-| `dev.herdr.app`, `dev.herdr.core` | `dev.agentdeck.app`, `dev.agentdeck.core` |
-| labels `herdr.space`, `herdr.tab`, `herdr.pinned`, ... | `agentdeck.space`, ... |
+| `dev.herdr.app`, `dev.herdr.core` | `io.github.khambampati-subhash.agentdeck`, `….agentdeck.core` |
+| labels `herdr.space`, `herdr.tab`, `herdr.pinned`, ... | kept: stored in core state |
 | `herdr.d.ts`, `import ... from "herdr"` | `agentdeck.d.ts`, `"agentdeck"` (keep `"herdr"` as an alias so shared mods run) |
 | Herdr 98 layout | shown as "AgentDeck 98" (2026-11-18); dropped or redrawn later |
 | Ram logo | **done 2026-11-10**: "window stack" icon (`app/assets/icons/herdr-ui-icon-clean.svg` is the source; the `.icns`, `.ico`, PNG and welcome logo are rendered from it). File names stay `herdr-*` until this rename; the DMG background still needs doing |
@@ -104,25 +104,32 @@ Keep as is: OSC 7501 (the status protocol agents emit; it's a number, not a
 brand), the agent-detection files, crate-internal module names where renaming
 only adds merge conflicts.
 
-- [ ] Put every product name, path, env var and bundle id behind one constants
-      module per half, upstream-shaped, so later merges touch one file.
+- [x] Names in one `brand.rs` per half (2026-11-18). Literal paths in tests and
+      guides were renamed in place.
 - [x] Visible name (2026-11-18): window title, menus, toasts, setup and
       welcome text, settings, palette, sidebar, Win98 strings and
       `scripts/install-mac-app`'s bundle (`AgentDeck.app`) say AgentDeck. Keymap
       contexts, bundle paths and the welcome card about upstream's herdr TUI
       are unchanged.
-- [ ] Binaries, bundle, Info.plist, icons.
-- [ ] App home, core config and state paths. A one-time migration from an
-      existing `~/.config/herdr-app` is opt-in only, never automatic.
-- [ ] Product skills and guides (`SKILL.md`, `defaults/AGENTS.md`, `--skill`
-      output) and the generated `.d.ts`/schema, regenerated.
-- [ ] macOS bundle signs ad hoc locally; `just install` puts AgentDeck.app in
-      `~/Applications` and `agentdeck`/`adk` in `~/.local/bin`. Until then
-      `scripts/install-mac-app` installs `~/Applications/AgentDeck.app` but
-      keeps AgentOS's bundle id, settings folder and core session.
+- [x] Binaries (`agentdeck`, `agentdeck-core` + `adk`), bundle ids
+      (`io.github.khambampati-subhash.agentdeck`, `….agentdeck.core`, ad hoc),
+      Info.plist, launchd prefix. Icon file names stay `herdr-*`.
+- [ ] Core's runtime hints still say `hc …` in about 75 messages (e.g. "run
+      hc server start"); the CLI is `adk`.
+- [x] App home `~/.config/agentdeck`, core config `~/.config/agentdeck-core`,
+      state and sockets `~/.local/state/adk` (short: macOS caps socket paths at
+      103 bytes and `agentdeck-core` overflowed it here). `just migrate` copies
+      the AgentOS settings, only when run. Only `AGENTDECK_HOME`/`ADK_*` are read.
+- [x] Guides (`SKILL.md`s, `defaults/AGENTS.md`, help), `agentdeck.d.ts`, CLI
+      docs and schema.
+- [x] `just install`: AgentDeck.app signed ad hoc in `~/Applications`,
+      `agentdeck`/`adk` in `~/.local/bin`. A pre-rename core's binary is kept in
+      `~/Library/Application Support/AgentOS` for its running session.
+      Not yet run for real.
 
 **Done when:** AgentDeck and stock Herdr run side by side on one Mac without
-seeing each other's terminals, settings or core.
+seeing each other's terminals, settings or core. `scripts/side-by-side` passes
+(2026-11-18).
 
 ## P3: our build and release
 

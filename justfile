@@ -20,6 +20,10 @@ test:
     cd core && cargo test --locked --no-fail-fast
     cd app && cargo test --locked
 
+# AgentDeck and stock Herdr side by side, in a sandbox (P2 done-when).
+side-by-side:
+    scripts/side-by-side
+
 # Fails if shipped code names herdr.dev (see scripts/offline-allow.txt).
 offline:
     scripts/check-offline

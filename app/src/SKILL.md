@@ -1,9 +1,9 @@
 # agentdeck: drive the person's window
 
-Herdr shows spaces, tabs and panes. agentdeck-core (`hc`) runs their terminals
+AgentDeck shows spaces, tabs and panes. agentdeck-core (`adk`) runs their terminals
 and keeps them alive when the window closes. Use `agentdeck` only to change
 what the person sees. For starting, reading, messaging, waiting on or cleaning
-up agents and programs, read `hc --skill` and use hc.
+up agents and programs, read `adk --skill` and use adk.
 Your terminal address is `$ADK_TERMINAL_ID`; it is not a pane ID.
 
 ## Inspect before acting
@@ -54,8 +54,8 @@ including when `--argv` supplies a program. Without `--folder`, it follows the
 focused terminal's folder. If an inherited local folder was deleted, new spaces,
 tabs and splits retry in that machine's home. An explicit invalid folder
 still fails.
-`hc machine ls` lists machines. Use `hc run --on vps ...`, `hc exec --on vps ...`
-and `hc file ... --on vps ...` for remote work, not your local file tools.
+`adk machine ls` lists machines. Use `adk run --on vps ...`, `adk exec --on vps ...`
+and `adk file ... --on vps ...` for remote work, not your local file tools.
 
 `do` accepts `--key value` arguments (JSON for arrays/objects) or one JSON
 object. Unknown argument names fail and list valid names. Target IDs (`id`,
@@ -88,11 +88,11 @@ terminal was created, not that its program started correctly. If it exits
 with a nonzero code within two seconds, the window shows an error toast with
 the exit code and last output lines.
 
-A terminal started with hc opts into the window with `herdr.space=<id>`.
+A terminal started with adk opts into the window with `herdr.space=<id>`.
 `herdr.tab=<id>` chooses its tab; without it, Herdr creates a tab in that space.
 Unlabeled workers stay hidden. Do not add labels just to run a background
 worker. Use app commands when the
-user wants to see a new tab or split, hc for orchestration that need not change
+user wants to see a new tab or split, adk for orchestration that need not change
 the screen.
 
 ## Customize layouts, keys, or mods

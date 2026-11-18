@@ -30,7 +30,7 @@ git submodule update --init --depth 1
 just build          # both halves
 just test           # app and core tests
 just dev            # our build in a scratch home (never your real setup)
-just install-app    # build a release into ~/Applications as a Mac app
+just install        # build a release into ~/Applications as a Mac app
 ```
 
 Status and roadmap: [docs/plan.md](docs/plan.md). The rename from Herdr is
