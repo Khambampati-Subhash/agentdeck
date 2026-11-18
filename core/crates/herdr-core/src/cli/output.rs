@@ -75,7 +75,7 @@ pub(super) fn orders(terminals: &[Value]) -> Vec<(&'static str, Vec<Value>)> {
     ]
 }
 
-/// The `where` label: where a viewer put it, in words ("herdr-core / review").
+/// The `where` label: where a viewer put it, in words ("agentdeck-core / review").
 pub(super) fn place(t: &Value) -> Option<String> {
     t["labels"]["where"].as_str().filter(|w| !w.is_empty()).map(Into::into)
 }

@@ -1,0 +1,60 @@
+#!/usr/bin/env python3
+"""Watches our own app and core (any process running a binary under this repo)
+and everything they start, every 0.1 s:
+
+  PROC <time> <pid> <command>   a new descendant process (catches a short-lived curl)
+  NET  <time> <lsof line>       an internet socket any of them holds
+
+Usage: scripts/watch-net [seconds]   (default: until interrupted)
+"""
+import os
+import subprocess
+import sys
+import time
+
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/"
+
+
+def ours():
+    rows = []
+    out = subprocess.run(["ps", "-A", "-o", "pid=,ppid=,command="], capture_output=True, text=True).stdout
+    for line in out.splitlines():
+        parts = line.split(None, 2)
+        if len(parts) == 3:
+            rows.append((parts[0], parts[1], parts[2]))
+    # A binary under the repo, or a script under it run by an interpreter.
+    mine = {pid for pid, _, cmd in rows if any(w.startswith(REPO) for w in cmd.split()[:2])}
+    grew = True
+    while grew:
+        grew = False
+        for pid, ppid, _ in rows:
+            if pid not in mine and ppid in mine:
+                mine.add(pid)
+                grew = True
+    return [(pid, cmd) for pid, _, cmd in rows if pid in mine]
+
+
+def main():
+    end = time.time() + (float(sys.argv[1]) if len(sys.argv) > 1 else 1e9)
+    seen_proc, seen_net = set(), set()
+    try:
+        while time.time() < end:
+            procs = ours()
+            for pid, cmd in procs:
+                if (pid, cmd) not in seen_proc:
+                    seen_proc.add((pid, cmd))
+                    print(f"PROC {time.strftime('%T')} {pid} {cmd}", flush=True)
+            if procs:
+                pids = ",".join(pid for pid, _ in procs)
+                out = subprocess.run(["lsof", "-nP", "-a", "-i", "-p", pids], capture_output=True, text=True).stdout
+                for line in out.splitlines()[1:]:
+                    if line not in seen_net:
+                        seen_net.add(line)
+                        print(f"NET  {time.strftime('%T')} {line}", flush=True)
+            time.sleep(0.1)
+    except KeyboardInterrupt:
+        pass
+
+
+if __name__ == "__main__":
+    main()

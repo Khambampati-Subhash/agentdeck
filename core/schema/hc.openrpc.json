@@ -1470,7 +1470,7 @@
     "license": {
       "name": "Apache-2.0"
     },
-    "title": "herdr-core",
+    "title": "agentdeck-core",
     "version": "0.1.19"
   },
   "methods": [
@@ -1693,11 +1693,11 @@
           }
         },
         {
-          "description": "Who is calling (`HC_TERMINAL_ID` inside a terminal).",
+          "description": "Who is calling (`ADK_TERMINAL_ID` inside a terminal).",
           "name": "caller",
           "required": false,
           "schema": {
-            "description": "Who is calling (`HC_TERMINAL_ID` inside a terminal).",
+            "description": "Who is calling (`ADK_TERMINAL_ID` inside a terminal).",
             "type": [
               "string",
               "null"
@@ -2327,12 +2327,12 @@
       "paramStructure": "by-name",
       "params": [
         {
-          "description": "Who is calling (`HC_TERMINAL_ID` inside a terminal): never itself.",
+          "description": "Who is calling (`ADK_TERMINAL_ID` inside a terminal): never itself.",
           "name": "caller",
           "required": false,
           "schema": {
             "default": null,
-            "description": "Who is calling (`HC_TERMINAL_ID` inside a terminal): never itself.",
+            "description": "Who is calling (`ADK_TERMINAL_ID` inside a terminal): never itself.",
             "type": [
               "string",
               "null"
@@ -2499,11 +2499,11 @@
       "paramStructure": "by-name",
       "params": [
         {
-          "description": "Who is sending (`HC_TERMINAL_ID`, else the calling process's parent), so a\nbare wait from the same caller waits for this send's turn.",
+          "description": "Who is sending (`ADK_TERMINAL_ID`, else the calling process's parent), so a\nbare wait from the same caller waits for this send's turn.",
           "name": "caller",
           "required": false,
           "schema": {
-            "description": "Who is sending (`HC_TERMINAL_ID`, else the calling process's parent), so a\nbare wait from the same caller waits for this send's turn.",
+            "description": "Who is sending (`ADK_TERMINAL_ID`, else the calling process's parent), so a\nbare wait from the same caller waits for this send's turn.",
             "type": [
               "string",
               "null"

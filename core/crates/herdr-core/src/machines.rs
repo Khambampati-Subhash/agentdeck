@@ -51,7 +51,7 @@ impl Reach<'_> {
     fn add(&self) -> String {
         match self.via {
             true => crate::platform::via_add_hint(self.target),
-            false => format!("hc machine add {}", self.target),
+            false => format!("adk machine add {}", self.target),
         }
     }
 
@@ -230,9 +230,9 @@ fn is_windows(target: &str) -> bool {
 /// Where install.ps1 puts hc, from the home folder an ssh session starts in.
 /// Not PATH: sessions riding a shared login keep the PATH from before an
 /// install. `.\` reads the same in cmd and PowerShell.
-const WINDOWS_HC: &str = r".\AppData\Local\Programs\herdr-core\herdr-core.exe";
+const WINDOWS_HC: &str = r".\AppData\Local\Programs\agentdeck-core\agentdeck-core.exe";
 
-/// The pipe to the core there: `herdr-core connect`, found on PATH, else in
+/// The pipe to the core there: `agentdeck-core connect`, found on PATH, else in
 /// ~/.local/bin. On Windows, whose shell may be cmd or PowerShell, one line
 /// both read alike; the installer put hc on PATH. Never prompts: a login a
 /// person must type fails fast.
@@ -248,9 +248,9 @@ fn pipe(
             "cmd /d /c \"if exist {WINDOWS_HC} ({WINDOWS_HC} connect{session}) else (echo {NOT_HERE} 1>&2 & exit /b 127)\""
         )
     } else {
-        let session = session.map(|s| format!("HC_SESSION={s} ")).unwrap_or_default();
+        let session = session.map(|s| format!("ADK_SESSION={s} ")).unwrap_or_default();
         format!(
-            "sh -c 'p=$(command -v herdr-core) || p=$HOME/.local/bin/herdr-core; [ -x \"$p\" ] || {{ echo \"{NOT_HERE}\" >&2; exit 127; }}; {session}exec \"$p\" connect'"
+            "sh -c 'p=$(command -v agentdeck-core) || p=$HOME/.local/bin/agentdeck-core; [ -x \"$p\" ] || {{ echo \"{NOT_HERE}\" >&2; exit 127; }}; {session}exec \"$p\" connect'"
         )
     };
     let options = ["BatchMode=yes", "ConnectTimeout=10", "ServerAliveInterval=15", "ServerAliveCountMax=4"];
@@ -261,7 +261,7 @@ fn pipe(
 }
 
 /// What the pipe's line says when there is no hc there.
-const NOT_HERE: &str = "herdr-core is not installed here";
+const NOT_HERE: &str = "agentdeck-core is not installed here";
 
 fn unreachable(to: Reach, why: &str) -> RpcError {
     let target = to.target;
@@ -460,7 +460,7 @@ fn run_raw(
 }
 
 /// Copies this very hc to `target` (same OS and CPU only), swaps it in at
-/// ~/.local/bin/herdr-core (adding `hc` beside it only if there is none),
+/// ~/.local/bin/agentdeck-core (adding `adk` beside it only if there is none),
 /// and restarts hc there in `session`, so terminals there keep running.
 /// Returns what the installed one says it is.
 pub fn install(paths: &crate::paths::Paths, to: Reach, session: Option<&str>) -> Result<String, RpcError> {
@@ -475,8 +475,8 @@ pub fn install(paths: &crate::paths::Paths, to: Reach, session: Option<&str>) ->
     let windows = if probe.status.success() {
         there.starts_with("windows ")
     } else {
-        let native = run_raw(paths, to, "cmd /d /c \"echo herdr-core-windows\"", b"")?;
-        native.status.success() && last_line(&native.stdout) == "herdr-core-windows"
+        let native = run_raw(paths, to, "cmd /d /c \"echo agentdeck-core-windows\"", b"")?;
+        native.status.success() && last_line(&native.stdout) == "agentdeck-core-windows"
     };
     if windows {
         if to.via {
@@ -499,7 +499,7 @@ pub fn install(paths: &crate::paths::Paths, to: Reach, session: Option<&str>) ->
     let current = std::env::current_exe()
         .and_then(|path| path.canonicalize())
         .map_err(|e| RpcError::internal(format!("cannot find this hc: {e}")))?;
-    let bin = if there == here && (bundle || !current.ends_with("Herdr Core.app/Contents/MacOS/herdr-core")) {
+    let bin = if there == here && (bundle || !current.ends_with("AgentDeck Core.app/Contents/MacOS/agentdeck-core")) {
         current
     } else {
         let version = env!("CARGO_PKG_VERSION");
@@ -518,36 +518,36 @@ pub fn install(paths: &crate::paths::Paths, to: Reach, session: Option<&str>) ->
     };
     let (exe, bundled) = install_payload(&bin, &scratch.0)?;
     let n = exe.len();
-    let session = session.map(|s| format!("HC_SESSION={s} ")).unwrap_or_default();
+    let session = session.map(|s| format!("ADK_SESSION={s} ")).unwrap_or_default();
     if bundled {
         let script = format!(
             "set -e; d=$HOME/.local/bin; mkdir -p \"$d\"; t=$(mktemp -d); trap \"rm -rf \\\"$t\\\"\" EXIT; \
              head -c {n} > \"$t/core.tar\"; [ $(wc -c < \"$t/core.tar\") -eq {n} ]; \
-             tar -xf \"$t/core.tar\" -C \"$t\"; b=\"$t/Herdr Core.app/Contents/MacOS/herdr-core\"; \
-             \"$b\" --hc-install-bundle \"$b\" \"$d/herdr-core\"; \
-             {session}\"$d/herdr-core\" server restart > /dev/null; \"$d/herdr-core\" --version"
+             tar -xf \"$t/core.tar\" -C \"$t\"; b=\"$t/AgentDeck Core.app/Contents/MacOS/agentdeck-core\"; \
+             \"$b\" --hc-install-bundle \"$b\" \"$d/agentdeck-core\"; \
+             {session}\"$d/agentdeck-core\" server restart > /dev/null; \"$d/agentdeck-core\" --version"
         );
         return run_there(paths, to, &format!("sh -c '{script}'"), &exe);
     }
     let guard = if macos {
-        "case $(readlink \"$d/herdr-core\" || true) in */Contents/MacOS/herdr-core) \
+        "case $(readlink \"$d/agentdeck-core\" || true) in */Contents/MacOS/agentdeck-core) \
          echo \"a bundled remote core needs a complete bundle; run hc update on that machine\" >&2; exit 5;; esac; "
     } else {
         ""
     };
     // Into a temp file beside the target, checked whole and running, then swapped.
     let script = format!(
-        "set -e; d=$HOME/.local/bin; mkdir -p $d; {guard}rm -f $d/.herdr-core.new.*; t=$d/.herdr-core.new.$$; \
+        "set -e; d=$HOME/.local/bin; mkdir -p $d; {guard}rm -f $d/.agentdeck-core.new.*; t=$d/.agentdeck-core.new.$$; \
          head -c {n} > $t; [ $(($(wc -c < $t))) -eq {n} ] || {{ rm -f $t; echo \"the copy arrived incomplete\" >&2; exit 3; }}; \
          chmod 755 $t; $t --version > /dev/null || {{ rm -f $t; echo \"this hc does not run there\" >&2; exit 4; }}; \
-         mv -f $t $d/herdr-core; command -v hc > /dev/null 2>&1 || [ -e $d/hc ] || ln -s herdr-core $d/hc; \
-         {session}$d/herdr-core server restart > /dev/null; $d/herdr-core --version"
+         mv -f $t $d/agentdeck-core; command -v adk > /dev/null 2>&1 || [ -e $d/adk ] || ln -s agentdeck-core $d/adk; \
+         {session}$d/agentdeck-core server restart > /dev/null; $d/agentdeck-core --version"
     );
     run_there(paths, to, &format!("sh -c '{script}'"), &exe)
 }
 
 fn install_payload(bin: &Path, scratch: &Path) -> Result<(Vec<u8>, bool), RpcError> {
-    let bundled = bin.ends_with("Herdr Core.app/Contents/MacOS/herdr-core");
+    let bundled = bin.ends_with("AgentDeck Core.app/Contents/MacOS/agentdeck-core");
     let path = if bundled {
         let root = bin.parent().unwrap().parent().unwrap().parent().unwrap();
         let archive = scratch.join("core-bundle.tar");
@@ -556,7 +556,7 @@ fn install_payload(bin: &Path, scratch: &Path) -> Result<(Vec<u8>, bool), RpcErr
             .arg(&archive)
             .arg("-C")
             .arg(root.parent().unwrap())
-            .arg("Herdr Core.app")
+            .arg("AgentDeck Core.app")
             .env("COPYFILE_DISABLE", "1")
             .status()
             .map_err(|e| RpcError::internal(e.to_string()))?;

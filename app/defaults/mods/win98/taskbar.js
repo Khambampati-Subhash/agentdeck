@@ -207,12 +207,12 @@ export default class Taskbar {
       act: { run: ["space.select", { id: p.id }] },
     }));
     const layoutItems = layouts().map((name) => ({
-      label: name === "win98" ? "Herdr 98" : name,
+      label: name === "win98" ? "AgentDeck 98" : name,
       radio: name === "win98",
       act: { run: ["layout.switch", { name }] },
     }));
     return [
-      { label: "Herdr Update", icon: "update", act: { run: ["app.settings", { section: "updates" }] } },
+      { label: "AgentDeck Update", icon: "update", act: { run: ["app.settings", { section: "updates" }] } },
       { sep: true },
       {
         label: "&Programs",
@@ -227,7 +227,7 @@ export default class Taskbar {
                 { label: "Solitaire", icon: "sol", act: { app: "sol" } },
               ] },
               { label: "Office Assistant", icon: "clippy", act: { shared: ["win98.clippy", "on"] } },
-              { label: "Welcome to Herdr 98", icon: "start", act: { dialog: { kind: "welcome" } } },
+              { label: "Welcome to AgentDeck 98", icon: "start", act: { dialog: { kind: "welcome" } } },
               { label: "Command Palette", icon: "find", act: { run: ["app.palette", {}] } },
             ],
           },

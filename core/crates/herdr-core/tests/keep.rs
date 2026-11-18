@@ -69,7 +69,7 @@ fn lost_kept_terminal_restarts_in_place_in_its_last_folder() {
 fn kept_terminal_survives_core_crash_and_recovers_if_its_holder_is_also_lost() {
     let s = Session::new();
     let t = run(&s, &["--keep", "sleep", "100"]);
-    let config = s.root.join("config/herdr-core/config.toml");
+    let config = s.root.join("config/agentdeck-core/config.toml");
     std::fs::create_dir_all(config.parent().unwrap()).unwrap();
     std::fs::write(&config, r#"shell = ["/bin/sh", "-c", "echo configured-restore; exec /bin/sh"]"#).unwrap();
     let old = get(&s, &t)["pid"].as_i64().unwrap();
@@ -128,7 +128,7 @@ fn recovery_saves_only_client_overrides_and_refreshes_the_core_environment() {
         }),
     );
     let t = started["result"]["address"].as_str().unwrap();
-    let state = std::fs::read_to_string(s.root.join("state/herdr-core/test/terminals.json")).unwrap();
+    let state = std::fs::read_to_string(s.root.join("state/adk/test/terminals.json")).unwrap();
     assert!(!state.contains("HC_KEEP_BASE") && !state.contains("old-secret"), "{state}");
     let state: serde_json::Value = serde_json::from_str(&state).unwrap();
     assert_eq!(
@@ -193,8 +193,7 @@ fn paused_replacement() -> (Session, String, PausedHolder) {
     // about 5 s here, past wait_until's 10 s on a slow runner.
     let claimed = || {
         let state: serde_json::Value =
-            serde_json::from_slice(&std::fs::read(s.root.join("state/herdr-core/test/terminals.json")).unwrap())
-                .unwrap();
+            serde_json::from_slice(&std::fs::read(s.root.join("state/adk/test/terminals.json")).unwrap()).unwrap();
         state["terminals"]["1"]["holder"].is_string()
     };
     let start = std::time::Instant::now();
@@ -387,7 +386,7 @@ fn keep_off_on_a_lost_terminal_reports_it_finished() {
     let s = Session::new();
     let t = run(&s, &["--keep", "sleep", "100"]);
     // A bad shell setting holds recovery, so the record stays lost without a holder.
-    let config = s.root.join("config/herdr-core/config.toml");
+    let config = s.root.join("config/agentdeck-core/config.toml");
     std::fs::create_dir_all(config.parent().unwrap()).unwrap();
     std::fs::write(&config, "shell = []").unwrap();
     let holder = s.json(&["server", "status"])["holder"]["pid"].as_i64().unwrap();

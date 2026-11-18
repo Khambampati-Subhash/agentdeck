@@ -417,7 +417,7 @@ fn bare_hc_in_a_terminal_can_start_a_new_shell() {
 #[test]
 fn the_detach_key_comes_from_the_config_file() {
     let s = Session::new();
-    let config = s.root.join("config/herdr-core/config.toml");
+    let config = s.root.join("config/agentdeck-core/config.toml");
     std::fs::create_dir_all(config.parent().unwrap()).unwrap();
     std::fs::write(&config, "detach_key = \"ctrl+]\"\n").unwrap();
     let inner = run(&s, &["sh", "-c", BYTES]);

@@ -168,7 +168,7 @@ fn a_missing_unix_core_does_not_try_the_windows_line() {
     std::fs::write(
         &wrapper,
         format!(
-            "#!/bin/sh\necho call >> '{}'\necho 'herdr-core is not installed here' >&2\nexit 127\n",
+            "#!/bin/sh\necho call >> '{}'\necho 'agentdeck-core is not installed here' >&2\nexit 127\n",
             calls.display()
         ),
     )
@@ -271,13 +271,13 @@ case "$2" in
 ERROR
     exit {sh_code};;
   'uname -sm') [ -n '{uname}' ] || {{ echo '無法辨識 uname' >&2; exit 1; }}; echo '{uname}'; exit 0;;
-  'cmd /d /c "echo herdr-core-windows"') echo herdr-core-windows; exit 0;;
+  'cmd /d /c "echo agentdeck-core-windows"') echo agentdeck-core-windows; exit 0;;
   powershell\ *) [ -f '{root}/copied' ] || exit 1; touch '{root}/installed'; exit 0;;
-  *--version) echo 'herdr-core test'; exit 0;;
+  *--version) echo 'agentdeck-core test'; exit 0;;
 esac
 if [ ! -f '{root}/installed' ]; then
   case "$2" in
-    'cmd /d /c '*"if exist "*"herdr-core is not installed here"*"exit /b 127"*) echo 'herdr-core is not installed here' >&2; exit 127;;
+    'cmd /d /c '*"if exist "*"agentdeck-core is not installed here"*"exit /b 127"*) echo 'agentdeck-core is not installed here' >&2; exit 127;;
   esac
   echo '{missing_error}' >&2
   exit 1
@@ -342,7 +342,7 @@ fn a_machine_shows_the_version_its_line_last_saw() {
     s.env.push(fake_ssh(&s, &[("rohan", &rohan)]));
     s.json(&["machine", "add", "rohan"]);
     s.hc(&["server", "stop"]);
-    let saved = s.root.join("state/herdr-core/test/machines.json");
+    let saved = s.root.join("state/adk/test/machines.json");
     let stale = std::fs::read_to_string(&saved).unwrap().replace(env!("CARGO_PKG_VERSION"), "0.0.1");
     std::fs::write(&saved, stale).unwrap();
     wait_until("version refreshed", || {
@@ -361,7 +361,7 @@ fn another_session_on_the_same_box_is_another_machine() {
     // A dial already on its way when the machine was removed can still start
     // that core (the fake ssh's `hc connect` outlives it): stop until none comes back.
     let stop = || {
-        let out = rohan.cmd().env("HC_SESSION", "scratch").args(["server", "stop"]).output().unwrap();
+        let out = rohan.cmd().env("ADK_SESSION", "scratch").args(["server", "stop"]).output().unwrap();
         serde_json::from_slice::<serde_json::Value>(&out.stdout).unwrap()["stopped"] == true
     };
     wait_until("no scratch core comes back", || {
@@ -376,7 +376,7 @@ fn another_session_on_the_same_box_is_another_machine() {
 #[test]
 fn interactive_add_uses_the_same_ssh_target_for_login_and_install() {
     let mut bare = Session::new();
-    bare.bin = bare.root.join("bin/herdr-core");
+    bare.bin = bare.root.join("bin/agentdeck-core");
     let mut s = Session::new();
     let (_, ssh) = fake_ssh(&s, &[("bare", &bare)]);
     let wrapper =
@@ -387,7 +387,7 @@ fn interactive_add_uses_the_same_ssh_target_for_login_and_install() {
     let screen = text(&s, &t);
     assert!(screen.contains("added-0"), "{screen}");
     assert_eq!(s.json(&["machine", "ls"])["machines"][0]["target"], "ssh://can@bare:2222");
-    bare.bin = bare.root.join(".local/bin/herdr-core");
+    bare.bin = bare.root.join(".local/bin/agentdeck-core");
     assert!(bare.bin.exists(), "installed through the normalized target");
 }
 
@@ -420,7 +420,7 @@ fn a_box_that_asks_for_a_code_is_added_from_a_terminal() {
 #[test]
 fn a_box_without_hc_gets_this_one_when_you_say_yes() {
     let mut bare = Session::new();
-    bare.bin = bare.root.join("bin/herdr-core"); // nothing there: no hc on that box
+    bare.bin = bare.root.join("bin/agentdeck-core"); // nothing there: no hc on that box
     let mut s = Session::new();
     s.env.push(fake_ssh(&s, &[("bare", &bare)]));
     let (_, piped) = s.err(&["--json", "machine", "add", "bare"]);
@@ -431,13 +431,13 @@ fn a_box_without_hc_gets_this_one_when_you_say_yes() {
     wait_until("the offer", || text(&s, &t).contains("[Y/n]"));
     s.json(&["send", &t, "y"]);
     wait_until("added", || text(&s, &t).contains("added-0"));
-    bare.bin = bare.root.join(".local/bin/herdr-core");
-    assert!(bare.bin.exists() && bare.root.join(".local/bin/hc").exists(), "installed, with hc beside it");
+    bare.bin = bare.root.join(".local/bin/agentdeck-core");
+    assert!(bare.bin.exists() && bare.root.join(".local/bin/adk").exists(), "installed, with adk beside it");
     wait_until("connected", || s.json(&["machine", "ls"])["machines"][0]["state"] == "connected");
 
     let before = bare.json(&["server", "status"])["pid"].clone();
     let updated = s.json(&["machine", "update", "bare"]);
-    assert!(updated["version"].as_str().is_some_and(|v| v.starts_with("hc ")), "{updated}");
+    assert!(updated["version"].as_str().is_some_and(|v| v.starts_with("adk ")), "{updated}");
     assert_ne!(bare.json(&["server", "status"])["pid"], before, "its core restarted on the new binary");
     wait_until("connected again", || s.json(&["machine", "ls"])["machines"][0]["state"] == "connected");
 }
@@ -446,7 +446,7 @@ fn a_box_without_hc_gets_this_one_when_you_say_yes() {
 fn a_machine_reached_through_any_command_works_like_one_over_ssh() {
     let rohan = Session::new();
     let mut bare = Session::new();
-    bare.bin = bare.root.join("bin/herdr-core"); // no hc there
+    bare.bin = bare.root.join("bin/agentdeck-core"); // no hc there
     let s = Session::new();
     // The fake ssh stands in for a provider's own command; hc's ssh is not involved.
     let (_, command) = fake_ssh(&s, &[("rohan", &rohan), ("bare", &bare)]);
@@ -471,7 +471,7 @@ fn a_machine_reached_through_any_command_works_like_one_over_ssh() {
     let (_, missing) = s.err(&["--json", "machine", "add", "--via", &bare_via, "--name", "bare"]);
     assert_eq!(missing["error"]["kind"], "hc_missing", "{missing}");
     s.json(&["machine", "add", "--via", &bare_via, "--name", "bare", "--install"]);
-    bare.bin = bare.root.join(".local/bin/herdr-core"); // so it is stopped at the end
+    bare.bin = bare.root.join(".local/bin/agentdeck-core"); // so it is stopped at the end
     assert!(bare.bin.exists());
     s.json(&["machine", "rm", "box"]);
 }

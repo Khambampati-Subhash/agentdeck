@@ -26,7 +26,7 @@ const PLAYERS: &[(&str, &[&str])] = &[
 #[cfg(not(windows))]
 const PLAYER_LIMIT: Duration = Duration::from_secs(15);
 
-/// `done`, `blocked`, or a file (absolute, or relative to ~/.config/herdr-app). Off the UI thread.
+/// `done`, `blocked`, or a file (absolute, or relative to ~/.config/agentdeck). Off the UI thread.
 pub fn play(sound: &str) {
     if std::env::var_os("HERDR_APP_NO_SOUND").is_some() {
         return;
@@ -64,7 +64,7 @@ fn custom(sound: &str) -> Option<PathBuf> {
 /// The bundled sound, written once to a temp file players can open.
 fn bundled(sound: &str) -> Result<PathBuf, String> {
     let (name, bytes) = if sound == "done" { ("done", DONE) } else { ("blocked", BLOCKED) };
-    let path = std::env::temp_dir().join(format!("herdr-app-{}-{name}.mp3", std::process::id()));
+    let path = std::env::temp_dir().join(format!("agentdeck-{}-{name}.mp3", std::process::id()));
     if !path.exists() {
         std::fs::write(&path, bytes).map_err(|e| format!("cannot write {}: {e}", path.display()))?;
     }

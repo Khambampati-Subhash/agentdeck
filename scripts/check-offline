@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Fails if shipped code names herdr.dev, outside the reasoned entries in
-# scripts/offline-allow.txt. AgentOS never requests anything from herdr.dev.
+# scripts/offline-allow.txt. AgentDeck never requests anything from herdr.dev.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 allow=scripts/offline-allow.txt
@@ -18,5 +18,5 @@ while IFS= read -r hit; do
   done < "$allow"
   if (( ! ok )); then echo "$hit"; bad=1; fi
 done < <(git grep -n -I -E 'herdr\.dev' -- "${paths[@]}" || true)
-if (( bad )); then echo "check-offline: herdr.dev is named above; AgentOS must not request it" >&2; exit 1; fi
+if (( bad )); then echo "check-offline: herdr.dev is named above; AgentDeck must not request it" >&2; exit 1; fi
 echo "check-offline: clean"

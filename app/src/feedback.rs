@@ -6,7 +6,7 @@ use std::path::PathBuf;
 pub const MAX_IMAGES: usize = 3;
 const MAX_IMAGE_BYTES: usize = 5 * 1024 * 1024;
 
-/// Only a server `HERDR_FEEDBACK_URL` names. AgentOS has none.
+/// Only a server `HERDR_FEEDBACK_URL` names. AgentDeck has none.
 fn endpoint() -> Option<String> {
     endpoint_from(std::env::var("HERDR_FEEDBACK_URL").ok())
 }
@@ -48,7 +48,7 @@ pub fn attach(bytes: &[u8]) -> Result<String, String> {
     let (bytes, ext) = match sniff(bytes) {
         Some(ext) => (bytes.to_vec(), ext),
         None => {
-            let img = image::load_from_memory(bytes).map_err(|_| "That isn't an image Herdr can read.".to_owned())?;
+            let img = image::load_from_memory(bytes).map_err(|_| "That isn't an image AgentDeck can read.".to_owned())?;
             let mut png = std::io::Cursor::new(Vec::new());
             img.write_to(&mut png, image::ImageFormat::Png).map_err(|_| "Couldn't convert that image.".to_owned())?;
             (png.into_inner(), "png")
@@ -118,7 +118,7 @@ pub async fn send(body: Value, shots: Vec<String>) -> Result<(), String> {
         return Err("Up to 3 screenshots.".into());
     }
     let files = shots.iter().map(|s| shot_file(s)).collect::<Result<Vec<_>, _>>()?;
-    let url = endpoint().ok_or("AgentOS doesn't send feedback anywhere. Copy your message and send it yourself.")?;
+    let url = endpoint().ok_or("AgentDeck doesn't send feedback anywhere. Copy your message and send it yourself.")?;
     let (tx, rx) = async_channel::bounded(1);
     std::thread::spawn(move || {
         let result = post(&url, &body.to_string(), &files);

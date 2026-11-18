@@ -16,13 +16,13 @@ from the same parts you have.
 
 ## Two programs
 
-- **`herdr-app`**, the window: spaces, tabs, layouts, panels.
-- **herdr-core (`hc`)**, which runs every terminal and agent. They keep
-  running when the window closes or updates. You can use `hc` yourself:
+- **`agentdeck`**, the window: spaces, tabs, layouts, panels.
+- **agentdeck-core (`adk`)**, which runs every terminal and agent. They keep
+  running when the window closes or updates. You can use `adk` yourself:
   start a terminal, read its screen, send it text, wait for an agent
-  (`hc --help`). The Herdr app is one client of it.
+  (`adk --help`). The Herdr app is one client of it.
 
-`herdr-app` controls this app; `hc` controls herdr-core.
+`agentdeck` controls this app; `adk` controls agentdeck-core.
 
 ## What you can and can't do
 
@@ -41,17 +41,18 @@ draws text; read or change other mods' code at run time.
 Mods use **gpui-kit** (its gpui-shell): JavaScript that describes **GPUI**
 elements, a native GPU UI (`div()`, flex, children,
 `.on_click`). There's no DOM: the script describes, Rust draws. Background:
-https://gpui-kit.com. The Herdr app carries its own copy with additions
+https://gpui-kit.com. AgentDeck carries its own copy with additions
 (`frames`, `loop`), so **the type files here are the truth**:
-`gpui-kit.d.ts` for elements and `herdr.d.ts` for the app's data and
-commands. They're rewritten on every start to match this version.
+`gpui-kit.d.ts` for elements and `agentdeck.d.ts` for the app's data and
+commands. They're rewritten on every start to match this version. Mods import it as
+`"agentdeck"`; `"herdr"` still works, so mods written for Herdr load unchanged.
 
 ## Changing things safely
 
 - Edits apply at once. If a file is invalid, the app keeps the last good
   version and writes why to `<name>.error` (`layout.error`, `keys.error`,
   `settings.error`, `programs.error`). Check after every edit.
-- `herdr-app check <mod folder>` loads a mod once and checks its initial
+- `agentdeck check <mod folder>` loads a mod once and checks its initial
   description and eager native elements, including virtual lists and motion.
   It does not lay out the mod or run deferred rows, nested renders, or later
   async states. Never call a mod done without a passing check; also try it
@@ -62,14 +63,14 @@ commands. They're rewritten on every start to match this version.
 
 ## Seeing the window
 
-`herdr-app shot [file.png]` saves the last rendered window frame as a PNG
+`agentdeck shot [file.png]` saves the last rendered window frame as a PNG
 and prints its absolute path (default: `herdr-shot.png` in your current
 folder). Use it when debugging mod UIs: inspect spacing, colors, terminal
 images, overlays, popups and floats. It captures the app, not the desktop,
 at the window’s physical pixel size, even when covered or minimized. No
 screen-recording permission is needed. Herdr must be running; before its
 first frame or during GPU recovery it reports an error instead of a PNG.
-`HERDR_APP_HOME` selects which running window to ask, as with `status`.
+`AGENTDECK_HOME` selects which running window to ask, as with `status`.
 
 ## The files
 
@@ -88,13 +89,13 @@ first frame or during GPU recovery it reports an error instead of a PNG.
 Shared state is saved atomically in the background, with the latest change winning.
 If `shared.json` is invalid, Herdr logs a warning and keeps it as
 `shared.json.corrupt-<time>` before starting empty.
-`herdr-app check` uses empty shared state in memory and leaves this file untouched.
+`agentdeck check` uses empty shared state in memory and leaves this file untouched.
 
 ## The model: spaces, tabs, terminals
 
 Every layout shows the same world; a layout may show less, never a
 different one. Each machine keeps its spaces, tabs and splits in its core's
-`herdr-app` document. Connected screens share that layout and live terminals,
+`agentdeck` document. Connected screens share that layout and live terminals,
 not their focus, zoom or attention. Use commands to change structure; there
 is no `spaces.json`. On simultaneous edits the newest accepted document wins
 (no merging); structural commands fail while that machine's layout is unavailable.
@@ -104,7 +105,7 @@ In the expanded Spaces sidebar, drag a space to reorder it within its machine;
 the highlighted line shows where it will land.
 
 - A **space** is a place to work, on one machine: this one, or another
-  from `hc machine ls` (`spaces()[i].machine`). Herdr leaves out machines
+  from `adk machine ls` (`spaces()[i].machine`). Herdr leaves out machines
   added with `--temp` (an agent's short-lived sandbox): no spaces, not in
   `machines()`, and mods listing machines skip `temporary`. Names work as in Herdr:
   a space nobody named is called after where its first terminal is now
@@ -139,7 +140,7 @@ the highlighted line shows where it will land.
 - Every terminal is a core terminal. Herdr labels the ones it starts with
   `herdr.space=<id>` and `herdr.tab=<id>`. **A terminal with those
   labels shows up there**, even one you start yourself:
-  `hc run --keep --label herdr.space=<id> --label herdr.tab=<id> -- claude`.
+  `adk run --keep --label herdr.space=<id> --label herdr.tab=<id> -- claude`.
   Labels use ids local to that machine; remote ids shown by the app have a
   `<machine>/` prefix (strip it when writing labels on that machine). Adoption
   also enables core keep; `terminal.park` removes the pane and disables keep.
@@ -154,7 +155,7 @@ the highlighted line shows where it will land.
   `working`, `blocked`, `idle`, or `done` = finished while the user wasn't
   looking (it becomes `idle` once they look). A space's and a tab's
   status is the most urgent of its agents: blocked > done > working > idle.
-- **Sub-agents** are terminals an agent started with `hc run`: the core
+- **Sub-agents** are terminals an agent started with `adk run`: the core
   records the starter as `parent` (see `terminals()`). Parent addresses use
   the app's machine names, or a bare ID for this computer, when they can be
   mapped; otherwise they stay as the core reported them. They belong to their
@@ -207,8 +208,8 @@ look. The theme picker overrides any layout. To change a shipped layout's
 look beyond that, or its structure/code, clone it and edit the clone:
 
 ```sh
-herdr-app do layout.clone '{"name":"main","as":"my-layout"}'
-herdr-app do mod.clone '{"name":"files","as":"my-files"}'
+agentdeck do layout.clone '{"name":"main","as":"my-layout"}'
+agentdeck do mod.clone '{"name":"files","as":"my-files"}'
 ```
 
 The default clone name is `<name>-copy`; an existing name is refused.
@@ -305,7 +306,7 @@ there, as the shipped menu does. For example:
 
 ```js
 import { View, div } from "gpui-kit";
-import { props, run, closeOverlay } from "herdr";
+import { props, run, closeOverlay } from "agentdeck";
 export default class MyMenu extends View {
   render() {
     return div().id("split-target").child("Split this pane").on_click(() => {
@@ -456,7 +457,7 @@ folder on GitHub):
 
 1. Read the recipe and every file before writing anything. Before adding,
    tell the person if a mod reaches the network, runs programs (`exec`,
-   `hc`) or reads files outside its own folder.
+   `adk`) or reads files outside its own folder.
 2. Copy the layout file to `layouts/` and each mod folder to `mods/`. Leave
    the recipe and preview out. Never overwrite: if a name is taken (yours
    or Herdr's), rename the new one: its file or folder, the `mod` names in
@@ -467,7 +468,7 @@ folder on GitHub):
    recipe instead.
 4. A mod's `keys.json`: merge it into the person's. Add its sections and
    keys, and ask before replacing a key they already use.
-5. `herdr-app check` each mod; for a layout, then `layout.switch {name}`.
+5. `agentdeck check` each mod; for a layout, then `layout.switch {name}`.
    The person's own layout stays as it was; `ctrl-shift-l` switches back,
    and deleting the files removes it.
 
@@ -551,16 +552,16 @@ shortcuts must then be added by hand.
 ## Commands
 
 The one way to change anything; keys, mods (`run(name, args)`), menus and
-you use the same list. `herdr-app commands` prints every one with its arguments
+you use the same list. `agentdeck commands` prints every one with its arguments
 (which are required) and what it does. Unknown argument names are errors and list
 valid names; they never fall back to the current target. For example, closing a
-space uses `herdr-app do space.close --id <id> --confirmed true`, not `--space`.
+space uses `agentdeck do space.close --id <id> --confirmed true`, not `--space`.
 Target IDs (`id`, `pane`, `space`, `terminal`) must be strings. Other non-null
 types are rejected before a current-target default applies; null means omitted.
 The main ones:
 
 - Spaces: `space.new {name?, folder?, tab?, argv?, task?, machine?}`
-  (machine: another machine from `hc machine ls`; omitted: the focused space's
+  (machine: another machine from `adk machine ls`; omitted: the focused space's
   machine for keys and clicks, this computer for scripts; `""`: this computer.
   The space lives there, its
   terminals start in that machine's home unless folder, and its tabs and
@@ -636,15 +637,15 @@ The main ones:
   `layout.clone {name, as?}` (duplicate, then switch; default `<name>-copy`).
 - App: `mod.clone {name, as?}` (duplicate; default `<name>-copy`), `mod.open {name}` (again: closes it), `overlay.close {id?}`, `app.help` (again: closes it), `app.palette` (again: closes it), `app.settings {section?}`
   (sections: `look`, `machines`, `alerts`, `updates`, `privacy`; Machines lists, updates, renames and removes ssh machines; settings edit the same files you do).
-  `app.check_updates` (only a successful check reports Up to date; a failed check clears the checked time and can be retried), `app.update_core` (a newer herdr-core of this generation, terminals kept;
+  `app.check_updates` (only a successful check reports Up to date; a failed check clears the checked time and can be retried), `app.update_core` (a newer agentdeck-core of this generation, terminals kept;
   never one a package manager owns), `app.welcome`, `app.whats_new`, `app.feedback {message?, from?}` (from `"person"` or `"agent"`; opens a review window, where the person can paste up to 3 screenshots; never sends until the person clicks Send), `app.reset`,
   `app.theme {name}`, `app.zoom_in`, `app.zoom_out`, `app.zoom_reset`,
   `app.update` (restart into a downloaded update).
   Add machine lists all named ssh-config hosts in a scrollable list. Machines
-  that need a password, a new host key or herdr-core installed show what to run
+  that need a password, a new host key or agentdeck-core installed show what to run
   in your own terminal; the picker updates once it is added. Other machines are
   added quietly. Login guidance includes Copy. A machine that needs a login shows
-  `hc machine login <name>` with Copy in Settings > Machines, its sidebar group,
+  `adk machine login <name>` with Copy in Settings > Machines, its sidebar group,
   the welcome screen and the failed New space toast. If a remote machine was rebuilt
   or replaced and a different core answers there, its sidebar offers Connect:
   explicitly forget the old identity and pair again with the same name and target.
@@ -659,14 +660,14 @@ command says what's missing.
 From a shell:
 
 ```sh
-herdr-app do tab.new --name "fix login" --argv '["claude"]' --task "look at the login bug"
-herdr-app do pane.split:right
-herdr-app ls          # spaces, their tabs and terminals (sub-agents under their parent)
-herdr-app status      # what's on screen: layout, focus, overlays, zoom, errors from files and mods
-herdr-app commands    # every command and its arguments
+agentdeck do tab.new --name "fix login" --argv '["claude"]' --task "look at the login bug"
+agentdeck do pane.split:right
+agentdeck ls          # spaces, their tabs and terminals (sub-agents under their parent)
+agentdeck status      # what's on screen: layout, focus, overlays, zoom, errors from files and mods
+agentdeck commands    # every command and its arguments
 ```
 
-`herdr-app do` prints what the command made (`{ "space", "tab",
+`agentdeck do` prints what the command made (`{ "space", "tab",
 "terminal" }`, `{ "pane", "terminal" }`) or `{ "error": "..." }` and exits 1.
 
 ## The person: `settings.json`
@@ -683,9 +684,9 @@ What's about the user, never a look:
   When an agent needs the person, or finishes while they aren't looking at
   it, Herdr plays a sound and (unless they're looking) posts a toast that
   goes there when clicked. `done` / `blocked` replace the bundled MP3s
-  (path absolute or relative to `~/.config/herdr-app`). Changes apply live,
+  (path absolute or relative to `~/.config/agentdeck`). Changes apply live,
   including the Play buttons in Settings > Alerts.
-- `core`: the herdr-core binary to use, when it isn't where Herdr looks
+- `core`: the agentdeck-core binary to use, when it isn't where Herdr looks
   (PATH, the login shell's PATH, `~/.local/bin`, Homebrew, mise, Nix,
   cargo). Read at start.
 - `font`, `font_size`, `ui_font`: used where the layout doesn't set its
@@ -702,7 +703,7 @@ What's about the user, never a look:
 - Updates: an installed app downloads them by itself and offers Restart and
   What changed. If the app crashes or is killed with a verified newer update
   waiting, the next launch installs it before opening a window. The first
-  start after an app update also updates herdr-core
+  start after an app update also updates agentdeck-core
   to the latest release of the same generation, keeping terminals running.
   Settings → Updates keeps app and core actions together;
   its What's new button opens the waiting update's release range, or this
@@ -729,7 +730,7 @@ What's about the user, never a look:
   macOS releases require Apple Silicon; Intel Macs must build from source.
   Keep signed macOS bundles unchanged: don't edit their Info.plist or
   re-sign them. On launch, an installed macOS bundle creates or repairs its
-  own `~/.local/bin/herdr-app` symlink, leaving personal files and other
+  own `~/.local/bin/agentdeck` symlink, leaving personal files and other
   apps' links alone. Disk-image and translocated launches don't create it.
   Finder launches load the login shell's PATH, with the usual install
   folders as a fallback.
@@ -764,7 +765,7 @@ What's about the user, never a look:
   version, OS, which known agents ran, how many spaces, tabs and
   terminals, which layouts, shipped mods and commands were used. Never
   terminal content, names of files, folders, spaces or the person's own
-  mods; nothing from herdr-core. `DO_NOT_TRACK=1` or `HERDR_TELEMETRY=0`
+  mods; nothing from agentdeck-core. `DO_NOT_TRACK=1` or `HERDR_TELEMETRY=0`
   turns it off for one run. A build from source never sends.
 
 ## Programs: `programs.json`
@@ -812,7 +813,7 @@ has 120 programs (agents, editors, runtimes, tools, databases, infra);
 ## Mods: `mods/<name>/`
 
 ```
-~/.config/herdr-app/mods/<name>/
+~/.config/agentdeck/mods/<name>/
   main.js       the mod (required)
   mod.json    where it first appears: { "place": "right" | "left" | "top" | "bottom" | "none", "size": 320 }
   *.js, *.svg   more modules ("./ui.js"), its own icons
@@ -830,7 +831,7 @@ has 120 programs (agents, editors, runtimes, tools, databases, infra);
   (not files the app writes: `jsconfig.json`, `.d.ts`, hidden ones,
   `node_modules`). The old build's tasks and timers stop: a loop ends at its
   next `cx` use. A broken save keeps the old version running and shows in
-  `herdr-app status`; its top-level code has already run, so keep side effects
+  `agentdeck status`; its top-level code has already run, so keep side effects
   on `globalThis` out of the module's top level.
 - A copy starts the first time it shows, then stays alive while its block is in
   the layout, shown or not (a hidden column, the other child of a stack, a pane
@@ -838,7 +839,7 @@ has 120 programs (agents, editors, runtimes, tools, databases, infra);
   timers keep running while hidden, so poll gently. Another layout starts its
   mods fresh (pane mods belong to their tab and stay); a block removed or given
   another mod or props starts over. `<mod>.<command>` reaches shown copies only.
-- Images and SVGs are referenced from `~/.config/herdr-app`:
+- Images and SVGs are referenced from `~/.config/agentdeck`:
   `image("mods/<name>/logo.svg")` (full color), `svg("mods/<name>/icon.svg")`
   (tinted with the text color). Saving an asset under `mods/` updates every
   mod showing it, including images that were missing or invalid on first load.
@@ -866,7 +867,8 @@ has 120 programs (agents, editors, runtimes, tools, databases, infra);
   (callers passing `task` should use height 300); checkouts go to
   `~/.herdr/worktrees/<repo>/<branch>` on the space's machine, a constant
   at its top; the
-  `spaces` sidebar nests worktree spaces under their repo's and shows each
+  `spaces` sidebar nests a repo's worktree spaces under its main-checkout space (else its
+  first space) and shows each
   space's repo, branch, ahead/behind and uncommitted changes), and `propen`
   (opens a pull or merge request from a checkout's branch: the space menu's
   Open pull request on git spaces and the Pull requests panel's **＋** open it
@@ -882,7 +884,7 @@ has 120 programs (agents, editors, runtimes, tools, databases, infra);
 ### Check before you finish
 
 ```sh
-herdr-app check ~/.config/herdr-app/mods/<name>
+agentdeck check ~/.config/agentdeck/mods/<name>
 ```
 
 Loads the mod, renders it once, exits nonzero with the exact error. Run it
@@ -893,7 +895,7 @@ after every change. Never call a mod done without a passing check.
 ```js
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
-import { exec, spaces, theme, run } from "herdr";
+import { exec, spaces, theme, run } from "agentdeck";
 
 export default class Branches extends View {
   init(_props, cx) {
@@ -946,7 +948,7 @@ Rules:
   call when its pane, tab, layout-owned slot or overlay goes, and on app quit.
   It is not called for a hidden copy or an inactive tab. Start cleanup inside
   `close()`; don't await work started earlier. Await cleanup directly,
-  for example `async close(cx) { await exec("hc", ["kill", this.browser]); }`.
+  for example `async close(cx) { await exec("adk", ["kill", this.browser]); }`.
   Closing stays responsive: cleanup has at most 250 ms (shared across copies
   on quit), then unfinished tasks are cancelled. On quit, use `exec(...)` and
   `run("terminal.kill", { terminal: address })`: those go out before the event
@@ -996,7 +998,7 @@ The full surface is in `gpui-kit.d.ts` next to this file.
 
 ### The `herdr` module
 
-All of it is in `herdr.d.ts`. In short:
+All of it is in `agentdeck.d.ts`. In short:
 
 - Live data: `spaces()` (each with its tabs, status, name, named, folder,
   machine, branch), `machines()` (name, null for this computer; layout:
@@ -1044,7 +1046,7 @@ All of it is in `herdr.d.ts`. In short:
   not `process.run`; `on: space.machine` runs there, omitted means local).
   `timeout` is milliseconds, defaults to 30,000 and is capped at 600,000 (10 minutes),
   locally and remotely. It rejects on timeout, if the program cannot start or the machine cannot be reached.
-  `hc(args)` (`hc read <t>` gives a terminal's text),
+  `adk(args)` (`adk read <t>` gives a terminal's text),
   `home()`, `appHome()`, `playSound("done" | "blocked" | file)`.
   `knownAgents({ on })`: the agents people can start (programs.json's
   `run`), most picked first, each `installed` or not there (asked of the
@@ -1068,19 +1070,19 @@ All of it is in `herdr.d.ts`. In short:
 
 Mods are trusted code: commands and network access (including `fetch`) are unrestricted.
 Other built-ins: `localStorage` (per mod copy), `console.log`, `fetch`,
-`import * as fs from "fs/promises"` (read in home, write under `~/.config/herdr-app`).
+`import * as fs from "fs/promises"` (read in home, write under `~/.config/agentdeck`).
 
-## herdr-core (`hc`)
+## agentdeck-core (`adk`)
 
-`herdr-app --skill` prints the manual for driving this window;
-`hc --skill` prints the manual for running and coordinating programs and agents,
-including a small herdr-core skill you can install with the user's permission.
-`herdr-app commands` lists app commands and arguments without needing an open window.
+`agentdeck --skill` prints the manual for driving this window;
+`adk --skill` prints the manual for running and coordinating programs and agents,
+including a small agentdeck-core skill you can install with the user's permission.
+`agentdeck commands` lists app commands and arguments without needing an open window.
 
-- `hc ls --json`, `hc read t3 --lines 50`, `hc run --json --cwd <dir> --label k=v -- <cmd>`,
-  `hc label t3 k=v`, `hc send t3 "text"`, `hc wait t3`. `hc --help` for all.
-- Other machines: `hc machine ls`; `hc run --on <machine> ...` starts a
-  terminal there (`vps/t7`), `hc exec --on <machine> git status` runs one
+- `adk ls --json`, `adk read t3 --lines 50`, `adk run --json --cwd <dir> --label k=v -- <cmd>`,
+  `adk label t3 k=v`, `adk send t3 "text"`, `adk wait t3`. `adk --help` for all.
+- Other machines: `adk machine ls`; `adk run --on <machine> ...` starts a
+  terminal there (`vps/t7`), `adk exec --on <machine> git status` runs one
   command there and prints exactly its output.
 
 ## Keep in mind

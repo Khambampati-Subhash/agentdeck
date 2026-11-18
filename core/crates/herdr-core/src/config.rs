@@ -1,4 +1,4 @@
-//! `~/.config/herdr-core/config.toml`. A missing file means defaults.
+//! `~/.config/agentdeck-core/config.toml`. A missing file means defaults.
 
 use crate::rpc::RpcError;
 use serde::Deserialize;
@@ -26,7 +26,7 @@ pub struct Config {
     pub headless: Option<String>,
     /// Scrollback kept per live terminal, in MB (default 5).
     pub history_mb: Option<f64>,
-    /// Where the core listens (default under $XDG_RUNTIME_DIR). `HC_SOCKET` wins.
+    /// Where the core listens (default under $XDG_RUNTIME_DIR). `ADK_SOCKET` wins.
     pub socket: Option<String>,
     /// Seconds another machine gets to answer a call (a wait gets its own
     /// timeout on top), and to send anything at all before its line is
@@ -70,7 +70,7 @@ impl Config {
 }
 
 fn invalid(message: String) -> RpcError {
-    RpcError::new("config", message, "fix ~/.config/herdr-core/config.toml")
+    RpcError::new("config", message, "fix ~/.config/agentdeck-core/config.toml")
 }
 
 pub fn load(path: &Path) -> Result<Config, RpcError> {

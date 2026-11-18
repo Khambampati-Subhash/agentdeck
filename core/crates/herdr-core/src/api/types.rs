@@ -291,7 +291,7 @@ pub struct RunParams {
     /// `wait_timeout`, else 180).
     #[arg(long, value_parser = cli_seconds)]
     pub timeout: Option<f64>,
-    /// Who is calling (`HC_TERMINAL_ID` inside a terminal).
+    /// Who is calling (`ADK_TERMINAL_ID` inside a terminal).
     #[arg(skip)]
     pub caller: Option<String>,
 }
@@ -413,7 +413,7 @@ pub struct AttachParams {
     #[arg(skip)]
     #[serde(default)]
     pub resumed: bool,
-    /// Who is calling (`HC_TERMINAL_ID` inside a terminal): never itself.
+    /// Who is calling (`ADK_TERMINAL_ID` inside a terminal): never itself.
     #[arg(skip)]
     #[serde(default)]
     pub caller: Option<String>,
@@ -488,7 +488,7 @@ pub struct SendParams {
     /// With wait: seconds before it checks in (default: config, else 180).
     #[arg(long, value_parser = cli_seconds)]
     pub timeout: Option<f64>,
-    /// Who is sending (`HC_TERMINAL_ID`, else the calling process's parent), so a
+    /// Who is sending (`ADK_TERMINAL_ID`, else the calling process's parent), so a
     /// bare wait from the same caller waits for this send's turn.
     #[arg(skip)]
     pub caller: Option<String>,

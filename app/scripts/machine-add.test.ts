@@ -55,8 +55,8 @@ for (const kind of ["hc_missing", "incompatible", "login_needed", "auth_failed",
     const s = setup({ code: 1, stdout: JSON.stringify({ error: { kind, message: "needs attention" } }) });
     await s.add();
     expect(s.view.state["my-host"]).toContain("Couldn't add my-host here");
-    expect(s.view.state["my-host"]).toContain("`hc machine add my-host`");
-    expect(s.view.state["my-host"]).toContain("`hc machine --help`");
+    expect(s.view.state["my-host"]).toContain("`adk machine add my-host`");
+    expect(s.view.state["my-host"]).toContain("`adk machine --help`");
     expect(s.view.isAdded("my-host")).toBe(false);
     expect(s.calls.every((args) => args[0] === "machine")).toBe(true);
     expect(s.overlays).toEqual([]);
@@ -67,7 +67,7 @@ for (const message of ["Enter password", "Enter passphrase", "new host key", "Pe
   test(`${message} also gives instructions`, async () => {
     const s = setup({ code: 1, stderr: JSON.stringify({ error: { kind: "other", message } }) });
     await s.add();
-    expect(s.view.state["my-host"]).toContain("`hc machine add my-host`");
+    expect(s.view.state["my-host"]).toContain("`adk machine add my-host`");
   });
 }
 
@@ -78,7 +78,7 @@ for (const [target, quoted] of [
   test(`instructions quote ${target} as one shell argument`, async () => {
     const s = setup({ code: 1, stdout: JSON.stringify({ error: { kind: "host_key" } }) });
     await s.add(target);
-    expect(s.view.state[target]).toContain(`\`hc machine add ${quoted}\``);
+    expect(s.view.state[target]).toContain(`\`adk machine add ${quoted}\``);
     expect(s.calls.find((args) => args[1] === "add")?.[2]).toBe(target);
     const shell = Bun.spawnSync(["sh", "-c", `printf '%s' ${quoted}`]);
     expect(shell.exitCode).toBe(0);
@@ -91,7 +91,7 @@ test("pending guidance clears when another terminal adds the host and checks Mac
   await s.add();
   await s.poll();
   expect(s.view.pending.has("my-host")).toBe(true);
-  expect(s.view.state["my-host"]).toContain("hc machine add my-host");
+  expect(s.view.state["my-host"]).toContain("adk machine add my-host");
   expect(s.probes).toEqual([]);
   s.machines.push({ target: "my-host", name: "remote" });
   await s.poll();

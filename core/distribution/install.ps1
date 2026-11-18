@@ -1,10 +1,10 @@
-# Installs herdr-core (hc) on Windows, or updates it:
+# Installs agentdeck-core (hc) on Windows, or updates it:
 #
 #   $env:HERDR_RELEASES_URL = "<release server>"; powershell -File install.ps1
 #
-# AgentOS has no release server of its own, so there is no default.
+# AgentDeck has no release server of its own, so there is no default.
 #
-# Into %LOCALAPPDATA%\Programs\herdr-core (herdr-core.exe, Microsoft's
+# Into %LOCALAPPDATA%\Programs\agentdeck-core (agentdeck-core.exe, Microsoft's
 # ConPTY beside it), added to your PATH, with hc.exe linked to it only if no
 # `hc` exists. An hc that is already there is swapped the planned way (hc
 # update --from): running terminals keep running. No admin needed.
@@ -25,9 +25,9 @@ $ProgressPreference = "SilentlyContinue"
 # throw, not exit: under `irm | iex`, exit would close the person's window.
 function Fail($why) { throw "hc: $why" }
 
-if (-not $env:HERDR_RELEASES_URL) { Fail "set HERDR_RELEASES_URL to an AgentOS release server; AgentOS has no default" }
+if (-not $env:HERDR_RELEASES_URL) { Fail "set HERDR_RELEASES_URL to an AgentDeck release server; AgentDeck has no default" }
 $releases = $env:HERDR_RELEASES_URL.TrimEnd("/")
-$dir = if ($env:HC_INSTALL_DIR) { $env:HC_INSTALL_DIR } else { Join-Path $env:LOCALAPPDATA "Programs\herdr-core" }
+$dir = if ($env:HC_INSTALL_DIR) { $env:HC_INSTALL_DIR } else { Join-Path $env:LOCALAPPDATA "Programs\agentdeck-core" }
 $arch = if ($env:PROCESSOR_ARCHITEW6432) { $env:PROCESSOR_ARCHITEW6432 } else { $env:PROCESSOR_ARCHITECTURE }
 if ($arch -ne "AMD64") { Fail "no build for $arch Windows yet (x64 only)" }
 $target = "windows-x86_64"
@@ -54,7 +54,7 @@ try {
     # update; the file is the same either way. Only plain URLs on the release
     # server in use are marked: one with a query or fragment (a mirror's
     # signed URL) is fetched exactly as the manifest gives it.
-    $src = if (Test-Path (Join-Path $dir "herdr-core.exe")) { "update" } else { "install" }
+    $src = if (Test-Path (Join-Path $dir "agentdeck-core.exe")) { "update" } else { "install" }
     $plain = $t.url.StartsWith("$releases/", [StringComparison]::Ordinal) -and $t.url.IndexOfAny([char[]]"?#") -lt 0
     $download = if ($plain) { "$($t.url)?src=$src" } else { $t.url }
     curl.exe -fsSL $download -o "$tmp\hc.zip"
@@ -66,20 +66,20 @@ try {
   }
     New-Item -ItemType Directory -Force "$tmp\hc" | Out-Null
     & $tar -xf "$tmp\hc.zip" -C "$tmp\hc"
-    $new = "$tmp\hc\herdr-core.exe"
+    $new = "$tmp\hc\agentdeck-core.exe"
     if ($LASTEXITCODE -or -not (Test-Path "$tmp\hc\conpty\conpty.dll")) { Fail "the download holds no complete hc" }
     $version = (& $new --version) -replace "^hc ", ""
     if ($LASTEXITCODE) { Fail "the downloaded hc does not run on this machine" }
 
     New-Item -ItemType Directory -Force $dir | Out-Null
-    $exe = Join-Path $dir "herdr-core.exe"
+    $exe = Join-Path $dir "agentdeck-core.exe"
     if (Test-Path $exe) {
         # Swapped the planned way, so its terminals keep running.
         & $exe update --from $new | Out-Null
         if ($LASTEXITCODE) { Fail "updating $exe failed (see above)" }
         Write-Host "hc updated to $version."
     } else {
-        Copy-Item -Recurse -Force "$tmp\hc\herdr-core.exe", "$tmp\hc\conpty" $dir
+        Copy-Item -Recurse -Force "$tmp\hc\agentdeck-core.exe", "$tmp\hc\conpty" $dir
         Write-Host "hc $version installed into $dir."
     }
     Copy-Item -Recurse -Force "$tmp\hc\THIRD-PARTY-NOTICES" $dir -ErrorAction SilentlyContinue

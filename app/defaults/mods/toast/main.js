@@ -12,8 +12,8 @@ export default class Toast extends View {
   render(cx) {
     const t = theme();
     const p = props() ?? {};
-    const login = /^([a-z0-9][a-z0-9_.-]{0,31}) needs login; run hc machine login \1$/.exec(p.body ?? "");
-    const command = login ? `hc machine login ${login[1]}` : null;
+    const login = /^([a-z0-9][a-z0-9_.-]{0,31}) needs login; run (?:adk|hc) machine login \1$/.exec(p.body ?? "");
+    const command = login ? `adk machine login ${login[1]}` : null;
     return h_flex()
       .id("toast")
       .size_full()

@@ -16,9 +16,9 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 const ICON: &[u8] = include_bytes!("../assets/icons/herdr-ui-icon-clean.png");
-// AgentOS has no release server: the core and app are built from the repo.
-const CORE_BUILD: &str = "just build, then Choose… core/target/debug/herdr-core";
-const APP_BUILD: &str = "rebuild AgentOS from its repo (just build)";
+// AgentDeck has no release server: the core and app are built from the repo.
+const CORE_BUILD: &str = "just build, then Choose… core/target/debug/agentdeck-core";
+const APP_BUILD: &str = "rebuild AgentDeck from its repo (just build)";
 
 /// What's missing before the main window can open.
 pub enum Need {
@@ -89,13 +89,13 @@ pub struct Setup {
 pub fn open(need: Need, requests: async_channel::Receiver<Request>, cx: &mut App) {
     let options = WindowOptions {
         window_bounds: Some(WindowBounds::Windowed(Bounds::centered(None, size(px(620.0), px(460.0)), cx))),
-        titlebar: Some(TitlebarOptions { title: Some("Herdr".into()), ..Default::default() }),
-        app_id: Some("herdr-app".into()),
+        titlebar: Some(TitlebarOptions { title: Some("AgentDeck".into()), ..Default::default() }),
+        app_id: Some("agentdeck".into()),
         ..Default::default()
     };
     let icon = Arc::new(Image::from_bytes(ImageFormat::Png, ICON.to_vec()));
     cx.open_window(options, |_, cx| cx.new(|_| Setup { need, state: State::Ready, requests: Some(requests), icon }))
-        .expect("cannot open the Herdr window");
+        .expect("cannot open the AgentDeck window");
     cx.activate(true);
 }
 
@@ -147,21 +147,21 @@ impl Setup {
     }
 
     fn install(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        self.run("Installing herdr-core…", || crate::core_bin::install().map(Some), window, cx);
+        self.run("Installing agentdeck-core…", || crate::core_bin::install().map(Some), window, cx);
     }
 
     fn update(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        self.run("Updating herdr-core… your terminals keep running.", || crate::core_bin::update().map(|_| None), window, cx);
+        self.run("Updating agentdeck-core… your terminals keep running.", || crate::core_bin::update().map(|_| None), window, cx);
     }
 
     fn choose(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let paths = cx.prompt_for_paths(PathPromptOptions { files: true, directories: false, multiple: false, prompt: Some("Use this herdr-core".into()) });
+        let paths = cx.prompt_for_paths(PathPromptOptions { files: true, directories: false, multiple: false, prompt: Some("Use this agentdeck-core".into()) });
         cx.spawn_in(window, async move |this, cx| {
             let Ok(Ok(Some(paths))) = paths.await else { return };
             let Some(bin) = paths.into_iter().next() else { return };
             let _ = this.update_in(cx, |this, window, cx| {
                 if crate::core_bin::version(&bin).is_none() {
-                    this.state = State::Failed(format!("{} isn't herdr-core (it should answer `--version` with `hc …`)", bin.display()));
+                    this.state = State::Failed(format!("{} isn't agentdeck-core (it should answer `--version` with `hc …`)", bin.display()));
                     cx.notify();
                     return;
                 }
@@ -185,29 +185,29 @@ impl Setup {
 fn words(need: &Need) -> (String, String, String) {
     match need {
         Need::Install => (
-            "Herdr needs herdr-core".into(),
-            "herdr-core runs your terminals and agents, and keeps them alive when this window closes. Herdr couldn't find it on this computer.".into(),
+            "AgentDeck needs its core".into(),
+            "AgentDeck core runs your terminals and agents, and keeps them alive when this window closes. AgentDeck couldn't find it on this computer.".into(),
             format!("Build it yourself: {CORE_BUILD}"),
         ),
         Need::Connect(error) => (
-            "Herdr can't connect to herdr-core".into(),
+            "AgentDeck can't connect to its core".into(),
             error.clone(),
             "Once you've resolved this, try again.".into(),
         ),
         Need::Fix(Mismatch::TooOld { have, need }) => (
-            "Herdr needs a newer herdr-core".into(),
-            format!("Yours is {have}; this Herdr needs {need} or newer. Updating keeps your terminals running."),
+            "AgentDeck needs a newer core".into(),
+            format!("Yours is {have}; this AgentDeck needs {need} or newer. Updating keeps your terminals running."),
             "Or update it yourself: hc update".into(),
         ),
         Need::Fix(Mismatch::Missing(methods)) => (
-            "Herdr needs a newer herdr-core".into(),
-            format!("Your herdr-core can't do everything this Herdr needs ({}). Updating keeps your terminals running.", methods.join(", ")),
+            "AgentDeck needs a newer core".into(),
+            format!("Your core can't do everything this AgentDeck needs ({}). Updating keeps your terminals running.", methods.join(", ")),
             "Or update it yourself: hc update".into(),
         ),
         Need::Fix(Mismatch::Newer { generation }) => (
-            "This Herdr is older than your herdr-core".into(),
-            format!("Your herdr-core speaks a newer protocol (generation {generation}) than this Herdr understands. Update Herdr; your terminals keep running."),
-            format!("Update AgentOS: {APP_BUILD}"),
+            "This AgentDeck is older than its core".into(),
+            format!("Your core speaks a newer protocol (generation {generation}) than this AgentDeck understands. Update AgentDeck; your terminals keep running."),
+            format!("Update AgentDeck: {APP_BUILD}"),
         ),
     }
 }
@@ -246,7 +246,7 @@ impl Render for Setup {
             Need::Fix(_) => div()
                 .flex()
                 .gap(px(10.0))
-                .child(button("update", "Update herdr-core", true).when(!busy, |d| d.on_click(cx.listener(|this, _, w, cx| this.update(w, cx))))),
+                .child(button("update", "Update agentdeck-core", true).when(!busy, |d| d.on_click(cx.listener(|this, _, w, cx| this.update(w, cx))))),
         };
         div()
             .size_full()

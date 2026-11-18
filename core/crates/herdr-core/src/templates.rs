@@ -1,4 +1,4 @@
-//! Templates: `~/.config/herdr-core/templates/<name>.md`, read fresh on every
+//! Templates: `~/.config/agentdeck-core/templates/<name>.md`, read fresh on every
 //! use. Frontmatter says how to start the agent; the body is its first message.
 
 use crate::paths::Paths;

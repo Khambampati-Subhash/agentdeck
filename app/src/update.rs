@@ -10,7 +10,7 @@
 //! builds) sets `HERDR_APP_RELEASE`. `scripts/install-macos` makes a
 //! Herdr.app too, so the install's shape alone can't tell.
 //!
-//! AgentOS has no release server of its own: nothing is checked or downloaded
+//! AgentDeck has no release server of its own: nothing is checked or downloaded
 //! unless `HERDR_RELEASES_URL` names one (tests point it at a local server).
 //!
 //! The core is checked on the same clock (`core/latest.json`): a newer core
@@ -73,7 +73,7 @@ fn target() -> String {
 }
 
 /// Why nothing was downloaded: there is no default release server.
-pub const NO_SERVER: &str = "No release server: AgentOS doesn't download builds. Set HERDR_RELEASES_URL to use one.";
+pub const NO_SERVER: &str = "No release server: AgentDeck doesn't download builds. Set HERDR_RELEASES_URL to use one.";
 
 /// The release server, only when `HERDR_RELEASES_URL` names one.
 pub fn releases() -> Option<String> {
@@ -263,7 +263,7 @@ pub fn update_core() {
         c.updating = false;
         match result {
             Ok(now) => {
-                c.version = Some(now.trim_start_matches("hc ").to_owned());
+                c.version = Some(now.trim_start_matches(crate::brand::CORE_VERSION_PREFIX).to_owned());
                 c.ready = None;
                 crate::telemetry::count("core_update_ok");
             }
@@ -610,7 +610,7 @@ pub fn after_update() {
         let have = crate::core_bin::version(&crate::core_bin::path()).unwrap_or_default();
         CORE.lock().unwrap().updating = true;
         let latest = latest_core().map_err(|e| tracing::warn!("core release check after app update: {e}")).ok();
-        let target = after_update_target(have.trim_start_matches("hc "), latest.as_ref(), crate::hc::GENERATION, crate::hc::core_min());
+        let target = after_update_target(have.trim_start_matches(crate::brand::CORE_VERSION_PREFIX), latest.as_ref(), crate::hc::GENERATION, crate::hc::core_min());
         let result = crate::core_bin::update_to(target);
         let mut core = CORE.lock().unwrap();
         core.updating = false;
@@ -620,7 +620,7 @@ pub fn after_update() {
                     let _ = std::fs::remove_dir_all(beside(&root, ".old"));
                 }
                 tracing::info!("herdr-core is {now}");
-                core.version = Some(now.trim_start_matches("hc ").to_owned());
+                core.version = Some(now.trim_start_matches(crate::brand::CORE_VERSION_PREFIX).to_owned());
                 core.error = None;
             }
             Err(e) => {

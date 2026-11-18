@@ -1,20 +1,26 @@
 #!/bin/bash
-# Builds AgentOS and installs it as a normal Mac app: ~/Applications/AgentOS.app,
+# Builds AgentDeck and installs it as a normal Mac app: ~/Applications/AgentDeck.app,
 # opened from Finder, Spotlight, Launchpad or the Dock.
 #
 # It shares nothing with an installed Herdr (upstream's app/scripts/install-macos
-# would replace it): its own bundle ID, its own settings folder, its own core
-# session and its own core, inside the app. ~/.local/bin is left alone.
+# would replace it): its own bundle ID, home (~/.config/agentdeck), core dirs and
+# core, inside the app. Links agentdeck and adk into ~/.local/bin.
 #
 # Usage: scripts/install-mac-app            (build and install)
 #        scripts/install-mac-app --no-build (install what's already built)
 set -euo pipefail
 
-NAME="AgentOS"
-ID="io.github.khambampati-subhash.agentos"
-SESSION="agentos"
-HOME_DIR="$HOME/Library/Application Support/$NAME"
+NAME="AgentDeck"
+ID="io.github.khambampati-subhash.agentdeck"
+HOME_DIR="${AGENTDECK_HOME:-$HOME/.config/agentdeck}"
+OLD_APP="$HOME/Applications/AgentOS.app"
+# Installs before the rename used this home and core session ("agentos").
+OLD_HOME="$HOME/Library/Application Support/AgentOS"
 APP="$HOME/Applications/$NAME.app"
+# The core is its own small app inside, so macOS privacy prompts name
+# "AgentDeck Core" rather than the bare agentdeck-core binary.
+CORE_APP="$APP/Contents/Helpers/AgentDeck Core.app"
+CORE="$CORE_APP/Contents/MacOS/agentdeck-core"
 
 [[ $(uname -s) == Darwin ]] || { echo "install-mac-app: macOS only" >&2; exit 1; }
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -24,23 +30,37 @@ if [[ ${1:-} != --no-build ]]; then
   (cd "$root/core" && cargo build --release --locked)
   (cd "$root/app" && cargo build --release --locked)
 fi
-app_bin="$root/app/target/release/herdr-app"
-core_bin="$root/core/target/release/herdr-core"
+app_bin="$root/app/target/release/agentdeck"
+core_bin="$root/core/target/release/agentdeck-core"
 [[ -x $app_bin && -x $core_bin ]] || { echo "install-mac-app: build first (no --no-build)" >&2; exit 1; }
 
 # Never write over an installed Herdr.
 case "$APP" in *Herdr.app*) echo "install-mac-app: refusing to touch $APP" >&2; exit 1 ;; esac
 
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$HOME_DIR"
+# A pre-rename core may still run the "agentos" session: keep its binary, outside the app.
+if [[ -x "$CORE_APP/Contents/MacOS/herdr-core" ]]; then
+  mkdir -p "$OLD_HOME" && rm -rf "$OLD_HOME/AgentOS Core.app" && mv "$CORE_APP" "$OLD_HOME/AgentOS Core.app"
+  old_core="$OLD_HOME/AgentOS Core.app/Contents/MacOS/herdr-core"
+  [[ -f $OLD_HOME/settings.json ]] && sed -i '' "s|\"$CORE_APP/Contents/MacOS/herdr-core\"|\"$old_core\"|" "$OLD_HOME/settings.json"
+fi
 # Replace atomically so installing doesn't interrupt a running copy.
 cp "$app_bin" "$APP/Contents/MacOS/$NAME.new" && mv -f "$APP/Contents/MacOS/$NAME.new" "$APP/Contents/MacOS/$NAME"
-cp "$core_bin" "$APP/Contents/MacOS/herdr-core.new" && mv -f "$APP/Contents/MacOS/herdr-core.new" "$APP/Contents/MacOS/herdr-core"
-chmod +x "$APP/Contents/MacOS/$NAME" "$APP/Contents/MacOS/herdr-core"
+chmod +x "$APP/Contents/MacOS/$NAME"
+# Running cores keep their files: the new bundle is signed aside, then swapped in.
+staged="$APP/Contents/Helpers/.core.new.app"
+rm -rf "$staged" "$staged.old"
+mkdir -p "$APP/Contents/Helpers"
+sh "$root/core/scripts/mac-bundle" "$core_bin" "$staged"
+codesign --force --sign - "$staged"
+[[ -d $CORE_APP ]] && mv "$CORE_APP" "$staged.old"
+mv "$staged" "$CORE_APP"
+rm -rf "$staged.old" "$APP/Contents/MacOS/herdr-core" # the bare core of earlier installs
 cp "$root/app/assets/icons/Herdr.icns" "$APP/Contents/Resources/$NAME.icns"
 
 # The app's core is the one inside the bundle (kept if settings already exist).
 settings="$HOME_DIR/settings.json"
-[[ -f $settings ]] || printf '{ "core": "%s" }\n' "$APP/Contents/MacOS/herdr-core" > "$settings"
+[[ -f $settings ]] || printf '{ "core": "%s" }\n' "$CORE" > "$settings"
 
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -64,14 +84,19 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 PLIST
 # Finder starts apps without a login shell: give it the env it needs.
 pb() { /usr/libexec/PlistBuddy -c "$1" "$APP/Contents/Info.plist"; }
-pb "Add :LSEnvironment:HERDR_APP_HOME string $HOME_DIR"
-pb "Add :LSEnvironment:HC_SESSION string $SESSION"
-pb "Add :LSEnvironment:PATH string $APP/Contents/MacOS:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+[[ $HOME_DIR == "$HOME/.config/agentdeck" ]] || pb "Add :LSEnvironment:AGENTDECK_HOME string $HOME_DIR"
+pb "Add :LSEnvironment:PATH string $CORE_APP/Contents/MacOS:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 
-codesign --force --sign - "$APP/Contents/MacOS/herdr-core"
 codesign --force --sign - "$APP"
-/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$APP"
+lsregister=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
+"$lsregister" -f "$APP"
+"$lsregister" -f "$CORE_APP"
+mkdir -p "$HOME/.local/bin"
+ln -sfn "$APP/Contents/MacOS/$NAME" "$HOME/.local/bin/agentdeck"
+ln -sfn "$CORE" "$HOME/.local/bin/adk"
 echo "Installed $APP"
 echo "  settings: $HOME_DIR"
-echo "  core session: $SESSION (HC_SESSION=$SESSION $APP/Contents/MacOS/herdr-core ls)"
+echo "  core: adk ls (links in ~/.local/bin)"
+if [[ -f $OLD_HOME/settings.json ]]; then echo "  settings from before the rename stay in $OLD_HOME: just migrate copies them"; fi
 echo "Open it from Spotlight or Finder: open \"$APP\""
+if [[ -d $OLD_APP ]]; then echo "The old $OLD_APP is still there: quit it, then move it to the Trash."; fi

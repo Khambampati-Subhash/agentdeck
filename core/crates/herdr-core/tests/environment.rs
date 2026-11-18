@@ -130,7 +130,7 @@ fn fresh_restart_refuses_a_core_without_environment_handoff_support() {
 #[test]
 fn fresh_restart_refuses_an_in_progress_handoff_without_a_socket() {
     let s = Session::new();
-    let state = s.root.join("state/herdr-core/test");
+    let state = s.root.join("state/adk/test");
     std::fs::create_dir_all(&state).unwrap();
     let lock = std::fs::File::create(state.join("core.lock")).unwrap();
     assert!(herdr_core::platform::try_lock(&lock));
@@ -144,9 +144,9 @@ fn fresh_restart_refuses_an_in_progress_handoff_without_a_socket() {
 fn fresh_restart_warns_inside_a_herdr_terminal() {
     let s = Session::new();
     s.json(&["server", "start"]);
-    let out = s.cmd().env("HC_TERMINAL_ID", "t99").args(["server", "restart", "--fresh"]).output().unwrap();
+    let out = s.cmd().env("ADK_TERMINAL_ID", "t99").args(["server", "restart", "--fresh"]).output().unwrap();
     assert!(out.status.success(), "{out:?}");
-    assert!(String::from_utf8_lossy(&out.stderr).contains("from a terminal outside Herdr"), "{out:?}");
+    assert!(String::from_utf8_lossy(&out.stderr).contains("from a terminal outside AgentDeck"), "{out:?}");
 }
 
 #[test]
@@ -193,7 +193,7 @@ fn inherited_drive_entries_do_not_break_saving_or_restoring_environment() {
 }
 
 fn snapshot(s: &Session) -> std::path::PathBuf {
-    s.root.join("state/herdr-core/test/restart-env.json")
+    s.root.join("state/adk/test/restart-env.json")
 }
 
 fn saved_restart(s: &Session) -> Vec<u8> {
@@ -299,7 +299,7 @@ fn a_failed_or_competing_start_does_not_consume_a_valid_snapshot() {
     let mut s = Session::new();
     s.env.push(("HC_RESTART_VALUE".into(), "saved".into()));
     let bytes = saved_restart(&s);
-    let registry = s.root.join("state/herdr-core/test/terminals.json");
+    let registry = s.root.join("state/adk/test/terminals.json");
     std::fs::write(&registry, b"broken").unwrap();
     // Observe serve's failure, not a successful intermediate launchd detach.
     let failed = s.cmd().env("SSH_CONNECTION", "test-direct").arg("serve").output().unwrap();

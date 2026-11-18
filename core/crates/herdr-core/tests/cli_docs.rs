@@ -6,7 +6,7 @@ use std::process::Command;
 type Reference = BTreeMap<String, String>;
 
 fn read_help(words: &[&str]) -> String {
-    let output = Command::new(env!("CARGO_BIN_EXE_herdr-core"))
+    let output = Command::new(env!("CARGO_BIN_EXE_agentdeck-core"))
         .args(words)
         .env("NO_COLOR", "1")
         .env("COLUMNS", "100")
@@ -16,8 +16,8 @@ fn read_help(words: &[&str]) -> String {
     String::from_utf8(output.stdout)
         .unwrap()
         .replace("\r\n", "\n")
-        .replace("Usage: herdr-core.exe", "Usage: hc")
-        .replace("Usage: herdr-core", "Usage: hc")
+        .replace("Usage: agentdeck-core.exe", "Usage: hc")
+        .replace("Usage: agentdeck-core", "Usage: hc")
 }
 
 fn reference() -> Reference {
@@ -177,7 +177,7 @@ fn checker_catches_drift_without_treating_program_arguments_as_hc_flags() {
         "hc send review 'check hc nonsense --not-an-hc-flag'",
         "--via",
         "--old X --new Y",
-        "HC_SESSION=scratch hc ls",
+        "ADK_SESSION=scratch hc ls",
         "printf hello | hc exec -i cat",
     ] {
         assert!(check_span(good, &reference).is_ok(), "{good}");

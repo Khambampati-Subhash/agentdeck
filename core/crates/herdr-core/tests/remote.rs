@@ -29,7 +29,7 @@ fn recording_ssh(local: &Session, remote: &Session) -> (String, std::path::PathB
     std::fs::write(
         &ssh,
         format!(
-            "#!/bin/sh\necho $$ > {}\nexec env -i HOME={r} PATH=/usr/bin:/bin HC_SESSION=test \\
+            "#!/bin/sh\necho $$ > {}\nexec env -i HOME={r} PATH=/usr/bin:/bin ADK_SESSION=test \\
          XDG_RUNTIME_DIR={r}/run XDG_STATE_HOME={r}/state XDG_CONFIG_HOME={r}/config {BIN} connect\n",
             line_pid.display(),
         ),
@@ -51,7 +51,7 @@ fn remote_sends_outlive_a_draft_but_not_a_lost_or_frozen_line() {
     let (ssh, line_pid) = recording_ssh(&s, &rohan);
     s.env.push(("HC_SSH".into(), ssh));
     s.env.extend([("HC_RECONNECT_MS", "200"), ("HC_HEARTBEAT_MS", "100")].map(|(k, v)| (k.into(), v.into())));
-    let config = s.root.join("config/herdr-core/config.toml");
+    let config = s.root.join("config/agentdeck-core/config.toml");
     std::fs::create_dir_all(config.parent().unwrap()).unwrap();
     std::fs::write(config, "machine_timeout = 0.5\n").unwrap();
     s.json(&["machine", "add", "rohan"]);
@@ -129,10 +129,10 @@ fn a_reverse_send_waits_for_a_draft_but_bounds_a_stuck_peer() {
     s.env.extend(
         [("HC_DRAFT_MS", "2500"), ("HC_QUIET_MS", "0"), ("HC_STARTED_MS", "0")].map(|(k, v)| (k.into(), v.into())),
     );
-    let config = rohan.root.join("config/herdr-core/config.toml");
+    let config = rohan.root.join("config/agentdeck-core/config.toml");
     std::fs::create_dir_all(config.parent().unwrap()).unwrap();
     std::fs::write(config, "machine_timeout = 0.5\ndraft_wait = 0\n").unwrap();
-    let config = s.root.join("config/herdr-core/config.toml");
+    let config = s.root.join("config/agentdeck-core/config.toml");
     std::fs::create_dir_all(config.parent().unwrap()).unwrap();
     std::fs::write(config, "draft_wait = 3\n").unwrap();
     rohan.json(&["server", "start"]);
@@ -144,7 +144,7 @@ fn a_reverse_send_waits_for_a_draft_but_bounds_a_stuck_peer() {
     let start = Instant::now();
     let sender = {
         let mut cmd = rohan.cmd();
-        cmd.env("HC_TERMINAL_ID", "t1").args(["send", &parent_there, "reverse"]);
+        cmd.env("ADK_TERMINAL_ID", "t1").args(["send", &parent_there, "reverse"]);
         std::thread::spawn(move || cmd.output().unwrap())
     };
     std::thread::sleep(Duration::from_millis(1100));
@@ -156,7 +156,7 @@ fn a_reverse_send_waits_for_a_draft_but_bounds_a_stuck_peer() {
     person.typed(b"draft before disconnect");
     let sender = {
         let mut cmd = rohan.cmd();
-        cmd.env("HC_TERMINAL_ID", "t1").args(["send", &parent_there, "disconnected"]);
+        cmd.env("ADK_TERMINAL_ID", "t1").args(["send", &parent_there, "disconnected"]);
         std::thread::spawn(move || cmd.output().unwrap())
     };
     std::thread::sleep(Duration::from_millis(200));
@@ -170,11 +170,11 @@ fn a_reverse_send_waits_for_a_draft_but_bounds_a_stuck_peer() {
     eprintln!("reverse disconnected: caller failed after {:?}", start.elapsed());
     wait_until("reconnected", || s.json(&["machine", "ls"])["machines"][0]["state"] == "connected");
     let pid = s.json(&["server", "status"])["pid"].as_i64().unwrap() as i32;
-    std::fs::write(s.root.join("config/herdr-core/config.toml"), "draft_wait = 10\n").unwrap();
+    std::fs::write(s.root.join("config/agentdeck-core/config.toml"), "draft_wait = 10\n").unwrap();
     person.typed(b"another draft");
     let sender = {
         let mut cmd = rohan.cmd();
-        cmd.env("HC_TERMINAL_ID", "t1").args(["send", &parent_there, "held"]);
+        cmd.env("ADK_TERMINAL_ID", "t1").args(["send", &parent_there, "held"]);
         std::thread::spawn(move || cmd.output().unwrap())
     };
     std::thread::sleep(Duration::from_millis(200));
@@ -202,7 +202,7 @@ fn a_frozen_machine_never_freezes_hc() {
     let mut s = Session::new();
     s.env.push(fake_ssh(&s, &[("rohan", &rohan)]));
     s.env.extend([("HC_RECONNECT_MS", "200"), ("HC_HEARTBEAT_MS", "200")].map(|(k, v)| (k.into(), v.into())));
-    let config = s.root.join("config/herdr-core/config.toml");
+    let config = s.root.join("config/agentdeck-core/config.toml");
     std::fs::create_dir_all(config.parent().unwrap()).unwrap();
     std::fs::write(config, "machine_timeout = 2\n").unwrap();
     s.json(&["machine", "add", "rohan"]);
@@ -247,7 +247,7 @@ fn a_big_answer_on_a_slow_link_is_not_mistaken_for_a_frozen_machine() {
     std::fs::write(&slow, format!("#!/bin/sh\n{fake} \"$@\" | python3 -c '{throttle}'\n")).unwrap();
     std::fs::set_permissions(&slow, std::os::unix::fs::PermissionsExt::from_mode(0o755)).unwrap();
     s.env.push((var, slow.display().to_string()));
-    let config = s.root.join("config/herdr-core/config.toml");
+    let config = s.root.join("config/agentdeck-core/config.toml");
     std::fs::create_dir_all(config.parent().unwrap()).unwrap();
     std::fs::write(config, "machine_timeout = 2\n").unwrap();
     s.env.push(("HC_HEARTBEAT_MS".into(), "200".into()));
@@ -343,7 +343,7 @@ fn parent_with_child_on_rohan(s: &Session, child: &str) -> (String, String) {
     wait_until("the parent reports", || get(s, &parent)["reported"] == true);
     let out = s
         .cmd()
-        .env("HC_TERMINAL_ID", &parent)
+        .env("ADK_TERMINAL_ID", &parent)
         .args(["--json", "run", "--bg", "--on", "rohan", "sh", "-c", child])
         .output()
         .unwrap();
@@ -360,7 +360,7 @@ fn a_child_on_another_machine_reports_back_to_its_parent() {
     let parent_there = get(&rohan, "t1")["parent"].as_str().unwrap().to_string();
     assert!(parent_there.ends_with(&format!("/{parent}")), "{parent_there}");
 
-    let said = rohan.cmd().env("HC_TERMINAL_ID", "t1").args(["send", &parent_there, "hi-parent"]).output().unwrap();
+    let said = rohan.cmd().env("ADK_TERMINAL_ID", "t1").args(["send", &parent_there, "hi-parent"]).output().unwrap();
     assert!(said.status.success(), "{}", String::from_utf8_lossy(&said.stderr));
     wait_until("the child's message", || text(&s, &parent).contains(&format!("<hc from=\"{child}\">hi-parent</hc>")));
 
@@ -398,11 +398,11 @@ fn a_remote_templates_readiness_wait_leaves_its_child_able_to_report_back() {
         [("HC_READY_MS", "3000"), ("HC_STARTED_MS", "0"), ("HC_QUIET_MS", "0"), ("HC_HEARTBEAT_MS", "100")]
             .map(|(k, v)| (k.into(), v.into())),
     );
-    let config = s.root.join("config/herdr-core/config.toml");
+    let config = s.root.join("config/agentdeck-core/config.toml");
     std::fs::create_dir_all(config.parent().unwrap()).unwrap();
     // Readiness must exceed the base call timeout, with room for normal scheduling gaps.
     std::fs::write(config, "machine_timeout = 2\n").unwrap();
-    let templates = rohan.root.join("config/herdr-core/templates");
+    let templates = rohan.root.join("config/agentdeck-core/templates");
     std::fs::create_dir_all(&templates).unwrap();
     rohan.json(&["server", "start"]);
     s.json(&["machine", "add", "rohan"]);
@@ -417,7 +417,7 @@ fn a_remote_templates_readiness_wait_leaves_its_child_able_to_report_back() {
             .unwrap();
         let out = s
             .cmd()
-            .env("HC_TERMINAL_ID", &parent)
+            .env("ADK_TERMINAL_ID", &parent)
             .args(["--json", "run", "--bg", "--on", "rohan", name, "task"])
             .output()
             .unwrap();
@@ -430,7 +430,7 @@ fn a_remote_templates_readiness_wait_leaves_its_child_able_to_report_back() {
         let child = started["address"].as_str().unwrap();
         let local = child.strip_prefix("rohan/").unwrap();
         let parent_there = get(&rohan, local)["parent"].as_str().unwrap().to_string();
-        let said = rohan.cmd().env("HC_TERMINAL_ID", local).args(["send", &parent_there, name]).output().unwrap();
+        let said = rohan.cmd().env("ADK_TERMINAL_ID", local).args(["send", &parent_there, name]).output().unwrap();
         assert!(said.status.success(), "{}", String::from_utf8_lossy(&said.stderr));
         wait_until("child reports back", || text(&s, &parent).contains(&format!("<hc from=\"{child}\">{name}</hc>")));
     }
@@ -443,7 +443,7 @@ fn waiting_on_children_counts_the_ones_on_other_machines() {
     let wait = |mode: &str, timeout: &str| {
         let out = s
             .cmd()
-            .env("HC_TERMINAL_ID", &parent)
+            .env("ADK_TERMINAL_ID", &parent)
             .args(["--json", "wait", "--children", mode, "--timeout", timeout])
             .output()
             .unwrap();
@@ -469,8 +469,12 @@ fn a_child_ends_with_its_parent_on_another_machine_too() {
     let (rohan, s) = with_rohan();
     // `--rm`: the parent is forgotten at once, but its children there still hear.
     let parent = run(&s, &["--rm", "sh", "-c", &script(&s, "r state=idle; w go")]);
-    let out =
-        s.cmd().env("HC_TERMINAL_ID", &parent).args(["run", "--bg", "--on", "rohan", "sleep", "100"]).output().unwrap();
+    let out = s
+        .cmd()
+        .env("ADK_TERMINAL_ID", &parent)
+        .args(["run", "--bg", "--on", "rohan", "sleep", "100"])
+        .output()
+        .unwrap();
     assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
     touch(&s, "go");
     wait_until("the child there ended", || get(&rohan, "t1")["state"] == "finished");

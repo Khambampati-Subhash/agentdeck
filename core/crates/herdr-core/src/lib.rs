@@ -1,6 +1,7 @@
 pub mod addr;
 pub mod api;
 pub mod attach;
+pub mod brand;
 pub mod cli;
 pub mod client;
 pub mod config;

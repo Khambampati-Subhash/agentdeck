@@ -70,7 +70,7 @@ fn an_install_in_a_read_only_folder_explains_how_to_update_it() {
     let mut s = Session::new();
     let dir = s.root.join("bin");
     std::fs::create_dir(&dir).unwrap();
-    s.bin = dir.join("herdr-core");
+    s.bin = dir.join("agentdeck-core");
     std::fs::copy(BIN, &s.bin).unwrap();
     s.json(&["server", "start"]);
     std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o555)).unwrap();
@@ -83,40 +83,40 @@ fn an_install_in_a_read_only_folder_explains_how_to_update_it() {
     assert!(!update.status.success());
     assert_eq!(error["error"]["kind"], "refused", "{error}");
     assert_eq!(error["error"]["message"], format!("{} isn't writable by you", dir.canonicalize().unwrap().display()));
-    assert_eq!(error["error"]["hint"], "update herdr-core the way it was installed (package manager, or sudo)");
+    assert_eq!(error["error"]["hint"], "update agentdeck-core the way it was installed (package manager, or sudo)");
 }
 
 #[test]
 fn update_from_a_file_swaps_hc_and_keeps_everything_running() {
     let mut s = Session::new();
-    s.env.push(("HC_SESSION_VALUE".into(), "original".into()));
+    s.env.push(("ADK_SESSION_VALUE".into(), "original".into()));
     let dir = s.root.join("bin");
     std::fs::create_dir_all(&dir).unwrap();
-    std::fs::copy(BIN, dir.join("herdr-core")).unwrap();
-    std::os::unix::fs::symlink("herdr-core", dir.join("hc")).unwrap();
-    s.bin = dir.join("hc"); // run as `hc`, the way people do
+    std::fs::copy(BIN, dir.join("agentdeck-core")).unwrap();
+    std::os::unix::fs::symlink("agentdeck-core", dir.join("adk")).unwrap();
+    s.bin = dir.join("adk"); // run as `adk`, the way people do
     let t = run(&s, &["sh", "-c", "echo before; while read l; do echo got-$l; done"]);
     let pid = s.json(&["server", "status"])["pid"].clone();
 
     let out = s
         .cmd()
         .env("NO_COLOR", "1")
-        .env("HC_SESSION_VALUE", "updater")
+        .env("ADK_SESSION_VALUE", "updater")
         .env("HC_UPDATER_ONLY", "leaked")
         .args(["update", "--from", BIN])
         .output()
         .unwrap();
     assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
     let r: Value = serde_json::from_slice(&out.stdout).unwrap();
-    let real = std::fs::canonicalize(dir.join("herdr-core")).unwrap(); // macOS: /var is /private/var
+    let real = std::fs::canonicalize(dir.join("agentdeck-core")).unwrap(); // macOS: /var is /private/var
     assert_eq!(r["path"], real.display().to_string(), "the file hc runs from, not the link: {r}");
-    assert!(r["was"].as_str().unwrap().starts_with("hc ") && r["now"].as_str().unwrap().starts_with("hc "), "{r}");
+    assert!(r["was"].as_str().unwrap().starts_with("adk ") && r["now"].as_str().unwrap().starts_with("adk "), "{r}");
     assert_eq!(r["restarted"], true);
     assert_ne!(s.json(&["server", "status"])["pid"], pid, "a new core runs");
-    assert!(dir.join("hc").is_symlink(), "the link stays a link");
+    assert!(dir.join("adk").is_symlink(), "the link stays a link");
     s.json(&["send", &t, "after"]);
     wait_until("the terminal still answers", || text(&s, &t).contains("got-after"));
-    let probe = "printf 'ENV:%s|%s|%s\\n' \"${NO_COLOR-unset}\" \"$HC_SESSION_VALUE\" \"${HC_UPDATER_ONLY-unset}\"";
+    let probe = "printf 'ENV:%s|%s|%s\\n' \"${NO_COLOR-unset}\" \"$ADK_SESSION_VALUE\" \"${HC_UPDATER_ONLY-unset}\"";
     let out = s.hc(&["run", "sh", "-c", probe]);
     assert!(out.status.success());
     assert!(String::from_utf8_lossy(&out.stdout).contains("ENV:unset|original|unset"), "{out:?}");
@@ -126,7 +126,7 @@ fn update_from_a_file_swaps_hc_and_keeps_everything_running() {
         "terminal.run",
         json!({
             "argv": ["sh", "-c", probe],
-            "env": {"NO_COLOR": "1", "HC_SESSION_VALUE": "override"},
+            "env": {"NO_COLOR": "1", "ADK_SESSION_VALUE": "override"},
         }),
     )
     .unwrap();
@@ -153,7 +153,7 @@ fn update_without_a_release_server_says_so() {
     let mut s = Session::new();
     let dir = s.root.join("bin");
     std::fs::create_dir(&dir).unwrap();
-    s.bin = dir.join("herdr-core");
+    s.bin = dir.join("agentdeck-core");
     std::fs::copy(BIN, &s.bin).unwrap();
     let before = std::fs::read(&s.bin).unwrap();
     for releases in [None, Some("")] {

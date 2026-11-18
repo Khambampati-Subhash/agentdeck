@@ -1,4 +1,4 @@
-# Agents working on AgentOS
+# Agents working on AgentDeck
 
 Read `CLAUDE.md` first: it holds the project rules. This file says how work is
 split between agents and what each one may do.

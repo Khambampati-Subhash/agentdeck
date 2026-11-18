@@ -1,4 +1,4 @@
-//! One framed connection to herdr-core through `hc connect`: JSON-RPC on
+//! One framed connection to agentdeck-core through `hc connect`: JSON-RPC on
 //! channel 0, terminal byte streams on their own channels.
 
 use anyhow::{Context as _, Result, anyhow, bail};
@@ -244,7 +244,7 @@ pub fn core_min() -> &'static str {
 }
 
 fn semver(v: &str) -> (u64, u64, u64) {
-    let mut p = v.trim().trim_start_matches("hc ").split(['.', '-']).map(|n| n.parse::<u64>().unwrap_or(0));
+    let mut p = v.trim().trim_start_matches(crate::brand::CORE_VERSION_PREFIX).split(['.', '-']).map(|n| n.parse::<u64>().unwrap_or(0));
     (p.next().unwrap_or(0), p.next().unwrap_or(0), p.next().unwrap_or(0))
 }
 
@@ -329,7 +329,7 @@ impl Core {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
-            .context("cannot run `hc connect`: is herdr-core installed?")?;
+            .context("cannot run `hc connect`: is agentdeck-core installed?")?;
         let mut stderr = child.stderr.take().unwrap();
         let (error_tx, errors) = mpsc::channel();
         std::thread::Builder::new().name("hc-stderr".into()).spawn(move || {
@@ -464,7 +464,7 @@ impl Core {
     /// Starts a program in a new core terminal and returns its address (`tN`).
     /// Starts a terminal, here or on another machine (`on`: its name in `hc machine ls`).
     pub fn run(&self, argv: Vec<String>, cwd: Option<String>, labels: Value, on: Option<&str>, size: Option<(u16, u16)>, display: Value) -> Result<String> {
-        let env = json!({"TERM": "xterm-256color", "COLORTERM": "truecolor", "TERM_PROGRAM": "herdr"});
+        let env = json!({"TERM": "xterm-256color", "COLORTERM": "truecolor", "TERM_PROGRAM": "agentdeck"});
         let mut params = json!({"argv": argv, "cwd": cwd, "env": env, "labels": labels, "on": on, "keep": true, "display": display});
         // Released cores ignore unknown parameters, including when forwarding to another machine.
         if let Some((cols, rows)) = size {
@@ -759,9 +759,9 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "requires an isolated HC_SESSION=test-* and a running hc on PATH"]
+    #[ignore = "requires an isolated ADK_SESSION=test-* and a running hc on PATH"]
     fn two_app_viewers_answer_queries_without_idle_size_theft() {
-        assert!(std::env::var("HC_SESSION").unwrap().starts_with("test-"));
+        assert!(std::env::var("ADK_SESSION").unwrap().starts_with("test-"));
         let root = std::path::PathBuf::from(std::env::var_os("XDG_STATE_HOME").unwrap());
         std::fs::create_dir_all(&root).unwrap();
         let core = Core::connect().unwrap();

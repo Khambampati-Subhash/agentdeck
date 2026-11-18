@@ -317,7 +317,7 @@ fn planned_restart_restores_the_exact_screen() {
     assert_eq!(text.matches("one").count(), 1, "replayed twice: {text:?}");
 
     // A service-manager stop must still hand over even when environment saving is impossible.
-    let blocked = s.root.join("state/herdr-core/test/restart-env.json");
+    let blocked = s.root.join("state/adk/test/restart-env.json");
     std::fs::create_dir(&blocked).unwrap();
     unsafe { libc::kill(new as i32, libc::SIGTERM) };
     wait_until("core exit", || !pid_alive(new));
@@ -331,7 +331,7 @@ fn restarting_waits_for_the_old_cores_lock_after_its_connection_closes() {
     use std::os::unix::net::UnixListener;
 
     let s = Session::new();
-    let state = s.root.join("state/herdr-core/test");
+    let state = s.root.join("state/adk/test");
     std::fs::create_dir_all(&state).unwrap();
     std::fs::create_dir_all(s.socket().parent().unwrap()).unwrap();
     let lock = std::fs::File::create(state.join("core.lock")).unwrap();
@@ -382,7 +382,7 @@ fn a_failed_registry_write_does_not_break_get_or_stop() {
     let pid = get(&s, &terminal)["pid"].as_i64().unwrap();
     let core = status(&s)["pid"].as_i64().unwrap();
     // A directory in place of the temporary file fails even when tests run as root.
-    let tmp = s.root.join("state/herdr-core/test/terminals.tmp");
+    let tmp = s.root.join("state/adk/test/terminals.tmp");
     std::fs::create_dir(&tmp).unwrap();
     let label = s.hc(&["label", &terminal, "disk=failed"]);
     let get = s.hc(&["get", &terminal]);
@@ -458,12 +458,12 @@ fn a_turn_that_starts_and_ends_in_one_burst_survives_losing_the_holder() {
 fn holder_restarts_a_crashed_core_even_after_an_update() {
     let mut s = Session::new();
     s.env.push(("HC_HOLDER_GRACE_MS".into(), "100".into()));
-    s.bin = s.root.join("herdr-core");
+    s.bin = s.root.join("agentdeck-core");
     std::fs::copy(BIN, &s.bin).unwrap();
     run(&s, &["sleep", "100"]);
     let core = status(&s)["pid"].as_i64().unwrap();
     // An update swaps the binary under the running holder.
-    let staged = s.root.join("herdr-core.new");
+    let staged = s.root.join("agentdeck-core.new");
     write_new_build(&staged);
     std::fs::rename(&staged, &s.bin).unwrap();
     kill9(core);
@@ -476,13 +476,13 @@ fn holder_restarts_a_crashed_core_even_after_an_update() {
 #[test]
 fn an_update_rolls_new_terminals_onto_a_new_holder_while_the_old_one_drains() {
     let mut s = Session::new();
-    s.bin = s.root.join("herdr-core");
+    s.bin = s.root.join("agentdeck-core");
     std::fs::copy(BIN, &s.bin).unwrap();
     let old = run(&s, &["sleep", "100"]);
     let old_holder = holder_pid(&s);
 
     // Install a new build, then restart the planned way.
-    let staged = s.root.join("herdr-core.new");
+    let staged = s.root.join("agentdeck-core.new");
     write_new_build(&staged);
     std::fs::rename(&staged, &s.bin).unwrap();
     s.json(&["server", "restart"]);
@@ -642,7 +642,7 @@ fn title_changes_are_saved_shortly_after_not_right_away() {
     let t = run(&s, &["sh", "-c", "for i in 1 2 3 4 5 6 7 8 9; do printf '\\033]2;spin %s\\007' $i; done; sleep 100"]);
     wait_until("last title", || get(&s, &t)["title"] == "spin 9");
     let saved = || {
-        let file = std::fs::read(s.root.join("state/herdr-core/test/terminals.json")).unwrap();
+        let file = std::fs::read(s.root.join("state/adk/test/terminals.json")).unwrap();
         serde_json::from_slice::<Value>(&file).unwrap()["terminals"]["1"]["title"].clone()
     };
     assert_eq!(saved(), "", "saved on a title change");

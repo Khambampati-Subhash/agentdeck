@@ -131,7 +131,7 @@ pub fn openrpc(methods: Vec<Value>, defs: Map<String, Value>, version: &str, gen
     let doc = json!({
         "openrpc": "1.3.2",
         "info": {
-            "title": "herdr-core",
+            "title": "agentdeck-core",
             "version": version,
             "description": format!("Terminal runtime for coding agents. JSON-RPC 2.0, one message per line on the hc socket \
                 (or framed after `hello`). Protocol generation {generation}. Errors carry a stable `data.kind`."),

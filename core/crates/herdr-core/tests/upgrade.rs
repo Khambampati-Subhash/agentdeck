@@ -47,14 +47,14 @@ fn an_old_retained_holder_restores_the_new_cores_environment_after_raw_restart()
     says(&s, &terminal, "got-after");
 }
 
-/// Puts `bin` in place as this session's `herdr-core` (a rename, as an update does).
+/// Puts `bin` in place as this session's `agentdeck-core` (a rename, as an update does).
 fn install(s: &mut Session, bin: &std::path::Path) {
     let dir = s.root.join("bin");
     std::fs::create_dir_all(&dir).unwrap();
-    let tmp = dir.join("herdr-core.new");
+    let tmp = dir.join("agentdeck-core.new");
     std::fs::copy(bin, &tmp).unwrap();
-    std::fs::rename(&tmp, dir.join("herdr-core")).unwrap();
-    s.bin = dir.join("herdr-core");
+    std::fs::rename(&tmp, dir.join("agentdeck-core")).unwrap();
+    s.bin = dir.join("agentdeck-core");
 }
 
 /// `hc run` as the old release starts things: it returned at once (no --bg then).

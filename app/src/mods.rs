@@ -1,4 +1,4 @@
-//! Mods: folders of JavaScript under ~/.config/herdr-app/mods that agents write and
+//! Mods: folders of JavaScript under ~/.config/agentdeck/mods that agents write and
 //! Herdr runs live (gpui-shell), plus the `herdr` module they import.
 
 use crate::layout::Node;
@@ -46,11 +46,11 @@ pub fn note_fonts(cx: &gpui::App) {
     *FONTS.lock().unwrap() = names;
 }
 
-/// The app's home: `$HERDR_APP_HOME` (tests, experiments), else
-/// `$XDG_CONFIG_HOME/herdr-app`, else `~/.config/herdr-app`, on every OS.
+/// The app's home: `$AGENTDECK_HOME` (tests, experiments), else
+/// `$XDG_CONFIG_HOME/agentdeck`, else `~/.config/agentdeck`, on every OS.
 pub fn app_dir() -> PathBuf {
     let env = |k: &str| std::env::var_os(k).filter(|v| !v.is_empty()).map(PathBuf::from);
-    env("HERDR_APP_HOME").unwrap_or_else(|| env("XDG_CONFIG_HOME").unwrap_or_else(|| home().join(".config")).join("herdr-app"))
+    env("AGENTDECK_HOME").unwrap_or_else(|| env("XDG_CONFIG_HOME").unwrap_or_else(|| home().join(".config")).join("agentdeck"))
 }
 
 pub fn mods_dir() -> PathBuf {
@@ -69,7 +69,7 @@ pub fn write_workspace() -> std::io::Result<()> {
     if std::fs::read_to_string(dir.join("CLAUDE.md")).is_ok_and(|s| s == "@AGENTS.md\n") {
         let _ = std::fs::remove_file(dir.join("CLAUDE.md"));
     }
-    write_if_changed(&dir.join("herdr.d.ts"), DECLARATIONS)?;
+    write_if_changed(&dir.join("agentdeck.d.ts"), DECLARATIONS)?;
     let types = gpui_shell::type_declarations(&gpui_shell::FrozenComponentRegistry::default());
     write_if_changed(&dir.join("gpui-kit.d.ts"), &types)?;
     let _ = std::fs::remove_dir_all(frame_dir());
@@ -391,7 +391,7 @@ pub enum Request {
     OpenOverlay { id: String, spec: Value },
     CloseOverlay { id: String },
     Refresh,
-    /// From `herdr-app do` / `herdr-app status` (control.rs); answer on `reply`.
+    /// From `agentdeck do` / `agentdeck status` (control.rs); answer on `reply`.
     Control { cmd: Value, reply: std::sync::mpsc::Sender<Value> },
 }
 
@@ -741,7 +741,7 @@ pub fn from_host(v: &HostValue) -> Value {
     }
 }
 
-pub const DECLARATIONS: &str = include_str!("../defaults/herdr.d.ts");
+pub const DECLARATIONS: &str = include_str!("../defaults/agentdeck.d.ts");
 
 fn strings(v: Option<&HostValue>) -> Vec<String> {
     v.and_then(HostValue::as_array).map(|a| a.iter().filter_map(|s| s.as_str().map(str::to_owned)).collect()).unwrap_or_default()
@@ -817,7 +817,8 @@ fn run_remote_with_limit(machine: &str, command: &str, args: &[String], cwd: Opt
     hc_args.push(command.into());
     hc_args.extend(args.iter().cloned());
     // Let the remote timeout end the program and deliver its result before the wrapper expires.
-    let (_, out, err) = run_blocking("hc", &hc_args, None, limit + Duration::from_secs(5))?;
+    let core = crate::core_bin::path().to_string_lossy().into_owned();
+    let (_, out, err) = run_blocking(&core, &hc_args, None, limit + Duration::from_secs(5))?;
     let v: Value = serde_json::from_str(out.trim()).or_else(|_| serde_json::from_str(err.trim())).map_err(|_| format!("hc exec: {}", err.trim()))?;
     if let Some(e) = v.get("error") {
         return Err(e.get("message").and_then(Value::as_str).unwrap_or("hc exec failed").to_owned());
@@ -895,22 +896,31 @@ fn exec_future(command: String, args: Vec<String>, cwd: Option<String>, on: Opti
     }
 }
 
-fn module(inst: Instance, copy: u64) -> HostModule {
+/// The mod API under its name and under `"herdr"`, so mods written for Herdr
+/// still load. Both share one command queue and one set of live reads.
+fn with_modules(policy: gpui_shell::policy::Policy, inst: Instance, copy: u64) -> gpui_shell::policy::Policy {
     let reads = Rc::new(RefCell::new(LiveReads::default()));
     LIVE_READS.with_borrow_mut(|copies| {
         copies.retain(|_, reads| reads.strong_count() > 0);
         copies.insert(copy, Rc::downgrade(&reads));
     });
+    let (cmd_tx, commands) = async_channel::unbounded::<String>();
+    COMMANDS.with_borrow_mut(|list| {
+        list.retain(|(_, _, tx)| !tx.is_closed());
+        list.push((copy, inst.name.clone(), cmd_tx));
+    });
+    [crate::brand::MODULE, crate::brand::MODULE_ALIAS].into_iter().fold(policy, |policy, name| {
+        let module = module(name, inst.clone(), commands.clone(), reads.clone());
+        policy.with_host_module(module).expect("the mod module is valid")
+    })
+}
+
+fn module(name: &str, inst: Instance, commands: async_channel::Receiver<String>, reads: Rc<RefCell<LiveReads>>) -> HostModule {
     let props = inst.props.clone();
     let feedback_frame = inst.name == "frame-feedback";
     let feedback_from = inst.props.get("from").and_then(Value::as_str).unwrap_or("person").to_owned();
     let feedback_layout = inst.props.get("layout").and_then(Value::as_str).unwrap_or("other").to_owned();
-    let (cmd_tx, commands) = async_channel::unbounded::<String>();
-    COMMANDS.with_borrow_mut(|commands| {
-        commands.retain(|(_, _, tx)| !tx.is_closed());
-        commands.push((copy, inst.name.clone(), cmd_tx));
-    });
-    HostModule::new("herdr")
+    HostModule::new(name)
         .declarations(DECLARATIONS)
         .async_function("exec", |a| {
             let command = a.string(0)?.to_owned();
@@ -928,7 +938,7 @@ fn module(inst: Instance, copy: u64) -> HostModule {
             let expected = a.get(2).and_then(|v| match v { HostValue::Str(s) => Some(s.clone()), _ => None });
             Ok(crate::mod_files::write_text(a.string(0)?.to_owned(), a.string(1)?.to_owned(), expected))
         })
-        .async_function("hc", |a| Ok(exec_future("hc".into(), strings(a.get(0)), None, None, EXEC_LIMIT)))
+        .async_function("hc", |a| Ok(exec_future(crate::core_bin::path().to_string_lossy().into_owned(), strings(a.get(0)), None, None, EXEC_LIMIT)))
         .function("home", |_| Ok(home().to_string_lossy().into_owned().into()))
         .function("appHome", |_| Ok(app_dir().to_string_lossy().into_owned().into()))
         .function("fonts", |_| Ok(to_host(&json!(*FONTS.lock().unwrap()))))
@@ -1105,7 +1115,7 @@ fn module(inst: Instance, copy: u64) -> HostModule {
         })
         .async_function("nextCommand", move |_| {
             let rx = commands.clone();
-            Ok(async move { rx.recv().await.map(HostValue::Str).map_err(|_| HostError::new("herdr-app is shutting down")) })
+            Ok(async move { rx.recv().await.map(HostValue::Str).map_err(|_| HostError::new("agentdeck is shutting down")) })
         })
 }
 
@@ -1160,9 +1170,7 @@ pub fn install_check_policy() {
 /// What mods may touch, and the `herdr` module they import.
 pub fn install_policy() -> async_channel::Receiver<Request> {
     gpui_shell::policy::update_default(|p| {
-        p.with_capabilities(capabilities())
-            .with_host_module(module(Instance { name: String::new(), props: Value::Null }, 0))
-            .expect("herdr module is valid")
+        with_modules(p.with_capabilities(capabilities()), Instance { name: String::new(), props: Value::Null }, 0)
     });
     let (tx, rx) = async_channel::unbounded();
     let _ = REQUESTS.set(tx);
@@ -1192,9 +1200,8 @@ pub fn prepare_load(inst: &Instance) -> u64 {
     let policy = gpui_shell::policy::Policy::new()
         .with_application(inst.key())
         .with_capabilities(capabilities())
-        .with_storage_path(dir.join(file))
-        .with_host_module(module(inst.clone(), copy))
-        .expect("herdr module is valid");
+        .with_storage_path(dir.join(file));
+    let policy = with_modules(policy, inst.clone(), copy);
     gpui_shell::policy::set_default(policy);
     copy
 }
@@ -1285,13 +1292,14 @@ mod tests {
     fn loading_copies_reclaims_closed_command_channels_without_dispatch() {
         std::thread::spawn(|| {
             let inst = Instance { name: "test".into(), props: Value::Null };
-            let live = module(inst.clone(), 1);
+            let load = |copy| with_modules(gpui_shell::policy::Policy::new(), inst.clone(), copy);
+            let live = load(1);
             for copy in 2..102 {
-                drop(module(inst.clone(), copy));
+                drop(load(copy));
                 COMMANDS.with_borrow(|commands| assert!(commands.len() <= 2));
             }
             drop(live);
-            let last = module(inst, 102);
+            let last = load(102);
             COMMANDS.with_borrow(|commands| assert_eq!(commands.len(), 1));
             drop(last);
         }).join().unwrap();
@@ -1419,7 +1427,7 @@ mod tests {
 
     #[test]
     fn an_added_file_makes_a_shipped_mod_edited() {
-        let dir = std::env::temp_dir().join(format!("herdr-app-shipped-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("agentdeck-shipped-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(dir.join("icons")).unwrap();
         std::fs::write(dir.join("main.js"), "a").unwrap();
@@ -1537,7 +1545,7 @@ mod tests {
 
     #[test]
     fn default_mods_restore_shipped_and_move_edits_to_clones() {
-        let root = std::env::temp_dir().join(format!("herdr-app-sync-{}", std::process::id()));
+        let root = std::env::temp_dir().join(format!("agentdeck-sync-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
         let (mods, record) = (root.join("mods"), root.join("installed.json"));
         let read = |p: &str| std::fs::read_to_string(mods.join(p)).unwrap_or_default();

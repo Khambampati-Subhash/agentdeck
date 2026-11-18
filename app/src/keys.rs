@@ -1,4 +1,4 @@
-//! ~/.config/herdr-app/keys.json: string or object actions, reloaded live.
+//! ~/.config/agentdeck/keys.json: string or object actions, reloaded live.
 //!
 //! ```json
 //! {
@@ -214,7 +214,7 @@ pub fn parse(text: &str) -> Result<Vec<KeyBinding>, String> {
                 }
             }
             if keys == ESCAPE_HATCH {
-                problems.push(format!("{ESCAPE_HATCH} is reserved for resetting Herdr"));
+                problems.push(format!("{ESCAPE_HATCH} is reserved for resetting AgentDeck"));
                 continue;
             }
             let predicate = match KeyBindingContextPredicate::parse(&ctx) {

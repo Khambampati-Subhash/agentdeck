@@ -17,7 +17,7 @@ pub(super) fn ensure(home: &Path, exe: &Path) -> io::Result<()> {
     if !installed_bundle(exe) {
         return Ok(());
     }
-    let link = home.join(".local/bin/herdr-app");
+    let link = home.join(".local/bin/agentdeck");
     match std::fs::symlink_metadata(&link) {
         Ok(meta) if meta.file_type().is_symlink() => {
             let target = std::fs::read_link(&link)?;
@@ -49,7 +49,7 @@ mod tests {
         let _ = std::fs::remove_dir_all(&home);
         std::fs::create_dir_all(&home).unwrap();
         let exe = home.join("Applications/Herdr.app/Contents/MacOS/Herdr");
-        let link = home.join(".local/bin/herdr-app");
+        let link = home.join(".local/bin/agentdeck");
         ensure(&home, &exe).unwrap();
         assert_eq!(std::fs::read_link(&link).unwrap(), exe);
         // Running it again leaves the same link alone.
@@ -91,7 +91,7 @@ mod tests {
             "/Volumes/Herdr/Herdr.app/Contents/MacOS/Herdr",
             "/private/var/folders/AppTranslocation/random/d/Herdr.app/Contents/MacOS/Herdr",
             "/work/target/debug/Herdr.app/Contents/MacOS/Herdr",
-            "/work/target/debug/herdr-app",
+            "/work/target/debug/agentdeck",
             "/Applications/Other.app/Contents/MacOS/Herdr",
         ] {
             ensure(&home, Path::new(skipped)).unwrap();

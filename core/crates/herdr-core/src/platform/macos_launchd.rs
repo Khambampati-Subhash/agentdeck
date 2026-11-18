@@ -14,7 +14,7 @@ const DETACH: &str = "HC_LAUNCHD_DETACH";
 const SENTINEL: &str = "--hc-launchd";
 const DIRECT: &str = "HC_LAUNCHD_DIRECT";
 const LAUNCHCTL: &str = "/bin/launchctl";
-const PREFIX: &str = "dev.herdr.core.";
+const PREFIX: &str = crate::brand::LAUNCHD_LABEL_PREFIX;
 const HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(10);
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -180,8 +180,13 @@ fn launch(cmd: &Command, log: &Path) -> io::Result<()> {
     let domain = format!("gui/{}", unsafe { libc::getuid() });
     remove_stale(&domain, now);
     remove_stale_dirs(Path::new("/tmp"), now);
-    let dir =
-        PathBuf::from(format!("/tmp/hc-launchd-{}-{}-{}", std::process::id(), now.as_nanos(), super::random_hex()));
+    let dir = PathBuf::from(format!(
+        "/tmp/{}{}-{}-{}",
+        crate::brand::LAUNCHD_TMP_PREFIX,
+        std::process::id(),
+        now.as_nanos(),
+        super::random_hex()
+    ));
     std::fs::DirBuilder::new().mode(0o700).create(&dir)?;
     let mut job =
         Job { dir, target: format!("{domain}/{PREFIX}{}.{}", std::process::id(), now.as_nanos()), loaded: false };
@@ -398,7 +403,9 @@ fn remove_stale_dirs(root: &Path, now: Duration) {
             continue;
         }
         let name = entry.file_name();
-        let Some(attempt) = name.to_str().and_then(|name| name.strip_prefix("hc-launchd-")) else { continue };
+        let Some(attempt) = name.to_str().and_then(|name| name.strip_prefix(crate::brand::LAUNCHD_TMP_PREFIX)) else {
+            continue;
+        };
         let mut fields = attempt.splitn(3, '-');
         let Some(pid) = fields.next().and_then(|p| p.parse::<libc::pid_t>().ok()).filter(|pid| *pid > 0) else {
             continue;
@@ -610,7 +617,7 @@ mod tests {
         let now = Duration::from_secs(1000);
         let make = |pid: u32, stamp: u64| {
             let path = scratch.dir.join(format!(
-                "hc-launchd-{pid}-{}-{}",
+                "adk-launchd-{pid}-{}-{}",
                 Duration::from_secs(stamp).as_nanos(),
                 super::super::random_hex()
             ));
@@ -625,7 +632,7 @@ mod tests {
         let kept = scratch.dir.join("kept");
         super::super::private_dir(&kept).unwrap();
         let link = scratch.dir.join(format!(
-            "hc-launchd-{dead}-{}-{}",
+            "adk-launchd-{dead}-{}-{}",
             Duration::from_secs(900).as_nanos(),
             super::super::random_hex()
         ));

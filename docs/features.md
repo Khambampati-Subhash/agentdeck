@@ -1,8 +1,8 @@
-# AgentOS feature plan
+# AgentDeck feature plan
 
 Our improvements to Herdr. This is the "build" half of `plan.md`: `plan.md` P1–P4
 is the plumbing we lay down first (offline, rename, our releases, upstream sync);
-this file is P5 and beyond — what we add on top so AgentOS is worth using.
+this file is P5 and beyond — what we add on top so AgentDeck is worth using.
 
 How to read it: every feature names its **layer** (a new feature is a *mod* unless
 the `app` or `hc`/core itself must act on it — see `CLAUDE.md`), its **effort**,
@@ -40,7 +40,7 @@ So "improvement" means filling the gaps in that model, not new plumbing.
 
 ---
 
-## Part 1 — the deltas: where AgentOS can win
+## Part 1 — the deltas: where AgentDeck can win
 
 Two sources of ideas: (a) what Herdr has no room for, and (b) what our old
 Go/Swift AgentOS (the `agentd`/`agentctl` version) already solved well.
@@ -109,7 +109,7 @@ surfaced live and with a **budget bar**.
   compatible; don't let a missing field imply "0 spent".
 
 ### F3 · Policy engine, deny-by-default  ⚙️ the thesis
-Bring back AgentOS's guardrail: one `~/.config/agentos/policy.toml`, enforced in
+Bring back AgentDeck's guardrail: one `~/.config/agentos/policy.toml`, enforced in
 **two layers** — (1) compiled into each agent's own config at launch (Claude
 `--settings` `permissions.allow/deny` + `PreToolUse` hook; Gemini
 `--approval-mode`/`--policy`), (2) a per-tool-call interceptor that consults a
@@ -215,14 +215,14 @@ summary (per-machine counts already derivable from `hc ls --on`).
 - **Done-when:** with two configured machines, one line shows totals + needs-you;
   reachable/unreachable handled; no agent content leaves a machine.
 
-### F10 · Curated AgentOS layout + theme pack
+### F10 · Curated AgentDeck layout + theme pack
 Ship default `layouts/` + `themes/` (a "mission control" layout using F1+F4+F6, a
-clean default theme) and **publish a few as the first AgentOS mods** on the
+clean default theme) and **publish a few as the first AgentDeck mods** on the
 marketplace topic. This is the thing that makes the fork feel like a product.
 
 - **Layer:** app (layout/theme/mod files in `app/defaults/*`). **Effort:** M
   (mostly design + `shot` tuning). **Priority:** P2, but a good *quick win* early.
-- **Done-when:** `just dev` opens the AgentOS layout; `herdr-app shot` of it is a
+- **Done-when:** `just dev` opens the AgentDeck layout; `herdr-app shot` of it is a
   screenshot we'd put on a landing page; it clones cleanly per the mod guide.
 
 ### F11 · Handoff choreography (first-class roles)
@@ -237,7 +237,7 @@ marketplace topic. This is the thing that makes the fork feel like a product.
 
 ### F12 · Unified memory / scratchpad
 A per-space shared note file the agents can read and append, plus a small
-`memory` mod to browse it. AgentOS's "unified memory" in our home dir.
+`memory` mod to browse it. AgentDeck's "unified memory" in our home dir.
 
 - **Layer:** app mod + a file in `~/.config/agentos`. **Effort:** S.
   **Priority:** P3 (nice-to-have).
@@ -346,7 +346,7 @@ These features don't replace the milestones; they ride on them.
 
 - **After P1 (offline):** nothing in F2/F3/F8 should reach the network. The
   "metrics" and "router" are local. F10/F11/F12 can begin now.
-- **After P2 (rename to AgentOS):** F3, F8, F10 get their home paths
+- **After P2 (rename to AgentDeck):** F3, F8, F10 get their home paths
   (`~/.config/agentos`, `~/.agentos`) and bundle id. Do not start these against
   real Herdr paths.
 - **Schema-gating (per `AGENTS.md` "parallel work"):** any feature that changes
@@ -366,7 +366,7 @@ These features don't replace the milestones; they ride on them.
 Pick three, in order:
 
 ```sh
-# 1. F10 — a first AgentOS layout + theme (pure app mods; verify visually)
+# 1. F10 — a first AgentDeck layout + theme (pure app mods; verify visually)
 just dev                                   # scratch home, core session "aos"
 # add app/defaults/layouts/mission-control.json + reuse F1/F4/F6 mods, tune,
 app/target/debug/herdr-app shot lens.png    # screenshot it

@@ -81,10 +81,14 @@ fn env(
     token: &str,
     cwd: &str,
 ) -> BTreeMap<String, String> {
-    let hc_own = ["HC_TERMINAL_ID", crate::sweep::VAR, crate::sweep::RUNTIME];
+    let hc_own = [crate::sweep::VAR, crate::sweep::RUNTIME];
     let mut env: BTreeMap<String, String> = base
         .into_iter()
-        .filter(|(k, _)| !crate::api::IDENTITY_VARS.contains(&k.as_str()) && !hc_own.contains(&k.as_str()))
+        .filter(|(k, _)| {
+            !crate::api::IDENTITY_VARS.contains(&k.as_str())
+                && !crate::brand::NOT_INHERITED.contains(&k.as_str())
+                && !hc_own.contains(&k.as_str())
+        })
         .collect();
     if let Some(lang) = crate::locale::for_programs(&env) {
         env.insert("LANG".into(), lang);

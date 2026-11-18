@@ -162,14 +162,14 @@ pub fn update_source(path: &std::path::Path) -> std::path::PathBuf {
 
 pub fn bundle_update_hint() -> Option<&'static str> {
     cfg!(target_os = "macos")
-        .then_some("use hc update, or --from 'Herdr Core.app' (its Contents/MacOS/herdr-core also works)")
+        .then_some("use adk update, or --from 'AgentDeck Core.app' (its Contents/MacOS/agentdeck-core also works)")
 }
 
 #[cfg_attr(not(target_os = "macos"), allow(unused_variables))]
 pub fn privacy_upgrade_notice(previous_exe: &std::path::Path) -> &'static str {
     #[cfg(target_os = "macos")]
     if !macos_bundle::source_is_bundle(previous_exe) {
-        return "; recreate terminals started before the Herdr Core.app upgrade if macOS privacy access is broken (they were not stopped)";
+        return "; recreate terminals started before the AgentDeck Core.app upgrade if macOS privacy access is broken (they were not stopped)";
     }
     ""
 }
@@ -260,8 +260,8 @@ pub(crate) fn restored_environment(
             "XDG_CONFIG_HOME",
             "XDG_DATA_HOME",
             "XDG_RUNTIME_DIR",
-            "HC_SESSION",
-            "HC_SOCKET",
+            crate::brand::SESSION_VAR,
+            crate::brand::SOCKET_VAR,
         ];
         #[allow(unused_mut)]
         let mut keep = paths.iter().any(|name| named(key, name));

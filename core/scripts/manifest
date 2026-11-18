@@ -6,8 +6,8 @@ tests building a fake release):
 
 {version, generation, notes, targets: {"<os>-<arch>": {url, sha256}}}.
 Version from crates/herdr-core/Cargo.toml, generation from api.rs; the
-notes line from $NOTES, else "herdr-core <version>". URLs under
-$RELEASES_URL/core/<version>/ (required: AgentOS has no release server).
+notes line from $NOTES, else "agentdeck-core <version>". URLs under
+$RELEASES_URL/core/<version>/ (required: AgentDeck has no release server).
 """
 import hashlib, json, os, pathlib, re, sys
 
@@ -21,11 +21,11 @@ if not base:
     sys.exit("manifest: set RELEASES_URL")
 
 targets = {}
-for f in sorted([*pathlib.Path(sys.argv[1]).glob("herdr-core-*.tar.gz"), *pathlib.Path(sys.argv[1]).glob("herdr-core-*.zip")]):
-    name = f.name.removeprefix("herdr-core-").removesuffix(".tar.gz").removesuffix(".zip")
+for f in sorted([*pathlib.Path(sys.argv[1]).glob("agentdeck-core-*.tar.gz"), *pathlib.Path(sys.argv[1]).glob("agentdeck-core-*.zip")]):
+    name = f.name.removeprefix("agentdeck-core-").removesuffix(".tar.gz").removesuffix(".zip")
     targets[name] = {"url": f"{base}/core/{version}/{f.name}", "sha256": hashlib.sha256(f.read_bytes()).hexdigest()}
 if not targets:
-    sys.exit(f"manifest: no herdr-core-*.tar.gz or .zip in {sys.argv[1]}")
+    sys.exit(f"manifest: no agentdeck-core-*.tar.gz or .zip in {sys.argv[1]}")
 
-doc = {"version": version, "generation": generation, "notes": os.environ.get("NOTES") or f"herdr-core {version}", "targets": targets}
+doc = {"version": version, "generation": generation, "notes": os.environ.get("NOTES") or f"agentdeck-core {version}", "targets": targets}
 print(json.dumps(doc, indent=2))

@@ -132,7 +132,7 @@ fn a_replacement_whose_holder_was_lost_is_recovered_and_cleaned_up() {
     s.json(&["server", "stop"]);
     // What a crash leaves: a holder had claimed the replacement program but
     // never reported it started, and something it launched is still running.
-    let path = s.root.join("state/herdr-core/test/terminals.json");
+    let path = s.root.join("state/adk/test/terminals.json");
     let mut reg: serde_json::Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
     let token = format!("0-replacement-{}", std::process::id());
     let rec = reg["terminals"].as_object_mut().unwrap().values_mut().next().unwrap();
@@ -195,10 +195,10 @@ fn a_holder_dying_during_stop_still_has_its_programs_ended_before_stop_returns()
 fn a_terminal_that_started_another_hc_session_does_not_take_it_down() {
     let s = Session::new();
     // Ending a terminal's own job must not take down the core that job started.
-    let inner = format!("HC_SESSION=inner {} events", s.bin.display());
+    let inner = format!("ADK_SESSION=inner {} events", s.bin.display());
     let t = run(&s, &format!("({inner}) & exec sleep 300"));
     let mut status = s.cmd();
-    status.env("HC_SESSION", "inner").args(["server", "status"]);
+    status.env("ADK_SESSION", "inner").args(["server", "status"]);
     wait_until("inner core", || status.output().unwrap().status.success());
     let inner_core =
         serde_json::from_slice::<serde_json::Value>(&status.output().unwrap().stdout).unwrap()["pid"].as_i64().unwrap();
@@ -206,7 +206,7 @@ fn a_terminal_that_started_another_hc_session_does_not_take_it_down() {
     std::thread::sleep(Duration::from_millis(1500));
     let alive = running(inner_core);
     let mut stop = s.cmd();
-    stop.env("HC_SESSION", "inner").args(["server", "stop"]);
+    stop.env("ADK_SESSION", "inner").args(["server", "stop"]);
     stop.output().unwrap();
     assert!(alive, "ending the terminal killed the other session's core");
 }

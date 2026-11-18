@@ -2,11 +2,11 @@
 
 use super::*;
 
-/// What a binary says it is (`hc 0.2.0`), if it is a working hc.
+/// What a binary says it is (`adk 0.2.0`), if it is a working adk.
 pub(super) fn version_of(path: &std::path::Path) -> Option<String> {
     let out = std::process::Command::new(path).arg("--version").stdin(std::process::Stdio::null()).output().ok()?;
     let v = String::from_utf8_lossy(&out.stdout).trim().to_string();
-    (out.status.success() && v.starts_with("hc ")).then_some(v)
+    (out.status.success() && v.starts_with(crate::brand::VERSION_PREFIX)).then_some(v)
 }
 
 /// A release name for `--version`: `0.1.4` (it goes into a URL).
@@ -20,10 +20,10 @@ pub(super) fn release_version(s: &str) -> Result<String, String> {
     }
 }
 
-/// `hc 0.1.9` is older than `hc 0.2.0`; anything unparsed is not older.
+/// `adk 0.1.9` is older than `adk 0.2.0`; anything unparsed is not older.
 pub(super) fn older(a: &str, b: &str) -> bool {
     let parts = |v: &str| -> Option<Vec<u64>> {
-        v.strip_prefix("hc ")?.split(['.', '-']).take(3).map(|p| p.parse().ok()).collect()
+        v.strip_prefix(crate::brand::VERSION_PREFIX)?.split(['.', '-']).take(3).map(|p| p.parse().ok()).collect()
     };
     matches!((parts(a), parts(b)), (Some(a), Some(b)) if a < b)
 }
@@ -31,11 +31,11 @@ pub(super) fn older(a: &str, b: &str) -> bool {
 /// The installed binary can be current while a core started before it was
 /// replaced is still running. Do not start a core just to check its version.
 pub(super) fn up_to_date(paths: &Paths, release: &str, human: String) -> Result<Out, RpcError> {
-    let this = format!("hc {}", env!("CARGO_PKG_VERSION"));
+    let this = format!("adk {}", env!("CARGO_PKG_VERSION"));
     let mut out = Out { json: json!({"release": release, "now": this, "updated": false}), human };
     if let Some(stream) = client::connect_existing(paths) {
         let status = client::call(&stream, "server.status", json!({}))?;
-        if older(&format!("hc {}", status["version"].as_str().unwrap_or_default()), &this) {
+        if older(&format!("adk {}", status["version"].as_str().unwrap_or_default()), &this) {
             client::call(&stream, "server.restart", json!({}))?;
             wait_closed(&stream);
             let status = call(paths, "server.status", json!({}))?;
@@ -58,20 +58,20 @@ pub(super) fn update(paths: &Paths, from: &std::path::Path, force: bool) -> Resu
     let shown = dest.display().to_string();
     if let Some(manager) = client::installed_by() {
         let how = match manager {
-            "homebrew" => "brew upgrade herdr-core",
+            "homebrew" => "brew upgrade agentdeck-core",
             "nix" => "update it in your Nix configuration",
-            "mise" => "mise upgrade herdr-core",
+            "mise" => "mise upgrade agentdeck-core",
             _ => {
                 return Err(refused(
                     format!("{} isn't writable by you", dest.parent().unwrap().display()),
-                    "update herdr-core the way it was installed (package manager, or sudo)",
+                    "update agentdeck-core the way it was installed (package manager, or sudo)",
                 ));
             }
         };
         return Err(refused(format!("{shown} belongs to {manager}"), how));
     }
-    let was = format!("hc {}", env!("CARGO_PKG_VERSION"));
-    let now = version_of(from).ok_or_else(|| refused(format!("{} is not a working hc", from.display()), ""))?;
+    let was = format!("adk {}", env!("CARGO_PKG_VERSION"));
+    let now = version_of(from).ok_or_else(|| refused(format!("{} is not a working adk", from.display()), ""))?;
     if older(&now, &was) && !force {
         return Err(refused(format!("{now} is older than this {was}"), "--force to go back anyway"));
     }

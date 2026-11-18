@@ -1,6 +1,6 @@
-//! `herdr-app do <command> [--arg value ... | json]`, `herdr-app ls`, `herdr-app commands`
-//! and `herdr-app status`: drive a running window from a shell (agents, tests)
-//! over `$HERDR_APP_HOME/herdr-app.sock`, one JSON line each way.
+//! `agentdeck do <command> [--arg value ... | json]`, `agentdeck ls`, `agentdeck commands`
+//! and `agentdeck status`: drive a running window from a shell (agents, tests)
+//! over `$AGENTDECK_HOME/agentdeck.sock`, one JSON line each way.
 
 use crate::mods::{self, Request};
 use serde_json::{Value, json};
@@ -13,14 +13,14 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 fn socket() -> PathBuf {
-    mods::app_dir().join("herdr-app.sock")
+    mods::app_dir().join("agentdeck.sock")
 }
 
 /// Serves the socket for this window. A live socket means another window owns this home.
 pub fn listen(tx: async_channel::Sender<Request>) {
     let path = socket();
     if UnixStream::connect(&path).is_ok() {
-        tracing::warn!("another Herdr is serving {}; `herdr-app do` goes there", path.display());
+        tracing::warn!("another AgentDeck is serving {}; `agentdeck do` goes there", path.display());
         return;
     }
     let _ = std::fs::remove_file(&path);
@@ -28,7 +28,7 @@ pub fn listen(tx: async_channel::Sender<Request>) {
         Ok(l) => l,
         Err(e) => return tracing::warn!("cannot serve {}: {e}", path.display()),
     };
-    let _ = std::thread::Builder::new().name("herdr-app-control".into()).spawn(move || {
+    let _ = std::thread::Builder::new().name("agentdeck-control".into()).spawn(move || {
         for stream in listener.incoming().flatten() {
             let tx = tx.clone();
             std::thread::spawn(move || serve(stream, tx));
@@ -94,17 +94,17 @@ pub fn client(args: &[String]) -> i32 {
             Ok(a) => json!({ "do": command, "args": a }),
             Err(e) => return fail(&e),
         },
-        _ => return fail("usage: herdr-app ls | herdr-app commands | herdr-app status | herdr-app shot [file.png] | herdr-app do <command> [--arg value ... | json]"),
+        _ => return fail("usage: agentdeck ls | agentdeck commands | agentdeck status | agentdeck shot [file.png] | agentdeck do <command> [--arg value ... | json]"),
     };
     let mut stream = match UnixStream::connect(socket()) {
         Ok(s) => s,
         Err(_) if args.first().is_some_and(|v| v == "feedback") => {
             let body = crate::feedback::draft(&args[1], "", 0, "agent", "other");
             println!("{}", serde_json::to_string_pretty(&body).unwrap_or_default());
-            eprintln!("Herdr must be open to review and send this feedback. Nothing was sent; core version and layout will reflect the open window.");
+            eprintln!("AgentDeck must be open to review and send this feedback. Nothing was sent; core version and layout will reflect the open window.");
             return 1;
         }
-        Err(e) => return fail(&format!("no Herdr window at {}: {e}", socket().display())),
+        Err(e) => return fail(&format!("no AgentDeck window at {}: {e}", socket().display())),
     };
     let _ = stream.set_read_timeout(Some(Duration::from_secs(35)));
     let mut line = String::new();
@@ -173,7 +173,7 @@ pub fn save_shot(window: &gpui::Window, path: &std::path::Path) -> anyhow::Resul
 }
 
 fn fail(message: &str) -> i32 {
-    eprintln!("herdr-app: {message}");
+    eprintln!("agentdeck: {message}");
     2
 }
 
@@ -183,9 +183,9 @@ mod tests {
 
     #[test]
     fn a_second_launch_raises_the_running_window() {
-        let dir = std::env::temp_dir().join(format!("herdr-app-raise-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("agentdeck-raise-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
-        let path = dir.join("herdr-app.sock");
+        let path = dir.join("agentdeck.sock");
         // Nothing running: this launch opens its own window.
         assert!(!raise_running_at(&path));
         // One running: it gets asked to come to the front.

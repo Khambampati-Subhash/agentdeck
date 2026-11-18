@@ -11,7 +11,7 @@ use std::sync::Mutex;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::{Duration, Instant};
 
-const BIN: &str = env!("CARGO_BIN_EXE_herdr-core");
+const BIN: &str = env!("CARGO_BIN_EXE_agentdeck-core");
 
 #[test]
 fn via_runs_without_a_console_and_passes_the_remote_line_whole() {
@@ -35,7 +35,10 @@ if ($request.method -ne 'hello') { exit 2 }
     assert_eq!(error["error"]["kind"], "probe", "{error}");
     assert_eq!(std::fs::read_to_string(s.root.join("via dir/console.txt")).unwrap(), "0");
     let line = std::fs::read_to_string(s.root.join("via dir/line.txt")).unwrap();
-    assert!(line.starts_with("sh -c 'p=$(command -v herdr-core)") && line.ends_with("exec \"$p\" connect'"), "{line}");
+    assert!(
+        line.starts_with("sh -c 'p=$(command -v agentdeck-core)") && line.ends_with("exec \"$p\" connect'"),
+        "{line}"
+    );
 }
 
 static LIVE: Mutex<Vec<(String, PathBuf)>> = Mutex::new(Vec::new());
@@ -136,12 +139,12 @@ fn cmd(session: &str, root: &Path) -> Command {
 fn cmd_at(exe: &Path, session: &str, root: &Path) -> Command {
     let mut cmd = Command::new(exe);
     cmd.current_dir(root)
-        .env("HC_SESSION", session)
+        .env("ADK_SESSION", session)
         .env("XDG_STATE_HOME", root.join("state"))
         .env("XDG_CONFIG_HOME", root.join("config"))
         .env("HC_SETTLE_MS", "0")
-        .env_remove("HC_TERMINAL_ID")
-        .env_remove("HC_SOCKET")
+        .env_remove("ADK_TERMINAL_ID")
+        .env_remove("ADK_SOCKET")
         .env_remove("SSH_CONNECTION")
         .env_remove("SSH_CLIENT")
         .env_remove("SSH_TTY");
@@ -172,7 +175,7 @@ fn sessions_select_distinct_pipes_even_with_the_same_state_home() {
     };
     let first = status(&a.name);
     let second = status(&b.name);
-    assert_ne!(first["pid"], second["pid"], "HC_SESSION must select the pipe, not just state");
+    assert_ne!(first["pid"], second["pid"], "ADK_SESSION must select the pipe, not just state");
     assert_eq!(status(&a.name)["pid"], first["pid"]);
 }
 
@@ -214,7 +217,7 @@ fn ssh_auth_failure_points_to_keys_instead_of_repeating_login() {
         .unwrap_or_else(|e| panic!("{e}: {}", String::from_utf8_lossy(&output.stderr)));
     assert_eq!(error["error"]["kind"], "needs_login", "{error}");
     let hint = error["error"]["hint"].as_str().unwrap();
-    assert!(hint.contains("keys or an agent") && !hint.contains("hc machine add"), "{hint}");
+    assert!(hint.contains("keys or an agent") && !hint.contains("adk machine add"), "{hint}");
 }
 
 #[test]
@@ -241,7 +244,7 @@ if ($request.method -ne 'hello') { exit 2 }
     assert_eq!(std::fs::read_to_string(s.root.join("console-window.txt")).unwrap(), "0");
 }
 
-/// A release folder like the zip: herdr-core.exe + conpty, the exe marked
+/// A release folder like the zip: agentdeck-core.exe + conpty, the exe marked
 /// with `mark` at its end (a PE runs with bytes appended).
 fn release(dir: &Path, mark: &str) -> PathBuf {
     let built = Path::new(BIN).parent().unwrap();
@@ -251,8 +254,8 @@ fn release(dir: &Path, mark: &str) -> PathBuf {
     }
     let mut exe = std::fs::read(BIN).unwrap();
     exe.extend_from_slice(mark.as_bytes());
-    std::fs::write(dir.join("herdr-core.exe"), exe).unwrap();
-    dir.join("herdr-core.exe")
+    std::fs::write(dir.join("agentdeck-core.exe"), exe).unwrap();
+    dir.join("agentdeck-core.exe")
 }
 
 fn marked(file: &Path, mark: &str) -> bool {
@@ -282,14 +285,14 @@ fn update_swaps_the_whole_release_while_its_terminals_run() {
     for f in &theirs {
         std::fs::write(f, "keep").unwrap();
     }
-    let leftover = s.root.join(r"inst\herdr-core.exe.old-123-0123456789abcdef0123456789abcdef");
+    let leftover = s.root.join(r"inst\agentdeck-core.exe.old-123-0123456789abcdef0123456789abcdef");
     std::fs::write(&leftover, "old").unwrap();
     let new = release(&s.root.join("new"), "new-build");
     let out = hc_at(&s, &exe, &["update", "--from", new.to_str().unwrap()]);
     assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
     assert!(theirs.iter().all(|f| f.is_file()), "update deleted a file that isn't hc's");
     assert!(!leftover.exists(), "an old update's leftover stays");
-    assert!(marked(&exe, "new-build"), "herdr-core.exe swapped");
+    assert!(marked(&exe, "new-build"), "agentdeck-core.exe swapped");
     assert!(marked(&s.root.join(r"inst\hc.exe"), "new-build"), "hc.exe follows it");
     assert_eq!(s.json(&["get", &t])["state"], "live", "its terminal kept running");
 }
@@ -306,7 +309,7 @@ fn an_update_that_cannot_finish_puts_everything_back() {
     let out = hc_at(&s, &exe, &["update", "--from", new.to_str().unwrap()]);
     drop(held);
     assert!(!out.status.success(), "the update should have failed");
-    assert!(marked(&exe, "old-build"), "herdr-core.exe back");
+    assert!(marked(&exe, "old-build"), "agentdeck-core.exe back");
     assert!(marked(&s.root.join(r"inst\hc.exe"), "old-build"), "hc.exe back");
     assert!(s.root.join(r"inst\conpty\conpty.dll").is_file());
     assert!(hc_at(&s, &exe, &["--version"]).status.success(), "hc still runs");
@@ -345,7 +348,7 @@ fn the_exe_needs_no_visual_cpp_runtime_installed() {
     // Imported DLL names sit in the exe as plain text.
     let exe = String::from_utf8_lossy(&std::fs::read(BIN).unwrap()).to_ascii_lowercase();
     for dll in ["vcruntime140", "msvcp140", "api-ms-win-crt-"] {
-        assert!(!exe.contains(dll), "herdr-core.exe imports {dll}: a clean Windows can't run it");
+        assert!(!exe.contains(dll), "agentdeck-core.exe imports {dll}: a clean Windows can't run it");
     }
 }
 
@@ -354,7 +357,7 @@ fn only_this_account_may_open_the_cores_pipe() {
     let s = Session::new();
     s.out(&["server", "start"]);
     let user: String = std::env::var("USERNAME").unwrap().chars().filter(|c| c.is_ascii_alphanumeric()).collect();
-    let pipe = format!(r"\\.\pipe\herdr-core-{user}-{}.sock", s.name);
+    let pipe = format!(r"\\.\pipe\agentdeck-core-{user}-{}.sock", s.name);
     // From Windows itself: Get-Acl sometimes answers for the pipe root instead.
     let sddl = unsafe {
         use windows_sys::Win32::Security::Authorization::*;
@@ -418,7 +421,7 @@ fn new_terminals_refresh_windows_settings_without_losing_runtime_variables() {
         .unwrap();
     assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
     let (code, output) =
-        s.out(&["run", "--timeout", "20", "cmd", "/c", "echo %PATH% & echo %HC_PROCESS_ONLY% & echo %HC_SESSION%"]);
+        s.out(&["run", "--timeout", "20", "cmd", "/c", "echo %PATH% & echo %HC_PROCESS_ONLY% & echo %ADK_SESSION%"]);
     assert_eq!(code, 0, "{output}");
     assert!(!output.contains("HC_STALE_PATH"), "{output}");
     assert!(output.contains("preserved"), "{output}");
@@ -625,19 +628,19 @@ fn planned_restarts_preserve_the_environment_for_new_terminals() {
     let started = cmd_at(&exe, &s.name, &s.root)
         .env_remove("NO_COLOR")
         .env_remove("HC_UPDATER_ONLY")
-        .env("HC_SESSION_VALUE", "original")
+        .env("ADK_SESSION_VALUE", "original")
         .args(["server", "start"])
         .output()
         .unwrap();
     assert!(started.status.success(), "{}", String::from_utf8_lossy(&started.stderr));
     let probe =
-        s.file("environment.ps1", r#"Write-Output "ENV:$env:NO_COLOR|$env:HC_SESSION_VALUE|$env:HC_UPDATER_ONLY""#);
+        s.file("environment.ps1", r#"Write-Output "ENV:$env:NO_COLOR|$env:ADK_SESSION_VALUE|$env:HC_UPDATER_ONLY""#);
     let new = release(&s.root.join("new"), "new-build");
     for args in [vec!["server", "restart"], vec!["update", "--from", new.to_str().unwrap()]] {
         let before = s.json(&["server", "status"])["pid"].clone();
         let out = cmd_at(&exe, &s.name, &s.root)
             .env("NO_COLOR", "1")
-            .env("HC_SESSION_VALUE", "updater")
+            .env("ADK_SESSION_VALUE", "updater")
             .env("HC_UPDATER_ONLY", "leaked")
             .args(&args)
             .output()
@@ -654,7 +657,7 @@ fn planned_restarts_preserve_the_environment_for_new_terminals() {
             "terminal.run",
             json!({
                 "argv": ["powershell", "-NoProfile", "-File", probe],
-                "env": {"NO_COLOR": "1", "HC_SESSION_VALUE": "override"},
+                "env": {"NO_COLOR": "1", "ADK_SESSION_VALUE": "override"},
             }),
         )
         .unwrap();
@@ -663,7 +666,7 @@ fn planned_restarts_preserve_the_environment_for_new_terminals() {
     s.json(&["server", "stop"]);
     let out = cmd_at(&exe, &s.name, &s.root)
         .env("NO_COLOR", "1")
-        .env("HC_SESSION_VALUE", "fresh")
+        .env("ADK_SESSION_VALUE", "fresh")
         .args(["server", "start"])
         .output()
         .unwrap();
@@ -681,7 +684,7 @@ fn fresh_restart_uses_the_callers_environment_and_keeps_running_programs() {
     let s = Session::new();
     let started = cmd(&s.name, &s.root)
         .env("NO_COLOR", "1")
-        .env("HC_SESSION_VALUE", "dirty")
+        .env("ADK_SESSION_VALUE", "dirty")
         .args(["server", "start"])
         .output()
         .unwrap();
@@ -690,13 +693,13 @@ fn fresh_restart_uses_the_callers_environment_and_keeps_running_programs() {
     let pid = s.json(&["get", &t])["pid"].clone();
     let out = cmd(&s.name, &s.root)
         .env_remove("NO_COLOR")
-        .env("HC_SESSION_VALUE", "fresh")
+        .env("ADK_SESSION_VALUE", "fresh")
         .args(["server", "restart", "--fresh"])
         .output()
         .unwrap();
     assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
     assert_eq!(s.json(&["get", &t])["pid"], pid);
-    let probe = s.file("fresh.ps1", r#"Write-Output "ENV:$env:NO_COLOR|$env:HC_SESSION_VALUE""#);
+    let probe = s.file("fresh.ps1", r#"Write-Output "ENV:$env:NO_COLOR|$env:ADK_SESSION_VALUE""#);
     let (code, out) = s.out(&["run", "--timeout", "15", "powershell", "-NoProfile", "-File", &probe]);
     assert_eq!(code, 0, "{out}");
     assert!(out.contains("ENV:|fresh"), "{out}");
@@ -706,18 +709,18 @@ fn fresh_restart_uses_the_callers_environment_and_keeps_running_programs() {
 fn a_copied_disks_restart_environment_does_not_replace_the_new_machines() {
     let s = Session::new();
     let machine = herdr_core::platform::machine_id().expect("Windows machine ID");
-    let state = s.root.join("state/herdr-core").join(&s.name);
+    let state = s.root.join("state/adk").join(&s.name);
     std::fs::create_dir_all(&state).unwrap();
     let snapshot = json!({
         "machine_id": format!("other-{machine}"),
         "boot_id": null,
         "written_ms": std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64,
-        "vars": [(std::ffi::OsString::from("HC_SESSION_VALUE"), std::ffi::OsString::from("copied-machine"))],
+        "vars": [(std::ffi::OsString::from("ADK_SESSION_VALUE"), std::ffi::OsString::from("copied-machine"))],
     });
     std::fs::write(state.join("restart-env.json"), serde_json::to_vec(&snapshot).unwrap()).unwrap();
-    let out = cmd(&s.name, &s.root).env("HC_SESSION_VALUE", "new-machine").args(["server", "start"]).output().unwrap();
+    let out = cmd(&s.name, &s.root).env("ADK_SESSION_VALUE", "new-machine").args(["server", "start"]).output().unwrap();
     assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
-    let (code, out) = s.out(&["run", "cmd", "/d", "/c", "echo %HC_SESSION_VALUE%"]);
+    let (code, out) = s.out(&["run", "cmd", "/d", "/c", "echo %ADK_SESSION_VALUE%"]);
     assert_eq!(code, 0, "{out}");
     assert!(out.contains("new-machine"), "{out}");
 }
@@ -740,11 +743,11 @@ fn a_core_started_from_cmd_keeps_its_environment_across_restart() {
     }
     // cd records cmd.exe's hidden =C: working-directory entry for the drive.
     let script = format!("cd /d \"{}\" && \"{BIN}\" server start", s.root.display());
-    let out = launcher.env("HC_SESSION_VALUE", "saved-from-cmd").args(["/d", "/c"]).raw_arg(script).output().unwrap();
+    let out = launcher.env("ADK_SESSION_VALUE", "saved-from-cmd").args(["/d", "/c"]).raw_arg(script).output().unwrap();
     assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
-    let out = cmd(&s.name, &s.root).env("HC_SESSION_VALUE", "caller").args(["server", "restart"]).output().unwrap();
+    let out = cmd(&s.name, &s.root).env("ADK_SESSION_VALUE", "caller").args(["server", "restart"]).output().unwrap();
     assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
-    let (code, out) = s.out(&["run", "cmd", "/d", "/c", "echo %HC_SESSION_VALUE%"]);
+    let (code, out) = s.out(&["run", "cmd", "/d", "/c", "echo %ADK_SESSION_VALUE%"]);
     assert_eq!(code, 0, "{out}");
     assert!(out.contains("saved-from-cmd"), "{out}");
 }
@@ -753,7 +756,7 @@ fn a_core_started_from_cmd_keeps_its_environment_across_restart() {
 fn a_failed_environment_handoff_still_restarts_the_core() {
     let s = Session::new();
     let before = s.json(&["server", "start"])["pid"].clone();
-    let blocked = s.root.join("state/herdr-core").join(&s.name).join("restart-env.json");
+    let blocked = s.root.join("state/adk").join(&s.name).join("restart-env.json");
     std::fs::create_dir(&blocked).unwrap();
     let (code, _) = s.out(&["server", "restart"]);
     assert_eq!(code, 0);
@@ -868,7 +871,7 @@ fn attach_types_into_the_program_and_detaches_on_its_key() {
 #[test]
 fn configured_shell_uses_argv_and_is_read_live_for_new_and_recovered_terminals() {
     let s = Session::new();
-    let config = s.root.join("config/herdr-core/config.toml");
+    let config = s.root.join("config/agentdeck-core/config.toml");
     std::fs::create_dir_all(config.parent().unwrap()).unwrap();
     let exe = s.root.join("shell with spaces.exe");
     std::fs::copy(std::env::var("COMSPEC").unwrap(), &exe).unwrap();

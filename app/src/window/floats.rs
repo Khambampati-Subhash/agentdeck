@@ -110,7 +110,7 @@ impl AppWindow {
         Value::Object(out)
     }
 
-    /// Placements plus where each sits in the window (px), for `herdr-app status`.
+    /// Placements plus where each sits in the window (px), for `agentdeck status`.
     pub(super) fn float_status(&self) -> Value {
         let mut v = self.float_placements();
         let bounds = self.bounds.borrow();

@@ -1,13 +1,13 @@
 #!/bin/sh
-# Installs herdr-core (hc), or updates it:
+# Installs agentdeck-core (hc), or updates it:
 #
 #   HERDR_RELEASES_URL=<release server> sh install.sh
 #
-# Into ~/.local/bin/herdr-core, with `hc` beside it only if no `hc` exists
+# Into ~/.local/bin/agentdeck-core, with `hc` beside it only if no `hc` exists
 # (some window managers ship one). An hc that is already there is swapped
 # the planned way (hc update --from): running terminals keep running. One
 # from a package manager is left to it. HC_VERSION=0.2.0 picks a version;
-# HERDR_RELEASES_URL is required: AgentOS has no release server of its own.
+# HERDR_RELEASES_URL is required: AgentDeck has no release server of its own.
 set -eu
 
 releases=${HERDR_RELEASES_URL:-}
@@ -39,7 +39,7 @@ sha256() {
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
-[ -n "$releases" ] || fail "set HERDR_RELEASES_URL to an AgentOS release server; AgentOS has no default"
+[ -n "$releases" ] || fail "set HERDR_RELEASES_URL to an AgentDeck release server; AgentDeck has no default"
 manifest="$releases/core/latest.json"
 [ -n "${HC_VERSION:-}" ] && manifest="$releases/core/$HC_VERSION/manifest.json"
 curl -fsSL "$manifest" -o "$tmp/manifest.json" || fail "cannot reach $manifest"
@@ -56,7 +56,7 @@ version=$(printf '%s' "$flat" | sed -n 's/^{"version":"\([^"]*\)".*/\1/p')
 # use are marked: one with a query or fragment (a mirror's signed URL) is
 # fetched exactly as the manifest gives it.
 src=install
-if [ -x "$bin/herdr-core" ]; then src=update; fi
+if [ -x "$bin/agentdeck-core" ]; then src=update; fi
 case $url in
   *[?#]*) download=$url ;;
   "$releases"/*) download="$url?src=$src" ;;
@@ -65,9 +65,9 @@ esac
 curl -fsSL "$download" -o "$tmp/hc.tar.gz" || fail "download failed: $url"
 [ "$(sha256 "$tmp/hc.tar.gz")" = "$want" ] || fail "the download is damaged (checksum mismatch); try again"
 tar -xzf "$tmp/hc.tar.gz" -C "$tmp"
-"$tmp/herdr-core" --version >/dev/null 2>&1 || fail "the downloaded hc does not run on this machine"
+"$tmp/agentdeck-core" --version >/dev/null 2>&1 || fail "the downloaded hc does not run on this machine"
 # App completion must converge even before the first bundled release exists.
-if [ "${HC_BUNDLE_ONLY:-0}" = 1 ] && [ ! -x "$tmp/Herdr Core.app/Contents/MacOS/herdr-core" ]; then
+if [ "${HC_BUNDLE_ONLY:-0}" = 1 ] && [ ! -x "$tmp/AgentDeck Core.app/Contents/MacOS/agentdeck-core" ]; then
   exit 0
 fi
 mkdir -p "$bin"
@@ -76,37 +76,37 @@ bundle=0
 if [ "$os" = macos ] && [ "$(id -u)" != 0 ]; then
   case "$bin" in "$HOME"/*) bundle=1 ;; esac
 fi
-if [ "$bundle" = 1 ] && [ -x "$tmp/Herdr Core.app/Contents/MacOS/herdr-core" ]; then
+if [ "$bundle" = 1 ] && [ -x "$tmp/AgentDeck Core.app/Contents/MacOS/agentdeck-core" ]; then
   action=installed
-  [ ! -x "$bin/herdr-core" ] || action=updated
-  bundled="$tmp/Herdr Core.app/Contents/MacOS/herdr-core"
+  [ ! -x "$bin/agentdeck-core" ] || action=updated
+  bundled="$tmp/AgentDeck Core.app/Contents/MacOS/agentdeck-core"
   if [ "$action" = updated ]; then
-    installed=$("$bin/herdr-core" --version)
+    installed=$("$bin/agentdeck-core" --version)
     candidate=$("$bundled" --version)
     awk -v old="$installed" -v new="$candidate" 'BEGIN {
-      sub(/^hc /, "", old); sub(/^hc /, "", new)
+      sub(/^adk /, "", old); sub(/^adk /, "", new)
       split(old, a, /[.-]/); split(new, b, /[.-]/)
       for (i=1; i<=3; i++) { if (a[i]+0 > b[i]+0) exit 1; if (a[i]+0 < b[i]+0) exit 0 }
     }' || fail "$candidate is older than $installed; use hc update --from with --force to downgrade"
   fi
-  "$bundled" --hc-install-bundle "$bundled" "$bin/herdr-core" || fail "installing Herdr Core.app failed"
+  "$bundled" --hc-install-bundle "$bundled" "$bin/agentdeck-core" || fail "installing AgentDeck Core.app failed"
   # A fresh install must not start a core (especially not a system/root core).
   if [ "$action" = updated ]; then
-    "$bin/herdr-core" server restart >/dev/null || fail "restarting the core failed"
+    "$bin/agentdeck-core" server restart >/dev/null || fail "restarting the core failed"
   fi
-  say "hc $version $action as Herdr Core.app. Recreate pre-update terminals if macOS privacy access is broken; running terminals were kept."
-elif [ -x "$bin/herdr-core" ]; then
+  say "hc $version $action as AgentDeck Core.app. Recreate pre-update terminals if macOS privacy access is broken; running terminals were kept."
+elif [ -x "$bin/agentdeck-core" ]; then
   # Swapped the planned way, so its terminals keep running.
-  "$bin/herdr-core" update --from "$tmp/herdr-core" >/dev/null || fail "updating $bin/herdr-core failed (see above)"
+  "$bin/agentdeck-core" update --from "$tmp/agentdeck-core" >/dev/null || fail "updating $bin/agentdeck-core failed (see above)"
   say "hc updated to $version."
 else
-  cp "$tmp/herdr-core" "$bin/herdr-core.new"
-  chmod 755 "$bin/herdr-core.new"
-  mv -f "$bin/herdr-core.new" "$bin/herdr-core"
-  say "hc $version installed into $bin/herdr-core."
+  cp "$tmp/agentdeck-core" "$bin/agentdeck-core.new"
+  chmod 755 "$bin/agentdeck-core.new"
+  mv -f "$bin/agentdeck-core.new" "$bin/agentdeck-core"
+  say "hc $version installed into $bin/agentdeck-core."
 fi
-if ! command -v hc >/dev/null 2>&1 && [ ! -e "$bin/hc" ]; then
-  ln -s herdr-core "$bin/hc"
+if ! command -v adk >/dev/null 2>&1 && [ ! -e "$bin/adk" ]; then
+  ln -s agentdeck-core "$bin/adk"
 fi
 
 case ":$PATH:" in

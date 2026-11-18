@@ -678,7 +678,7 @@ fn machine_add_needing_input_keeps_the_picker_and_shows_instructions(cx: &mut Te
         let tree = session.describe(window, cx).unwrap();
         assert!(tree.contains("machine-add"), "{tree}");
         assert!(tree.contains("ma-message-host"), "{tree}");
-        assert!(tree.contains("hc machine add host"), "{tree}");
+        assert!(tree.contains("adk machine add host"), "{tree}");
         window.remove_window();
     }).unwrap();
     let calls = calls.borrow();
@@ -875,7 +875,7 @@ fn local_state_and_overlay_initial_descriptions(cx: &mut TestAppContext) {
             Some(&format!("this.page = {page};")),
         )
         .unwrap();
-        let expected = ["Herdr runs your terminals in the background", "Add your other machines", "Choose your panels", "Make it yours"][page - 1];
+        let expected = ["AgentDeck runs your terminals in the background", "Add your other machines", "Choose your panels", "Make it yours"][page - 1];
         assert!(tree.contains(expected), "welcome page {page}: {tree}");
     }
     for setup in ["", "this.sent = true;", "this.error = 'Fixture error';"] {
