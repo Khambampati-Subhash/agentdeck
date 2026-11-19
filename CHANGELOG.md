@@ -3,6 +3,8 @@
 ## agentdeck-v0.1.0 (2026-11-19)
 On herdr-app 0.1.14 and herdr-core 0.1.19.
 
+After downloading, remove macOS quarantine: `xattr -dr com.apple.quarantine ~/Applications/AgentDeck.app`
+
 AgentDeck is a fork of Herdr with no connection to herdr.dev and improvements for the forge loop.
 
 - **Fork and rename**: AgentDeck runs independently from Herdr with its own settings, bundle IDs, and binaries (`agentdeck`, `adk`). Stock Herdr and AgentDeck can run side by side without interfering.

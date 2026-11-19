@@ -33,6 +33,16 @@ just dev            # our build in a scratch home (never your real setup)
 just install        # build a release into ~/Applications as a Mac app
 ```
 
+Or download a release and install:
+
+```sh
+# Extract the zip, then remove macOS quarantine
+xattr -dr com.apple.quarantine ~/Applications/AgentDeck.app
+
+# Optionally link the core CLI
+ln -s ~/Applications/AgentDeck.app/Contents/Helpers/"AgentDeck Core.app"/Contents/MacOS/agentdeck-core ~/.local/bin/adk
+```
+
 Status and roadmap: [docs/plan.md](docs/plan.md). The rename from Herdr is
 underway: the app shows AgentDeck, but binaries, paths and env vars are
 still `herdr-*` until P2 finishes.
