@@ -32,8 +32,10 @@ and reviewed with `/code-review high` before merge.
         add the terminal under System Settings → Privacy & Security → Developer
         Tools to skip the scan.
 - [x] Core lint: `cargo fmt --check`, `cargo deny check`, `clippy -D warnings` all pass.
-- [ ] App Bun JS tests (`app/scripts/*.test.ts`): Bun isn't installed yet.
-- [ ] Core's Windows clippy (`just lint`) needs the `x86_64-pc-windows-msvc` target; skip it unless we ship Windows.
+- [x] App Bun JS tests (`app/scripts/*.test.ts`): all 15 files pass with Bun 1.4.4
+      (2026-11-19); `changes` and `notes-media` aren't in `just test`.
+- [x] Core's Windows clippy (`just lint`): the `x86_64-pc-windows-msvc` target is
+      installed (2026-11-19) and it passes with zig stubbed.
 - [x] Root `justfile`: `build`, `test`, `check`, `dev` (scratch home
       `/var/tmp/agentos-dev`, core session `aos`), `hc`, `dev-clean`.
       Session names stay short: macOS caps socket paths at 103 bytes.
@@ -45,28 +47,29 @@ the window reopened onto the same space, pane and shell, with no network sockets
 
 ## P1: cut the link to herdr.dev (merged 2026-11-16, PR #2)
 
-On `main`; `scripts/check-offline` passes. Still to record: the full-session
-`scripts/watch-net` run below.
+On `main`; `scripts/check-offline` passes. Done-when met 2026-11-19: two
+watched scratch sessions (new space, split, settings, What's new, check for
+updates, quit) opened no internet socket and started no `curl`; no
+`update-notes-media` was written and `agentdeck status` showed no errors.
 
 Today the fork would update itself from upstream's servers and replace our
 build, and would send usage data there. All of these go, each removal with a test:
 
-- [ ] App self-update (`app/src/update.rs`, `HERDR_APP_RELEASE`) and the
+- [x] App self-update (`app/src/update.rs`, `HERDR_APP_RELEASE`) and the
       release-notes fetch (`update_notes.rs`, `media.herdr.dev`): off. Updates
       come only from our own builds.
-- [ ] Core updates (`hc update`, `core/.../releases.rs`, `HERDR_RELEASES_URL`)
+- [x] Core updates (`hc update`, `core/.../releases.rs`, `HERDR_RELEASES_URL`)
       and the app's `app.update_core`: off, or pointed at our own releases
       later.
-- [ ] Telemetry (`app/src/telemetry.rs`) removed, along with the Settings → Privacy
-      report and the `telemetry()` mod API. The API returns "off" so mods still load.
-- [ ] Feedback upload (`feedback.rs`, `HERDR_FEEDBACK_URL`): removed, or saves
-      locally.
-- [ ] Setup no longer installs or upgrades core from releases
+- [x] Telemetry (`app/src/telemetry.rs`): no built-in endpoint; it sends only to
+      a `HERDR_TELEMETRY_URL` the person sets, so the mod API still loads.
+- [x] Feedback upload (`feedback.rs`): only to a `HERDR_FEEDBACK_URL` the person sets.
+- [x] Setup no longer installs or upgrades core from releases
       (`setup.rs`, `core_bin.rs`); it uses the core we build.
-- [ ] Install scripts and Homebrew/DMG docs that fetch from releases.herdr.dev:
+- [x] Install scripts and Homebrew/DMG docs that fetch from releases.herdr.dev:
       removed or rewritten for local builds.
-- [ ] A test greps the shipped binaries' strings for `herdr.dev` and fails if
-      any network URL is left.
+- [x] `scripts/check-offline` fails if shipped code names `herdr.dev` outside
+      the reasoned entries in `scripts/offline-allow.txt`.
 
 **Done when:** a full app session (open, new space, split, settings, What's
 new, check for updates, quit) makes no outbound connection, including from
@@ -117,11 +120,14 @@ only adds merge conflicts.
 - [x] Core's runtime hints, errors and help say `adk …`, notes to agents
       are tagged `<adk>`, and core's README and docs use our names (2026-11-19).
       The docs checker had been looking for `hc` examples and so checked none.
-- [ ] From the P2 review, deferred: the app's dormant self-update (`update.rs`)
-      still expects `Herdr.app` and a `herdr-app` version prefix (P3);
-      `core_bin::ensure_core_bundle` (removed 2026-11-19);
-      `just migrate --from ~/.config/herdr-app` copies Herdr's shipped mods
-      without their install record; Windows installers still link `hc.exe`.
+- [x] From the P2 review, deferred (done 2026-11-19): `core_bin::ensure_core_bundle`
+      removed; `just migrate` copies the install record (`installed.json`) with
+      mods and layouts, so shipped mods aren't taken for edited ones (tests in
+      `scripts/test_migrate_agentos.py`, run by `just check`); core's installers
+      link `adk`/`adk.exe`, say `adk`, and `install.ps1` sets `ADK_SESSION` (it set
+      `HC_SESSION`, which core no longer reads) and strips the `adk ` version prefix.
+      Moved to P3: the app's release pipeline (`update.rs`, `scripts/package`,
+      `distribution/install.sh`) still names `Herdr.app` and `herdr-app`.
 - [x] App home `~/.config/agentdeck`, core config `~/.config/agentdeck-core`,
       state and sockets `~/.local/state/adk` (short: macOS caps socket paths at
       103 bytes and `agentdeck-core` overflowed it here). `just migrate` copies
@@ -139,6 +145,10 @@ seeing each other's terminals, settings or core. `scripts/side-by-side` passes
 
 ## P3: our build and release
 
+- [ ] The app's release pipeline under our names: `scripts/package` builds
+      `agentdeck-<os>-<arch>.tar.gz` holding `AgentDeck.app` (Linux: `agentdeck`),
+      `distribution/install.sh` installs it, and `update.rs` finds, checks the
+      version of and relaunches `AgentDeck.app/Contents/MacOS/AgentDeck`.
 - [ ] GitHub Actions on our repo: macOS arm64 build and tests for both halves
       (adapted from upstream CI). Linux comes later if wanted.
 - [ ] Versioning: `agentdeck-vX.Y.Z` tags. Our CHANGELOG lists our changes on
