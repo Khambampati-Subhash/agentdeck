@@ -6,13 +6,13 @@ window) and `core/` is [herdr-core](https://github.com/herdrdev/herdr-core)
 (`hc`, the runtime that keeps every terminal alive). Both are Apache-2.0;
 see `NOTICE.md`.
 
-**Status (2026-11-19):** P0 (import, build), P1 (no link to herdr.dev,
-PR #2), the forge loop (PR #1) and P2, the rename (PR #3), are on `main`.
-P3 (build and release, PR #6) done on branch `p3-build-release`, pending
-merge and first release. Adds CI (macOS arm64), versioning (`VERSION`,
-`agentdeck-vX.Y.Z` tags, `just tag`), bundled core in AgentDeck.app, and
-release workflow (tag → draft GitHub release). First release `agentdeck-v0.1.0`
-awaits user's OK. Open items are in `docs/plan.md`.
+**Status (2026-11-20):** P0 (import, build), P1 (no link to herdr.dev,
+PR #2), the forge loop (PR #1), P2, the rename (PR #3), and P3 (build and
+release, PR #6) are on `main`. P3 added CI (macOS arm64), versioning
+(`VERSION`, `agentdeck-vX.Y.Z` tags, `just tag`), bundled core in
+AgentDeck.app, and a release workflow (tag → draft GitHub release).
+`agentdeck-v0.1.0` is tagged, and its draft release waits for the user to
+publish it. Open items are in `docs/plan.md`.
 Update this line at the end of every milestone.
 
 ## Docs

@@ -1,6 +1,6 @@
 # AgentDeck changelog
 
-## agentdeck-v0.1.0 (2026-11-19)
+## agentdeck-v0.1.0 (2026-11-20)
 On herdr-app 0.1.14 and herdr-core 0.1.19.
 
 After downloading, unzip it, move AgentDeck.app into ~/Applications, then remove macOS quarantine: `xattr -dr com.apple.quarantine ~/Applications/AgentDeck.app`
