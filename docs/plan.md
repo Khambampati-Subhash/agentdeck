@@ -154,6 +154,11 @@ seeing each other's terminals, settings or core. `scripts/side-by-side` passes
 - [x] Self-contained Mac app bundle (`scripts/bundle-mac-app`, `scripts/install-mac-app`)
       with ad hoc signing. Release workflow builds a draft GitHub release from a tag.
 - [ ] First release (`agentdeck-v0.1.0`) pending user's OK to publish.
+- [ ] Upstream's app docs check (`bun test scripts/docs.test.ts`,
+      `bun scripts/docs.ts check`) and `app/scripts/test_distribution.py` don't run in our
+      CI or `just check`.
+- [ ] Flaky under full-suite load:
+      `mods::tests::known_agents_uses_snapshot_and_refreshes_changed_commands`.
 
 ## P4: upstream sync
 

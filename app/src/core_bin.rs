@@ -1,11 +1,11 @@
-//! Finding agentdeck-core (`adk`) on this machine. The app doesn't carry one: it
-//! uses the core people installed, or installs the core's own release.
+//! Finding agentdeck-core (`adk`) on this machine.
 //!
-//! Where it looks, in order: `core` in settings.json; this process's PATH;
-//! the person's login shell's PATH (an app opened from the Dock or a
-//! launcher doesn't get it); then the usual install places. A candidate
-//! counts only if `--version` says `adk …`: another program may share the
-//! name.
+//! Where it looks, in order: `core` in settings.json; on macOS, the core
+//! bundled inside AgentDeck.app (`Contents/Helpers/AgentDeck Core.app`); this
+//! process's PATH and the usual install places; then the person's login
+//! shell's PATH (an app opened from the Dock or a launcher doesn't get it).
+//! A candidate counts only if `--version` says `adk …`: another program may
+//! share the name.
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};

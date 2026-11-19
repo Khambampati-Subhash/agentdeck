@@ -82,7 +82,7 @@ After cloning: `git submodule update --init --depth 1` (Ghostty).
 - Versioning: `just version` prints it; `just tag` checks VERSION and CHANGELOG with
   scripts/release-check, then makes a local annotated tag on a clean main, never pushes.
   Releases: push an `agentdeck-vX.Y.Z` tag to trigger the release workflow, which
-  builds a draft GitHub release.
+  builds a draft GitHub release. No pre-release tags (release-check accepts only X.Y.Z).
 - Script tests: `just scripts` runs Python tests in `scripts/test_*.py`.
 - Mod check: `app/target/debug/agentdeck check <mod folder>`.
 - Screenshot a running scratch window: `agentdeck shot out.png`.
