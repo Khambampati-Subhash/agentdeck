@@ -1,29 +1,29 @@
-# Installs agentdeck-core (hc) on Windows, or updates it:
+# Installs agentdeck-core (adk) on Windows, or updates it:
 #
 #   $env:HERDR_RELEASES_URL = "<release server>"; powershell -File install.ps1
 #
 # AgentDeck has no release server of its own, so there is no default.
 #
 # Into %LOCALAPPDATA%\Programs\agentdeck-core (agentdeck-core.exe, Microsoft's
-# ConPTY beside it), added to your PATH, with hc.exe linked to it only if no
-# `hc` exists. An hc that is already there is swapped the planned way (hc
+# ConPTY beside it), added to your PATH, with adk.exe linked to it only if no
+# `adk` exists. An adk that is already there is swapped the planned way (adk
 # update --from): running terminals keep running. No admin needed.
 # HC_VERSION=0.2.0 picks a version; HERDR_RELEASES_URL points elsewhere
 # (tests); HC_INSTALL_DIR installs elsewhere.
 #
 # `-File install.ps1 <release zip> [session]` installs from a zip already
 # here, checked by whoever put it here, and removes both files after
-# (`hc machine add` from another machine does that).
+# (`adk machine add` from another machine does that).
 
 # Its own scope: under `irm | iex` it would otherwise set the caller's variables.
 & {
 $zip, $session = $args
-if ($session) { $env:HC_SESSION = $session }
+if ($session) { $env:ADK_SESSION = $session }
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
 
 # throw, not exit: under `irm | iex`, exit would close the person's window.
-function Fail($why) { throw "hc: $why" }
+function Fail($why) { throw "adk: $why" }
 
 if (-not $env:HERDR_RELEASES_URL) { Fail "set HERDR_RELEASES_URL to an AgentDeck release server; AgentDeck has no default" }
 $releases = $env:HERDR_RELEASES_URL.TrimEnd("/")
@@ -67,9 +67,9 @@ try {
     New-Item -ItemType Directory -Force "$tmp\hc" | Out-Null
     & $tar -xf "$tmp\hc.zip" -C "$tmp\hc"
     $new = "$tmp\hc\agentdeck-core.exe"
-    if ($LASTEXITCODE -or -not (Test-Path "$tmp\hc\conpty\conpty.dll")) { Fail "the download holds no complete hc" }
-    $version = (& $new --version) -replace "^hc ", ""
-    if ($LASTEXITCODE) { Fail "the downloaded hc does not run on this machine" }
+    if ($LASTEXITCODE -or -not (Test-Path "$tmp\hc\conpty\conpty.dll")) { Fail "the download holds no complete adk" }
+    $version = (& $new --version) -replace "^adk ", ""
+    if ($LASTEXITCODE) { Fail "the downloaded adk does not run on this machine" }
 
     New-Item -ItemType Directory -Force $dir | Out-Null
     $exe = Join-Path $dir "agentdeck-core.exe"
@@ -77,14 +77,14 @@ try {
         # Swapped the planned way, so its terminals keep running.
         & $exe update --from $new | Out-Null
         if ($LASTEXITCODE) { Fail "updating $exe failed (see above)" }
-        Write-Host "hc updated to $version."
+        Write-Host "adk updated to $version."
     } else {
         Copy-Item -Recurse -Force "$tmp\hc\agentdeck-core.exe", "$tmp\hc\conpty" $dir
-        Write-Host "hc $version installed into $dir."
+        Write-Host "adk $version installed into $dir."
     }
     Copy-Item -Recurse -Force "$tmp\hc\THIRD-PARTY-NOTICES" $dir -ErrorAction SilentlyContinue
-    if (-not (Get-Command hc -ErrorAction SilentlyContinue) -and -not (Test-Path (Join-Path $dir "hc.exe"))) {
-        New-Item -ItemType HardLink -Path (Join-Path $dir "hc.exe") -Target $exe | Out-Null
+    if (-not (Get-Command adk -ErrorAction SilentlyContinue) -and -not (Test-Path (Join-Path $dir "adk.exe"))) {
+        New-Item -ItemType HardLink -Path (Join-Path $dir "adk.exe") -Target $exe | Out-Null
     }
 
     # The raw user PATH, so %VARIABLES% in it stay unexpanded and keep their type.
@@ -97,11 +97,11 @@ try {
         # Setting any user variable tells running programs the environment changed.
         [Environment]::SetEnvironmentVariable("HC_INSTALLING", "1", "User")
         [Environment]::SetEnvironmentVariable("HC_INSTALLING", $null, "User")
-        Write-Host "Added $dir to your PATH: new terminals have hc."
+        Write-Host "Added $dir to your PATH: new terminals have adk."
     }
     $key.Close()
     if (($env:Path -split ";") -notcontains $dir) { $env:Path += ";$dir" }
-    Write-Host "Agents: hc --skill. People: hc --help."
+    Write-Host "Agents: adk --skill. People: adk --help."
 } finally {
     Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
     if ($zip) { Remove-Item -Force $zip, $PSCommandPath -ErrorAction SilentlyContinue }

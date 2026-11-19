@@ -1,11 +1,11 @@
 #!/bin/sh
-# Installs agentdeck-core (hc), or updates it:
+# Installs agentdeck-core (adk), or updates it:
 #
 #   HERDR_RELEASES_URL=<release server> sh install.sh
 #
-# Into ~/.local/bin/agentdeck-core, with `hc` beside it only if no `hc` exists
-# (some window managers ship one). An hc that is already there is swapped
-# the planned way (hc update --from): running terminals keep running. One
+# Into ~/.local/bin/agentdeck-core, with `adk` beside it only if no `adk` exists
+# (another program may share the name). An adk that is already there is swapped
+# the planned way (adk update --from): running terminals keep running. One
 # from a package manager is left to it. HC_VERSION=0.2.0 picks a version;
 # HERDR_RELEASES_URL is required: AgentDeck has no release server of its own.
 set -eu
@@ -14,7 +14,7 @@ releases=${HERDR_RELEASES_URL:-}
 bin=${HC_INSTALL_DIR:-$HOME/.local/bin}
 
 say() { printf '%s\n' "$*"; }
-fail() { say "hc: $*" >&2; exit 1; }
+fail() { say "adk: $*" >&2; exit 1; }
 need() { command -v "$1" >/dev/null 2>&1 || fail "needs $1"; }
 need curl
 need tar
@@ -22,7 +22,7 @@ need tar
 case "$(uname -s)" in
   Linux) os=linux ;;
   Darwin) os=macos ;;
-  *) fail "hc runs on Linux and macOS for now" ;;
+  *) fail "adk runs on Linux and macOS for now" ;;
 esac
 case "$(uname -m)" in
   x86_64 | amd64) arch=x86_64 ;;
@@ -65,7 +65,7 @@ esac
 curl -fsSL "$download" -o "$tmp/hc.tar.gz" || fail "download failed: $url"
 [ "$(sha256 "$tmp/hc.tar.gz")" = "$want" ] || fail "the download is damaged (checksum mismatch); try again"
 tar -xzf "$tmp/hc.tar.gz" -C "$tmp"
-"$tmp/agentdeck-core" --version >/dev/null 2>&1 || fail "the downloaded hc does not run on this machine"
+"$tmp/agentdeck-core" --version >/dev/null 2>&1 || fail "the downloaded adk does not run on this machine"
 # App completion must converge even before the first bundled release exists.
 if [ "${HC_BUNDLE_ONLY:-0}" = 1 ] && [ ! -x "$tmp/AgentDeck Core.app/Contents/MacOS/agentdeck-core" ]; then
   exit 0
@@ -87,23 +87,23 @@ if [ "$bundle" = 1 ] && [ -x "$tmp/AgentDeck Core.app/Contents/MacOS/agentdeck-c
       sub(/^adk /, "", old); sub(/^adk /, "", new)
       split(old, a, /[.-]/); split(new, b, /[.-]/)
       for (i=1; i<=3; i++) { if (a[i]+0 > b[i]+0) exit 1; if (a[i]+0 < b[i]+0) exit 0 }
-    }' || fail "$candidate is older than $installed; use hc update --from with --force to downgrade"
+    }' || fail "$candidate is older than $installed; use adk update --from with --force to downgrade"
   fi
   "$bundled" --hc-install-bundle "$bundled" "$bin/agentdeck-core" || fail "installing AgentDeck Core.app failed"
   # A fresh install must not start a core (especially not a system/root core).
   if [ "$action" = updated ]; then
     "$bin/agentdeck-core" server restart >/dev/null || fail "restarting the core failed"
   fi
-  say "hc $version $action as AgentDeck Core.app. Recreate pre-update terminals if macOS privacy access is broken; running terminals were kept."
+  say "adk $version $action as AgentDeck Core.app. Recreate pre-update terminals if macOS privacy access is broken; running terminals were kept."
 elif [ -x "$bin/agentdeck-core" ]; then
   # Swapped the planned way, so its terminals keep running.
   "$bin/agentdeck-core" update --from "$tmp/agentdeck-core" >/dev/null || fail "updating $bin/agentdeck-core failed (see above)"
-  say "hc updated to $version."
+  say "adk updated to $version."
 else
   cp "$tmp/agentdeck-core" "$bin/agentdeck-core.new"
   chmod 755 "$bin/agentdeck-core.new"
   mv -f "$bin/agentdeck-core.new" "$bin/agentdeck-core"
-  say "hc $version installed into $bin/agentdeck-core."
+  say "adk $version installed into $bin/agentdeck-core."
 fi
 if ! command -v adk >/dev/null 2>&1 && [ ! -e "$bin/adk" ]; then
   ln -s agentdeck-core "$bin/adk"
@@ -111,6 +111,6 @@ fi
 
 case ":$PATH:" in
   *":$bin:"*) ;;
-  *) say "Add $bin to your PATH to use hc." ;;
+  *) say "Add $bin to your PATH to use adk." ;;
 esac
-say "Agents: hc --skill. People: hc --help."
+say "Agents: adk --skill. People: adk --help."

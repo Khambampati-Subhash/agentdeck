@@ -396,7 +396,7 @@ const RELEASE: [&str; 3] = ["agentdeck-core.exe", r"conpty\conpty.dll", r"conpty
 /// is. Windows won't overwrite a running file but will rename one: every
 /// file is staged and checked first, then each old one is moved aside and
 /// the new one moved in; any failure moves everything back. Moved-aside
-/// files go on the next update. `hc.exe`, if it is a link to agentdeck-core.exe,
+/// files go on the next update. `adk.exe`, if it is a link to agentdeck-core.exe,
 /// is linked to the new one.
 pub fn swap_in(from: &Path, dest: &Path, works: impl Fn(&Path) -> bool) -> io::Result<()> {
     let dir = dest.parent().ok_or_else(|| io::Error::other("no folder"))?;
@@ -424,7 +424,7 @@ pub fn swap_in(from: &Path, dest: &Path, works: impl Fn(&Path) -> bool) -> io::R
                     && hex.bytes().all(|b| b.is_ascii_hexdigit())
             })
         };
-        let ours = ["agentdeck-core.exe", "conpty.dll", "openconsole.exe", "hc.exe"]
+        let ours = ["agentdeck-core.exe", "conpty.dll", "openconsole.exe", "adk.exe"]
             .iter()
             .flat_map(|f| ["old", "new", "failed"].map(|w| format!("{f}.{w}-")))
             .any(|prefix| name.strip_prefix(&prefix).is_some_and(tagged));
@@ -435,7 +435,7 @@ pub fn swap_in(from: &Path, dest: &Path, works: impl Fn(&Path) -> bool) -> io::R
     let tag = format!("{}-{}", std::process::id(), crate::platform::random_hex());
     let aside = |p: &Path, what: &str| PathBuf::from(format!("{}.{what}-{tag}", p.display()));
     let exe = dir.join(RELEASE[0]);
-    let hc = dir.join("hc.exe");
+    let hc = dir.join("adk.exe");
     let linked = |a: &Path, b: &Path| matches!((std::fs::metadata(a), std::fs::metadata(b)), (Ok(a), Ok(b)) if file_identity(&a) == file_identity(&b));
     let hc_ours = linked(&hc, &exe);
 
