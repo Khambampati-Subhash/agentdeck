@@ -161,7 +161,7 @@ impl Setup {
             let Some(bin) = paths.into_iter().next() else { return };
             let _ = this.update_in(cx, |this, window, cx| {
                 if crate::core_bin::version(&bin).is_none() {
-                    this.state = State::Failed(format!("{} isn't agentdeck-core (it should answer `--version` with `hc …`)", bin.display()));
+                    this.state = State::Failed(format!("{} isn't agentdeck-core (it should answer `--version` with `adk …`)", bin.display()));
                     cx.notify();
                     return;
                 }
@@ -197,12 +197,12 @@ fn words(need: &Need) -> (String, String, String) {
         Need::Fix(Mismatch::TooOld { have, need }) => (
             "AgentDeck needs a newer core".into(),
             format!("Yours is {have}; this AgentDeck needs {need} or newer. Updating keeps your terminals running."),
-            "Or update it yourself: hc update".into(),
+            "Or update it yourself: adk update".into(),
         ),
         Need::Fix(Mismatch::Missing(methods)) => (
             "AgentDeck needs a newer core".into(),
             format!("Your core can't do everything this AgentDeck needs ({}). Updating keeps your terminals running.", methods.join(", ")),
-            "Or update it yourself: hc update".into(),
+            "Or update it yourself: adk update".into(),
         ),
         Need::Fix(Mismatch::Newer { generation }) => (
             "This AgentDeck is older than its core".into(),

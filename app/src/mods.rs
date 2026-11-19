@@ -819,9 +819,9 @@ fn run_remote_with_limit(machine: &str, command: &str, args: &[String], cwd: Opt
     // Let the remote timeout end the program and deliver its result before the wrapper expires.
     let core = crate::core_bin::path().to_string_lossy().into_owned();
     let (_, out, err) = run_blocking(&core, &hc_args, None, limit + Duration::from_secs(5))?;
-    let v: Value = serde_json::from_str(out.trim()).or_else(|_| serde_json::from_str(err.trim())).map_err(|_| format!("hc exec: {}", err.trim()))?;
+    let v: Value = serde_json::from_str(out.trim()).or_else(|_| serde_json::from_str(err.trim())).map_err(|_| format!("adk exec: {}", err.trim()))?;
     if let Some(e) = v.get("error") {
-        return Err(e.get("message").and_then(Value::as_str).unwrap_or("hc exec failed").to_owned());
+        return Err(e.get("message").and_then(Value::as_str).unwrap_or("adk exec failed").to_owned());
     }
     if v.get("timed_out").and_then(Value::as_bool) == Some(true) {
         return Err(format!("{command} took longer than {} s on {machine} and was stopped", limit.as_secs_f64()));

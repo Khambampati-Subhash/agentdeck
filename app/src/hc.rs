@@ -329,7 +329,7 @@ impl Core {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
-            .context("cannot run `hc connect`: is agentdeck-core installed?")?;
+            .context("cannot run `adk connect`: is agentdeck-core installed?")?;
         let mut stderr = child.stderr.take().unwrap();
         let (error_tx, errors) = mpsc::channel();
         std::thread::Builder::new().name("hc-stderr".into()).spawn(move || {

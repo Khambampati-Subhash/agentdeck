@@ -1,11 +1,11 @@
-//! Finding agentdeck-core (`hc`) on this machine. The app doesn't carry one: it
+//! Finding agentdeck-core (`adk`) on this machine. The app doesn't carry one: it
 //! uses the core people installed, or installs the core's own release.
 //!
 //! Where it looks, in order: `core` in settings.json; this process's PATH;
 //! the person's login shell's PATH (an app opened from the Dock or a
 //! launcher doesn't get it); then the usual install places. A candidate
-//! counts only if `--version` says `hc …`: some window managers ship an
-//! unrelated `hc`.
+//! counts only if `--version` says `adk …`: another program may share the
+//! name.
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -199,14 +199,14 @@ pub fn install() -> Result<PathBuf, String> {
     version(&bin).map(|_| bin).ok_or_else(|| "installed, but agentdeck-core doesn't run".into())
 }
 
-/// Updates the core to its latest release (`hc update`: same generation only,
+/// Updates the core to its latest release (`adk update`: same generation only,
 /// terminals kept). Ok: the version it runs now. Err: what it said, e.g.
 /// "belongs to Homebrew: brew upgrade agentdeck-core".
 pub fn update() -> Result<String, String> {
     update_to(None)
 }
 
-/// `hc update --version X`: at least X (a newer core stays). Cores before 0.1.5 lack it.
+/// `adk update --version X`: at least X (a newer core stays). Cores before 0.1.5 lack it.
 pub fn update_to(at_least: Option<&str>) -> Result<String, String> {
     // The core found may be an upstream install, which defaults to upstream's release server.
     if crate::update::releases().is_none() {
@@ -217,82 +217,15 @@ pub fn update_to(at_least: Option<&str>) -> Result<String, String> {
     if let Some(v) = at_least {
         cmd.args(["--version", v]);
     }
-    let out = cmd.stdin(Stdio::null()).output().map_err(|e| format!("cannot run hc update: {e}"))?;
+    let out = cmd.stdin(Stdio::null()).output().map_err(|e| format!("cannot run adk update: {e}"))?;
     let reply: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap_or_default();
     if out.status.success() {
-        let now = reply.get("now").and_then(|v| v.as_str()).unwrap_or("the latest").to_owned();
-        #[cfg(target_os = "macos")]
-        ensure_core_bundle(&now)?;
-        return Ok(now);
+        return Ok(reply.get("now").and_then(|v| v.as_str()).unwrap_or("the latest").to_owned());
     }
     let err: serde_json::Value = serde_json::from_slice(&out.stderr).unwrap_or_default();
     let message = err.pointer("/error/message").and_then(|v| v.as_str()).map(str::to_owned);
     let hint = err.pointer("/error/hint").and_then(|v| v.as_str()).map(|h| format!(" ({h})")).unwrap_or_default();
     Err(message.map(|m| m + &hint).unwrap_or_else(|| String::from_utf8_lossy(&out.stderr).trim().to_owned()))
-}
-
-#[cfg(any(target_os = "macos", all(test, unix)))]
-const BUNDLE_INSTALL_SCRIPT: &str = "installer=$(curl -fsSL \"$1/core/install.sh\") && case \"$installer\" in *HC_BUNDLE_ONLY*) printf '%s\\n' \"$installer\" | sh ;; *) exit 0 ;; esac";
-
-#[cfg(any(target_os = "macos", all(test, unix)))]
-fn bundle_completion_path(bin: &Path, home: &Path) -> bool {
-    bin.starts_with(home)
-        && !bin.ends_with("Contents/MacOS/agentdeck-core")
-        && !["/Cellar/", "/nix/store/", "/mise/installs/"]
-            .iter().any(|marker| bin.to_string_lossy().contains(marker))
-}
-
-#[cfg(any(target_os = "macos", all(test, unix)))]
-fn bundle_completion_writable(bin: &Path) -> bool {
-    bin.parent().is_some_and(|dir| {
-        Command::new("/bin/sh").args(["-c", "test -w \"$1\"", "sh"]).arg(dir).status().is_ok_and(|status| status.success())
-    })
-}
-
-/// Old core updaters copied only the bare executable. Finish that upgrade
-/// with the current installer, which retains the complete signed app bundle.
-#[cfg(target_os = "macos")]
-fn ensure_core_bundle(version: &str) -> Result<(), String> {
-    let bin = path();
-    let resolved = bin.canonicalize().unwrap_or_else(|_| bin.clone());
-    if !bundle_completion_path(&resolved, &crate::mods::home()) || !bundle_completion_writable(&resolved) {
-        return Ok(());
-    }
-    // Never replace a contributor's build, package-manager core, or a host app.
-    let official = crate::spawn::command("/usr/bin/codesign")
-        .args(["--verify", "--strict", "-R", "=identifier \"io.github.khambampati-subhash.agentdeck.core\" and anchor apple generic and certificate leaf[subject.OU] = \"2W9652Q7QR\""])
-        .arg(&bin).output().is_ok_and(|out| out.status.success());
-    if !official {
-        return Ok(());
-    }
-    let Some(releases) = crate::update::releases() else {
-        return Ok(());
-    };
-    let mut cmd = crate::spawn::command("sh");
-    cmd.args([
-        "-c",
-        BUNDLE_INSTALL_SCRIPT,
-        "sh",
-        &releases,
-    ]);
-    cmd.env("HC_BUNDLE_ONLY", "1");
-    if let Some(v) = version.strip_prefix(crate::brand::CORE_VERSION_PREFIX) {
-        cmd.env("HC_VERSION", v);
-    }
-    if resolved.is_absolute()
-        && let Some(dir) = resolved.parent()
-    {
-        cmd.env("HC_INSTALL_DIR", dir);
-    }
-    let out = cmd
-        .stdin(Stdio::null())
-        .output()
-        .map_err(|e| format!("cannot finish core bundle installation: {e}"))?;
-    if out.status.success() {
-        Ok(())
-    } else {
-        Err(String::from_utf8_lossy(&out.stderr).trim().to_owned())
-    }
 }
 
 #[cfg(test)]
@@ -358,46 +291,6 @@ mod tests {
         assert_eq!(std::env::split_paths(&merged).collect::<Vec<_>>(), ["/custom/bin", "/opt/homebrew/bin", "/usr/bin", "/home/test/.local/bin", "/bin"].map(PathBuf::from));
         let fallback = merged_path(None, &usual, &current).unwrap();
         assert_eq!(std::env::split_paths(&fallback).collect::<Vec<_>>(), ["/home/test/.local/bin", "/opt/homebrew/bin", "/usr/bin", "/bin"].map(PathBuf::from));
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn bundle_completion_skips_managed_and_system_paths() {
-        let home = Path::new("/Users/test");
-        assert!(bundle_completion_path(&home.join(".local/bin/agentdeck-core"), home));
-        for bin in [
-            "/usr/local/bin/agentdeck-core",
-            "/opt/homebrew/Cellar/agentdeck-core/1/bin/agentdeck-core",
-            "/nix/store/abc/bin/agentdeck-core",
-            "/Users/test/.local/share/mise/installs/agentdeck-core/1/agentdeck-core",
-            "/Users/test/.local/share/agentdeck-core/current/Contents/MacOS/agentdeck-core",
-        ] {
-            assert!(!bundle_completion_path(Path::new(bin), home), "{bin}");
-        }
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn bundle_completion_skips_unwritable_directories() {
-        assert!(bundle_completion_writable(&std::env::temp_dir().join("agentdeck-core")));
-        assert!(!bundle_completion_writable(Path::new("/nonexistent/agentdeck-core")));
-        let root = Command::new("id").arg("-u").output().unwrap().stdout == b"0\n";
-        if !root {
-            assert!(!bundle_completion_writable(Path::new("/usr/bin/agentdeck-core")));
-        }
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn bundle_completion_does_not_run_a_legacy_installer() {
-        for (installer, expected) in [("echo restarted", ""), ("# HC_BUNDLE_ONLY\necho bundled", "bundled\n")] {
-            let out = Command::new("sh")
-                .args(["-c", &format!("curl() {{ printf '%s\\n' \"$INSTALLER\"; }}; {BUNDLE_INSTALL_SCRIPT}")])
-                .env("INSTALLER", installer)
-                .output().unwrap();
-            assert!(out.status.success());
-            assert_eq!(String::from_utf8(out.stdout).unwrap(), expected);
-        }
     }
 
     // Fakes the binary with a shell script.
