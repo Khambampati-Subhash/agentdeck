@@ -4,7 +4,9 @@ AgentDeck's home. Only when you run it; it never changes the source.
 
   scripts/migrate-agentos [--from DIR] [--to DIR] [--core PATH] [--force] [--yes]
 
-Copies settings.json, keys.json, mods/ and layouts/. Running terminals stay
+Copies settings.json, keys.json, mods/ and layouts/, and with those the
+record of which ones the app shipped (installed.json; without it the app
+takes every shipped mod for an edited one). Running terminals stay
 in the old "agentos" core: this prints how to reach it, and never stops it.
 """
 import argparse
@@ -15,6 +17,7 @@ import sys
 
 HOME = os.path.expanduser("~")
 ENTRIES = ["settings.json", "keys.json", "mods", "layouts"]
+RECORD = "installed.json"
 
 
 def main():
@@ -31,6 +34,8 @@ def main():
     found = [e for e in ENTRIES if os.path.exists(os.path.join(a.src, e))]
     if not found:
         sys.exit(f"migrate-agentos: nothing to migrate in {a.src}")
+    if {"mods", "layouts"} & set(found) and os.path.exists(os.path.join(a.src, RECORD)):
+        found.append(RECORD)
     if os.path.exists(os.path.join(a.to, "settings.json")) and not a.force:
         sys.exit(f"migrate-agentos: {a.to} already has settings; --force copies over them")
 
