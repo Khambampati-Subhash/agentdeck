@@ -1,0 +1,105 @@
+#!/bin/bash
+# Build a self-contained AgentDeck.app bundle with no per-machine paths.
+# Used by scripts/install-mac-app and the release workflow.
+#
+# Usage: bundle-mac-app --app-bin PATH --core-bin PATH --version X.Y.Z OUT_DIR
+set -euo pipefail
+
+usage() {
+  echo "usage: bundle-mac-app --app-bin PATH --core-bin PATH --version X.Y.Z OUT_DIR" >&2
+  exit 2
+}
+
+# Parse arguments
+app_bin=""
+core_bin=""
+version=""
+out_dir=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --app-bin)
+      app_bin="${2:-}"
+      [[ -n $app_bin ]] || usage
+      shift 2
+      ;;
+    --core-bin)
+      core_bin="${2:-}"
+      [[ -n $core_bin ]] || usage
+      shift 2
+      ;;
+    --version)
+      version="${2:-}"
+      [[ -n $version ]] || usage
+      shift 2
+      ;;
+    -*)
+      usage
+      ;;
+    *)
+      out_dir="$1"
+      shift
+      ;;
+  esac
+done
+
+[[ -n $app_bin && -n $core_bin && -n $version && -n $out_dir ]] || usage
+
+# Validate binaries exist and are executable
+if [[ ! -x $app_bin ]]; then
+  echo "bundle-mac-app: app binary not found or not executable: $app_bin" >&2
+  exit 1
+fi
+
+if [[ ! -x $core_bin ]]; then
+  echo "bundle-mac-app: core binary not found or not executable: $core_bin" >&2
+  exit 1
+fi
+
+root="$(cd "$(dirname "$0")/.." && pwd)"
+NAME="AgentDeck"
+ID="io.github.khambampati-subhash.agentdeck"
+app="$out_dir/$NAME.app"
+
+# Remove old bundle if it exists
+rm -rf "$app"
+
+# Create bundle structure
+mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources" "$app/Contents/Helpers"
+
+# Copy app binary
+cp "$app_bin" "$app/Contents/MacOS/$NAME"
+chmod +x "$app/Contents/MacOS/$NAME"
+
+# Build and sign core bundle
+core_app="$app/Contents/Helpers/AgentDeck Core.app"
+sh "$root/core/scripts/mac-bundle" "$core_bin" "$core_app"
+codesign --force --sign - "$core_app"
+
+# Copy icon
+cp "$root/app/assets/icons/Herdr.icns" "$app/Contents/Resources/$NAME.icns"
+
+# Create Info.plist with empty LSEnvironment
+cat > "$app/Contents/Info.plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+    <key>CFBundleExecutable</key><string>$NAME</string>
+    <key>CFBundleIdentifier</key><string>$ID</string>
+    <key>CFBundleName</key><string>$NAME</string>
+    <key>CFBundleDisplayName</key><string>$NAME</string>
+    <key>CFBundleIconFile</key><string>$NAME</string>
+    <key>CFBundlePackageType</key><string>APPL</string>
+    <key>CFBundleShortVersionString</key><string>$version</string>
+    <key>CFBundleVersion</key><string>$version</string>
+    <key>NSMicrophoneUsageDescription</key><string>Terminal programs running in $NAME can use the microphone, for example for voice input.</string>
+    <key>NSCameraUsageDescription</key><string>Terminal programs running in $NAME can use the camera.</string>
+    <key>NSAppleEventsUsageDescription</key><string>Terminal programs running in $NAME can use AppleScript to control other apps.</string>
+    <key>NSPrincipalClass</key><string>NSApplication</string>
+    <key>NSHighResolutionCapable</key><true/>
+    <key>LSEnvironment</key><dict/>
+</dict></plist>
+PLIST
+
+# Sign the whole bundle
+codesign --force --sign - "$app"

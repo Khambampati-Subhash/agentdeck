@@ -37,57 +37,41 @@ core_bin="$root/core/target/release/agentdeck-core"
 # Never write over an installed Herdr.
 case "$APP" in *Herdr.app*) echo "install-mac-app: refusing to touch $APP" >&2; exit 1 ;; esac
 
-mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$HOME_DIR"
+# Build the bundle in a staging directory
+staging_dir="$HOME/Applications/.agentdeck-staging"
+rm -rf "$staging_dir"
+mkdir -p "$staging_dir"
+version="0.1.0"
+[[ -f "$root/VERSION" ]] && version="$(cat "$root/VERSION")"
+sh "$root/scripts/bundle-mac-app" --app-bin "$app_bin" --core-bin "$core_bin" --version "$version" "$staging_dir"
+staged_app="$staging_dir/$NAME.app"
+staged_core="$staged_app/Contents/Helpers/AgentDeck Core.app"
+
+mkdir -p "$HOME_DIR"
 # A pre-rename core may still run the "agentos" session: keep its binary, outside the app.
 if [[ -x "$CORE_APP/Contents/MacOS/herdr-core" ]]; then
   mkdir -p "$OLD_HOME" && rm -rf "$OLD_HOME/AgentOS Core.app" && mv "$CORE_APP" "$OLD_HOME/AgentOS Core.app"
   old_core="$OLD_HOME/AgentOS Core.app/Contents/MacOS/herdr-core"
   [[ -f $OLD_HOME/settings.json ]] && sed -i '' "s|\"$CORE_APP/Contents/MacOS/herdr-core\"|\"$old_core\"|" "$OLD_HOME/settings.json"
 fi
-# Replace atomically so installing doesn't interrupt a running copy.
-cp "$app_bin" "$APP/Contents/MacOS/$NAME.new" && mv -f "$APP/Contents/MacOS/$NAME.new" "$APP/Contents/MacOS/$NAME"
-chmod +x "$APP/Contents/MacOS/$NAME"
-# Running cores keep their files: the new bundle is signed aside, then swapped in.
-staged="$APP/Contents/Helpers/.core.new.app"
-rm -rf "$staged" "$staged.old"
-mkdir -p "$APP/Contents/Helpers"
-sh "$root/core/scripts/mac-bundle" "$core_bin" "$staged"
-codesign --force --sign - "$staged"
-[[ -d $CORE_APP ]] && mv "$CORE_APP" "$staged.old"
-mv "$staged" "$CORE_APP"
-rm -rf "$staged.old" "$APP/Contents/MacOS/herdr-core" # the bare core of earlier installs
-cp "$root/app/assets/icons/Herdr.icns" "$APP/Contents/Resources/$NAME.icns"
 
 # The app's core is the one inside the bundle (kept if settings already exist).
 settings="$HOME_DIR/settings.json"
 [[ -f $settings ]] || printf '{ "core": "%s" }\n' "$CORE" > "$settings"
 
-cat > "$APP/Contents/Info.plist" <<PLIST
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0"><dict>
-    <key>CFBundleExecutable</key><string>$NAME</string>
-    <key>CFBundleIdentifier</key><string>$ID</string>
-    <key>CFBundleName</key><string>$NAME</string>
-    <key>CFBundleDisplayName</key><string>$NAME</string>
-    <key>CFBundleIconFile</key><string>$NAME</string>
-    <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>0.1.0</string>
-    <key>CFBundleVersion</key><string>1</string>
-    <key>NSMicrophoneUsageDescription</key><string>Terminal programs running in $NAME can use the microphone, for example for voice input.</string>
-    <key>NSCameraUsageDescription</key><string>Terminal programs running in $NAME can use the camera.</string>
-    <key>NSAppleEventsUsageDescription</key><string>Terminal programs running in $NAME can use AppleScript to control other apps.</string>
-    <key>NSPrincipalClass</key><string>NSApplication</string>
-    <key>NSHighResolutionCapable</key><true/>
-    <key>LSEnvironment</key><dict/>
-</dict></plist>
-PLIST
-# Finder starts apps without a login shell: give it the env it needs.
-pb() { /usr/libexec/PlistBuddy -c "$1" "$APP/Contents/Info.plist"; }
+# Add per-machine environment to the staged bundle
+pb() { /usr/libexec/PlistBuddy -c "$1" "$staged_app/Contents/Info.plist"; }
 [[ $HOME_DIR == "$HOME/.config/agentdeck" ]] || pb "Add :LSEnvironment:AGENTDECK_HOME string $HOME_DIR"
-pb "Add :LSEnvironment:PATH string $CORE_APP/Contents/MacOS:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+pb "Add :LSEnvironment:PATH string $staged_core/Contents/MacOS:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 
-codesign --force --sign - "$APP"
+# Re-sign the bundle with per-machine settings
+codesign --force --sign - "$staged_app"
+
+# Swap the bundle in atomically (doesn't interrupt a running copy)
+mkdir -p "$HOME/Applications"
+[[ -d $APP ]] && mv "$APP" "$APP.old"
+mv "$staged_app" "$APP"
+rm -rf "$APP.old" "$staging_dir"
 lsregister=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
 "$lsregister" -f "$APP"
 "$lsregister" -f "$CORE_APP"
