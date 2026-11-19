@@ -94,18 +94,36 @@ class BundleMacApp(unittest.TestCase):
         """No HOME paths embedded in bundle, LSEnvironment is empty"""
         test_home = os.path.join(self.root, "home")
         os.makedirs(test_home)
+
+        # Put binaries and output under test_home to make the test meaningful
+        test_bin_dir = os.path.join(test_home, "bin")
+        test_out_dir = os.path.join(test_home, "out")
+        os.makedirs(test_bin_dir)
+        os.makedirs(test_out_dir)
+
+        # Create fake binaries under test_home
+        test_app_bin = os.path.join(test_bin_dir, "agentdeck")
+        with open(test_app_bin, "w") as f:
+            f.write("#!/bin/sh\necho agentdeck\n")
+        os.chmod(test_app_bin, 0o755)
+
+        test_core_bin = os.path.join(test_bin_dir, "agentdeck-core")
+        with open(test_core_bin, "w") as f:
+            f.write("#!/bin/sh\nif [ \"$1\" = \"--version\" ]; then echo \"adk 0.1.19\"; fi\n")
+        os.chmod(test_core_bin, 0o755)
+
         env = os.environ.copy()
         env["HOME"] = test_home
 
         self.run_it(
-            "--app-bin", self.app_bin,
-            "--core-bin", self.core_bin,
+            "--app-bin", test_app_bin,
+            "--core-bin", test_core_bin,
             "--version", "0.1.0",
-            self.out_dir,
+            test_out_dir,
             env=env
         )
 
-        app = os.path.join(self.out_dir, "AgentDeck.app")
+        app = os.path.join(test_out_dir, "AgentDeck.app")
 
         # Check LSEnvironment is empty
         plist_path = os.path.join(app, "Contents/Info.plist")
@@ -127,7 +145,7 @@ class BundleMacApp(unittest.TestCase):
                         content = f.read()
                         self.assertNotIn(test_home.encode(), content,
                                        f"{fpath} contains HOME path")
-                except:
+                except OSError:
                     pass  # Skip unreadable files
 
     def test_missing_binary_fails(self):

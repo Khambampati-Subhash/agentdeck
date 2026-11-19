@@ -30,8 +30,8 @@ if [[ ${1:-} != --no-build ]]; then
   (cd "$root/core" && cargo build --release --locked)
   (cd "$root/app" && cargo build --release --locked)
 fi
-app_bin="$root/app/target/release/agentdeck"
-core_bin="$root/core/target/release/agentdeck-core"
+app_bin="${APP_BIN:-$root/app/target/release/agentdeck}"
+core_bin="${CORE_BIN:-$root/core/target/release/agentdeck-core}"
 [[ -x $app_bin && -x $core_bin ]] || { echo "install-mac-app: build first (no --no-build)" >&2; exit 1; }
 
 # Never write over an installed Herdr.
@@ -62,7 +62,7 @@ settings="$HOME_DIR/settings.json"
 # Add per-machine environment to the staged bundle
 pb() { /usr/libexec/PlistBuddy -c "$1" "$staged_app/Contents/Info.plist"; }
 [[ $HOME_DIR == "$HOME/.config/agentdeck" ]] || pb "Add :LSEnvironment:AGENTDECK_HOME string $HOME_DIR"
-pb "Add :LSEnvironment:PATH string $staged_core/Contents/MacOS:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+pb "Add :LSEnvironment:PATH string $CORE_APP/Contents/MacOS:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 
 # Re-sign the bundle with per-machine settings
 codesign --force --sign - "$staged_app"
