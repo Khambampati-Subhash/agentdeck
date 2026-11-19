@@ -79,9 +79,10 @@ After cloning: `git submodule update --init --depth 1` (Ghostty).
   The user has the real Herdr installed: never use its default session or `~/.config/herdr-app`.
 - Install: `just install` (~/Applications/AgentDeck.app, `agentdeck` and `adk` in ~/.local/bin); `just migrate` copies the old AgentOS settings.
 - Side by side with stock Herdr: `just side-by-side`.
-- Versioning: `just version` (check release readiness), `just tag` (local annotated
-  tag on a clean main, never pushes). Releases: push an `agentdeck-vX.Y.Z` tag to
-  trigger the release workflow, which builds a draft GitHub release.
+- Versioning: `just version` prints it; `just tag` checks VERSION and CHANGELOG with
+  scripts/release-check, then makes a local annotated tag on a clean main, never pushes.
+  Releases: push an `agentdeck-vX.Y.Z` tag to trigger the release workflow, which
+  builds a draft GitHub release.
 - Script tests: `just scripts` runs Python tests in `scripts/test_*.py`.
 - Mod check: `app/target/debug/agentdeck check <mod folder>`.
 - Screenshot a running scratch window: `agentdeck shot out.png`.
