@@ -12,7 +12,7 @@ pub fn check_via(_target: &str) -> io::Result<()> {
 }
 
 pub fn via_add_hint(target: &str) -> String {
-    format!("hc machine add --via '{}' --name <name>", target.replace('\'', r"'\''"))
+    format!("adk machine add --via '{}' --name <name>", target.replace('\'', r"'\''"))
 }
 
 pub fn via_command(target: &str, line: &str) -> io::Result<Command> {

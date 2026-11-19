@@ -39,7 +39,7 @@ fn resolve(at: &FileAt, from_afar: bool) -> PathBuf {
 fn io(path: &Path, e: std::io::Error) -> RpcError {
     match e.kind() {
         std::io::ErrorKind::NotFound => {
-            RpcError::new("not_found", format!("no file {}", path.display()), "check the path, or hc exec ls")
+            RpcError::new("not_found", format!("no file {}", path.display()), "check the path, or adk exec ls")
         }
         _ => RpcError::new("io", format!("{}: {e}", path.display()), ""),
     }
@@ -62,7 +62,7 @@ fn text_of(path: &Path) -> Result<String, RpcError> {
         return Err(RpcError::invalid_params(format!("{} is over {} MB", path.display(), MAX_FILE >> 20)));
     }
     String::from_utf8(bytes).map_err(|_| {
-        RpcError::new("not_text", format!("{} is not UTF-8 text", path.display()), "for bytes: hc exec cat")
+        RpcError::new("not_text", format!("{} is not UTF-8 text", path.display()), "for bytes: adk exec cat")
     })
 }
 

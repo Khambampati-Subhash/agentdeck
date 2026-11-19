@@ -362,7 +362,7 @@ fn a_child_on_another_machine_reports_back_to_its_parent() {
 
     let said = rohan.cmd().env("ADK_TERMINAL_ID", "t1").args(["send", &parent_there, "hi-parent"]).output().unwrap();
     assert!(said.status.success(), "{}", String::from_utf8_lossy(&said.stderr));
-    wait_until("the child's message", || text(&s, &parent).contains(&format!("<hc from=\"{child}\">hi-parent</hc>")));
+    wait_until("the child's message", || text(&s, &parent).contains(&format!("<adk from=\"{child}\">hi-parent</adk>")));
 
     let other = run(&s, &["sh", "-c", &script(&s, "r state=idle; cat")]);
     let prefix = parent_there.split('/').next().unwrap();
@@ -371,7 +371,7 @@ fn a_child_on_another_machine_reports_back_to_its_parent() {
 
     touch(&s, "go");
     wait_until("the exit note", || {
-        text(&s, &parent).contains(&format!("<hc>{child} exited (exit 3). Read: hc read {child}</hc>"))
+        text(&s, &parent).contains(&format!("<adk>{child} exited (exit 3). Read: adk read {child}</adk>"))
     });
 }
 
@@ -432,7 +432,7 @@ fn a_remote_templates_readiness_wait_leaves_its_child_able_to_report_back() {
         let parent_there = get(&rohan, local)["parent"].as_str().unwrap().to_string();
         let said = rohan.cmd().env("ADK_TERMINAL_ID", local).args(["send", &parent_there, name]).output().unwrap();
         assert!(said.status.success(), "{}", String::from_utf8_lossy(&said.stderr));
-        wait_until("child reports back", || text(&s, &parent).contains(&format!("<hc from=\"{child}\">{name}</hc>")));
+        wait_until("child reports back", || text(&s, &parent).contains(&format!("<adk from=\"{child}\">{name}</adk>")));
     }
 }
 

@@ -109,7 +109,7 @@ fn update_from_a_file_swaps_hc_and_keeps_everything_running() {
     assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
     let r: Value = serde_json::from_slice(&out.stdout).unwrap();
     let real = std::fs::canonicalize(dir.join("agentdeck-core")).unwrap(); // macOS: /var is /private/var
-    assert_eq!(r["path"], real.display().to_string(), "the file hc runs from, not the link: {r}");
+    assert_eq!(r["path"], real.display().to_string(), "the file adk runs from, not the link: {r}");
     assert!(r["was"].as_str().unwrap().starts_with("adk ") && r["now"].as_str().unwrap().starts_with("adk "), "{r}");
     assert_eq!(r["restarted"], true);
     assert_ne!(s.json(&["server", "status"])["pid"], pid, "a new core runs");
@@ -135,7 +135,7 @@ fn update_from_a_file_swaps_hc_and_keeps_everything_running() {
     });
 
     let older = s.root.join("older");
-    std::fs::write(&older, "#!/bin/sh\necho 'hc 0.0.1'\n").unwrap();
+    std::fs::write(&older, "#!/bin/sh\necho 'adk 0.0.1'\n").unwrap();
     std::fs::set_permissions(&older, std::os::unix::fs::PermissionsExt::from_mode(0o755)).unwrap();
     let (_, e) = s.err(&["--json", "update", "--from", older.to_str().unwrap()]);
     assert_eq!(e["error"]["kind"], "refused", "never older by accident: {e}");
@@ -164,5 +164,5 @@ fn update_without_a_release_server_says_so() {
         assert_eq!(error["error"]["kind"], "unavailable", "{error}");
         assert!(error["error"]["message"].as_str().unwrap().contains("no release server"), "{error}");
     }
-    assert_eq!(std::fs::read(&s.bin).unwrap(), before, "hc was not replaced");
+    assert_eq!(std::fs::read(&s.bin).unwrap(), before, "adk was not replaced");
 }

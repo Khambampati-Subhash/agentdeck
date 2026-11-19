@@ -84,7 +84,7 @@ impl Reach<'_> {
 pub fn unknown(machines: &[Machine], name: &str) -> crate::rpc::RpcError {
     let names: Vec<&str> = machines.iter().map(|m| m.name.as_str()).collect();
     let hint = if names.is_empty() {
-        "no machines yet: hc machine add <ssh-target>".into()
+        "no machines yet: adk machine add <ssh-target>".into()
     } else {
         format!("machines: {}", names.join(", "))
     };
@@ -370,8 +370,8 @@ async fn dial_once(
             if status == Some(127) || err.contains(NOT_HERE) {
                 return Err(RpcError::new(
                     "hc_missing",
-                    format!("hc is not installed on {target}"),
-                    format!("in a terminal, `{}` offers to copy this hc there", to.add()),
+                    format!("adk is not installed on {target}"),
+                    format!("in a terminal, `{}` offers to copy this adk there", to.add()),
                 ));
             }
             if wants_login(&err) {
@@ -398,7 +398,7 @@ async fn dial_once(
     match reply.get("error") {
         Some(e) if e["data"]["kind"] == "unsupported_generation" => Err(RpcError::new(
             "incompatible",
-            format!("hc on {target} speaks another protocol generation"),
+            format!("adk on {target} speaks another protocol generation"),
             format!("in a terminal, `{}` offers to update it", to.add()),
         )),
         Some(e) => Err(RpcError::from_json(e)),
@@ -480,7 +480,11 @@ pub fn install(paths: &crate::paths::Paths, to: Reach, session: Option<&str>) ->
     };
     if windows {
         if to.via {
-            return Err(RpcError::new("install_failed", format!("{target} runs Windows"), "install hc there yourself"));
+            return Err(RpcError::new(
+                "install_failed",
+                format!("{target} runs Windows"),
+                "install adk there yourself",
+            ));
         }
         WINDOWS.lock().unwrap_or_else(|p| p.into_inner()).push(target.to_string());
         return install_windows(paths, target, session);
@@ -498,7 +502,7 @@ pub fn install(paths: &crate::paths::Paths, to: Reach, session: Option<&str>) ->
     let bundle = !macos || run_there(paths, to, "id -u", b"")? != "0";
     let current = std::env::current_exe()
         .and_then(|path| path.canonicalize())
-        .map_err(|e| RpcError::internal(format!("cannot find this hc: {e}")))?;
+        .map_err(|e| RpcError::internal(format!("cannot find this adk: {e}")))?;
     let bin = if there == here && (bundle || !current.ends_with("AgentDeck Core.app/Contents/MacOS/agentdeck-core")) {
         current
     } else {
@@ -509,8 +513,8 @@ pub fn install(paths: &crate::paths::Paths, to: Reach, session: Option<&str>) ->
             }
             RpcError::new(
                 "install_failed",
-                format!("{target} is {there}, and hc {version} has no release to download"),
-                "install hc there yourself",
+                format!("{target} is {there}, and adk {version} has no release to download"),
+                "install adk there yourself",
             )
         };
         let m = crate::releases::manifest(Some(version), &scratch.0).map_err(not_released)?;
@@ -531,7 +535,7 @@ pub fn install(paths: &crate::paths::Paths, to: Reach, session: Option<&str>) ->
     }
     let guard = if macos {
         "case $(readlink \"$d/agentdeck-core\" || true) in */Contents/MacOS/agentdeck-core) \
-         echo \"a bundled remote core needs a complete bundle; run hc update on that machine\" >&2; exit 5;; esac; "
+         echo \"a bundled remote core needs a complete bundle; run adk update on that machine\" >&2; exit 5;; esac; "
     } else {
         ""
     };
@@ -580,8 +584,8 @@ fn install_windows(paths: &crate::paths::Paths, target: &str, session: Option<&s
     let m = crate::releases::manifest(Some(version), &scratch.0).map_err(|_| {
         RpcError::new(
             "install_failed",
-            format!("{target} runs Windows, and hc {version} has no release to download"),
-            "install hc there yourself",
+            format!("{target} runs Windows, and adk {version} has no release to download"),
+            "install adk there yourself",
         )
     })?;
     let zip = crate::releases::fetch(&m, "windows-x86_64", &scratch.0)?;
@@ -602,7 +606,7 @@ fn install_windows(paths: &crate::paths::Paths, target: &str, session: Option<&s
     if !out.status.success() {
         return Err(RpcError::new(
             "install_failed",
-            format!("copying hc to {target}: {}", String::from_utf8_lossy(&out.stderr).trim()),
+            format!("copying adk to {target}: {}", String::from_utf8_lossy(&out.stderr).trim()),
             "nothing was changed there",
         ));
     }

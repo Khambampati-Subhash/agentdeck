@@ -33,10 +33,10 @@ Do not expose the socket or forward the raw API to people you would not trust wi
 ## Sessions
 
 The default session is named default.
-Setting `HC_SESSION` selects a separate core, terminals, and state directory:
+Setting `ADK_SESSION` selects a separate core, terminals, and state directory:
 
 ```sh
-HC_SESSION=scratch hc ls
+ADK_SESSION=scratch adk ls
 ```
 
 Sessions are useful for tests and separate sets of work.
@@ -50,7 +50,7 @@ SSH handles login, host keys, and encryption. Core carries its protocol through 
 A custom connection command must provide its own trust and transport guarantees.
 Core does not add another encryption layer or authenticate a remote user itself.
 
-Adding a machine gives local clients access to its hc account's commands, files, and terminals.
+Adding a machine gives local clients access to its adk account's commands, files, and terminals.
 Trust the destination, the SSH target, and any custom connection command.
 Machine installation or update copies executable code there and restarts that session's core.
 Forgetting a machine removes the connection here, not its remote programs or state.
@@ -60,19 +60,19 @@ See [machines](machines.md).
 
 | Item | Default |
 | --- | --- |
-| Unix state | `~/.local/state/herdr-core/<session>/` |
-| Unix config | `~/.config/herdr-core/config.toml` |
-| Windows state | `%LOCALAPPDATA%\herdr-core\<session>\` |
-| Windows config | `%APPDATA%\herdr-core\config.toml` |
+| Unix state | `~/.local/state/adk/<session>/` |
+| Unix config | `~/.config/agentdeck-core/config.toml` |
+| Windows state | `%LOCALAPPDATA%\adk\<session>\` |
+| Windows config | `%APPDATA%\agentdeck-core\config.toml` |
 | Templates | A templates directory beside the config file |
 
 `XDG_STATE_HOME` and `XDG_CONFIG_HOME` override the state and config homes on both platforms.
-On Unix, sockets live under `$XDG_RUNTIME_DIR/herdr-core/` when set.
-Otherwise core uses `/run/user/<uid>/herdr-core/` if that runtime directory exists, then falls back to the session's state directory.
+On Unix, sockets live under `$XDG_RUNTIME_DIR/adk/` when set.
+Otherwise core uses `/run/user/<uid>/adk/` if that runtime directory exists, then falls back to the session's state directory.
 The client socket is named `<session>.sock`; holder sockets sit beside it.
 On Windows, pipe names include the account name and session.
 
-`HC_SOCKET` overrides the client endpoint. Otherwise the socket setting in config can override it.
+`ADK_SOCKET` overrides the client endpoint. Otherwise the socket setting in config can override it.
 A custom endpoint does not move the state directory.
 Keep Unix socket paths short; the OS limits their length.
 
@@ -83,29 +83,22 @@ State is not encrypted by core. Removing state is destructive, not a way to stop
 ## Updates and signing
 
 ```sh
-hc update
-hc update --version 0.1.5
+adk update
+adk update --version 0.1.5
 ```
 
 The version form means at least that version, not an exact downgrade.
 Updates restart the core while holders keep the terminals running.
 An update may also restart an older running core when the installed binary is already current.
 
-Release installers and updates download a manifest and check the archive's SHA-256 against it.
-The default release service is HTTPS at releases.herdr.dev.
-This trusts the release service and HTTPS; a checksum is not an independently signed release manifest.
-The manifest is not verified with a separate signing key.
-
-Windows release signing is conditional in the release workflow.
-When the signing profile is configured, the workflow signs and verifies the executable with Azure Artifact Signing.
-If the profile is unset, it publishes unsigned builds. Windows may block those builds.
-Do not assume every downloaded build is signed.
-
-`hc update --from /path/to/herdr-core` installs a local build instead of downloading one.
+AgentDeck has no release service, so `adk update` downloads nothing by default.
+`adk update --from /path/to/agentdeck-core` installs a local build.
 Only use a build you trust. The updater's compatibility checks are not a review of its code.
+`HERDR_RELEASES_URL` points updates at a release service you run. Updates then download its manifest
+and check the archive's SHA-256 against it. That trusts the service and HTTPS: the manifest has no
+separate signature.
 
-On macOS, a release that ships `Herdr Core.app` installs as that bundle when hc is installed under your home folder and not as root.
-With the default release service, the installer and `hc update` refuse the bundle unless `codesign` finds it signed by Herdr's Apple team (`2W9652Q7QR`) with identifier `dev.herdr.core`.
-Once hc runs from the bundle, an update will not replace it with a bare executable.
-As root or outside your home folder, they install the plain `herdr-core` executable, checked only by its SHA-256.
-With another `HERDR_RELEASES_URL`, or `hc update --from` a bundle, an ad-hoc signature with that identifier is enough, so that service or file is trusted as it is.
+On macOS, a build that ships `AgentDeck Core.app` installs as that bundle when adk is installed under your home folder and not as root.
+The bundle must be signed ad hoc with the identifier `io.github.khambampati-subhash.agentdeck.core`; any other signature is refused.
+Once adk runs from the bundle, an update will not replace it with a bare executable.
+As root or outside your home folder, updates install the plain `agentdeck-core` executable.

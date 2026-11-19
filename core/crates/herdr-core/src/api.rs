@@ -140,7 +140,7 @@ methods! { Ctx<'_>;
         "Snapshot of matching terminals, then every fact change in order (created, lost, restarted, keep, finished, removed, status, turn, title, labels, size, doc) as `event` notifications, `heartbeat` every 15 s, and `missed` + fresh snapshot for a subscriber that fell behind.",
         errors ["not_found", "machine_unknown"];
     "machine.add" => machine_add, MachineAddParams => crate::machines::Machine,
-        "Add another machine: dial it over ssh, check that hc answers there, and keep it under a name.",
+        "Add another machine: dial it over ssh, check that adk answers there, and keep it under a name.",
         errors ["invalid_params", "name_taken", "already_added", "unreachable", "hc_missing", "incompatible"];
     "machine.list" => machine_list, Empty => MachineListResult,
         "The machines this core has added.",
@@ -170,7 +170,7 @@ fn resolve(core: &Core, address: &str) -> Result<u32, RpcError> {
 
 fn record(core: &Core, id: u32) -> Result<Terminal, RpcError> {
     core.lock().reg.terminals.get(&id).cloned().ok_or_else(|| {
-        RpcError::new("not_found", format!("{} was removed", crate::terminals::address(id)), "see `hc ls --all`")
+        RpcError::new("not_found", format!("{} was removed", crate::terminals::address(id)), "see `adk ls --all`")
     })
 }
 
@@ -322,7 +322,7 @@ async fn terminal_rm(core: Ctx<'_>, p: TerminalParams) -> Result<RemoveResult, R
             return Err(RpcError::new(
                 "live",
                 format!("{} is still running", crate::terminals::address(id)),
-                format!("kill it first: hc kill {}", crate::terminals::address(id)),
+                format!("kill it first: adk kill {}", crate::terminals::address(id)),
             ));
         }
         core.remove(&mut st, id);
@@ -428,7 +428,7 @@ async fn terminal_attach(core: Ctx<'_>, p: AttachParams) -> Result<AttachResult,
         return Err(RpcError::new(
             "needs_framed",
             "attach needs a framed connection",
-            "send hello with framed: true first, or use `hc attach`",
+            "send hello with framed: true first, or use `adk attach`",
         ));
     };
     let id = resolve(core, &p.terminal)?;
@@ -671,13 +671,13 @@ async fn machine_add(core: Ctx<'_>, p: MachineAddParams) -> Result<crate::machin
             return Err(RpcError::new(
                 "already_added",
                 format!("{} answers as {}'s core: it looks like a copy of {}", machine.target, m.name, m.name),
-                "on the copy, stop hc and delete its core.json in hc's state folder, then add it again",
+                "on the copy, stop adk and delete its core.json in adk's state folder, then add it again",
             ));
         }
         return Err(RpcError::new(
             "already_added",
             format!("that core is already added as {}", m.name),
-            format!("rename it: hc machine rename {} <name>", m.name),
+            format!("rename it: adk machine rename {} <name>", m.name),
         ));
     }
     st.machines.push(machine.clone());

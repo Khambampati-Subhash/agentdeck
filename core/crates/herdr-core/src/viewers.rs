@@ -75,7 +75,7 @@ impl Core {
             return Err(RpcError::new(
                 "finished",
                 format!("{} has finished", crate::terminals::address(id)),
-                format!("read what it left: hc read {}", crate::terminals::address(id)),
+                format!("read what it left: adk read {}", crate::terminals::address(id)),
             ));
         }
         let channel = conn.new_channel();

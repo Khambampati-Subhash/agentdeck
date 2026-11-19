@@ -5,7 +5,7 @@ Run `just docs` to refresh it and `just docs-check` to check it.
 
 [Start here](../README.md) for a short tour.
 
-## hc
+## adk
 
 ```text
 adk - run programs and coding agents in terminals that stay alive
@@ -71,12 +71,12 @@ Examples
 Agent? Run: adk --skill
 ```
 
-## hc attach
+## adk attach
 
 ```text
 Put this terminal on a core terminal (detach: ctrl+\)
 
-Usage: hc attach [OPTIONS] [TERMINAL]
+Usage: adk attach [OPTIONS] [TERMINAL]
 
 Arguments:
   [TERMINAL]  The terminal: `t7`, a name, or `machine/t7`
@@ -88,12 +88,12 @@ Options:
   -h, --help               Print help
 ```
 
-## hc connect
+## adk connect
 
 ```text
-Speak the protocol over stdin/stdout (`ssh box hc connect`)
+Speak the protocol over stdin/stdout (`ssh box adk connect`)
 
-Usage: hc connect [OPTIONS]
+Usage: adk connect [OPTIONS]
 
 Options:
       --json               JSON output even in a terminal
@@ -101,12 +101,12 @@ Options:
   -h, --help               Print help
 ```
 
-## hc events
+## adk events
 
 ```text
 Follow fact changes as they happen (one JSON line each when piped)
 
-Usage: hc events [OPTIONS]
+Usage: adk events [OPTIONS]
 
 Options:
       --json                       JSON output even in a terminal
@@ -116,12 +116,12 @@ Options:
   -h, --help                       Print help
 ```
 
-## hc exec
+## adk exec
 
 ```text
 Run one program without a terminal, here or on a machine: exactly what it wrote, and its exit code
 
-Usage: hc exec [OPTIONS] <ARGV>...
+Usage: adk exec [OPTIONS] <ARGV>...
 
 Arguments:
   <ARGV>...  Program and arguments, run as given (no shell)
@@ -136,12 +136,12 @@ Options:
   -h, --help               Print help
 ```
 
-## hc file
+## adk file
 
 ```text
 Read, write or edit a file here or on a machine: an agent's hands there
 
-Usage: hc file [OPTIONS] <COMMAND>
+Usage: adk file [OPTIONS] <COMMAND>
 
 Commands:
   read   Print a text file, or lines of it (--offset, --limit)
@@ -154,12 +154,12 @@ Options:
   -h, --help  Print help
 ```
 
-## hc file edit
+## adk file edit
 
 ```text
 Replace exact text found once (--old X --new Y, repeatable); all or none
 
-Usage: hc file edit [OPTIONS] --old <OLD> --new <NEW> <PATH>
+Usage: adk file edit [OPTIONS] --old <OLD> --new <NEW> <PATH>
 
 Arguments:
   <PATH>  The file: absolute, or from `cwd`
@@ -173,12 +173,12 @@ Options:
   -h, --help          Print help
 ```
 
-## hc file read
+## adk file read
 
 ```text
 Print a text file, or lines of it (--offset, --limit)
 
-Usage: hc file read [OPTIONS] <PATH>
+Usage: adk file read [OPTIONS] <PATH>
 
 Arguments:
   <PATH>  The file: absolute, or from `cwd`
@@ -192,12 +192,12 @@ Options:
   -h, --help             Print help
 ```
 
-## hc file write
+## adk file write
 
 ```text
 Write what is piped in as the file, making missing folders
 
-Usage: hc file write [OPTIONS] <PATH>
+Usage: adk file write [OPTIONS] <PATH>
 
 Arguments:
   <PATH>  The file: absolute, or from `cwd`
@@ -209,12 +209,12 @@ Options:
   -h, --help          Print help
 ```
 
-## hc get
+## adk get
 
 ```text
 Show one terminal
 
-Usage: hc get [OPTIONS] [TERMINAL]
+Usage: adk get [OPTIONS] [TERMINAL]
 
 Arguments:
   [TERMINAL]  The terminal: `t7`, a name, or `machine/t7`
@@ -224,12 +224,12 @@ Options:
   -h, --help  Print help
 ```
 
-## hc interrupt
+## adk interrupt
 
 ```text
 Press the stop key and report what happened
 
-Usage: hc interrupt [OPTIONS] [TERMINAL]
+Usage: adk interrupt [OPTIONS] [TERMINAL]
 
 Arguments:
   [TERMINAL]  The terminal: `t7`, a name, or `machine/t7`
@@ -240,12 +240,12 @@ Options:
   -h, --help               Print help
 ```
 
-## hc keep
+## adk keep
 
 ```text
 Keep a live terminal after loss (--off disables)
 
-Usage: hc keep [OPTIONS] <TERMINAL>
+Usage: adk keep [OPTIONS] <TERMINAL>
 
 Arguments:
   <TERMINAL>  The terminal: `t7`, a name, or `machine/t7`
@@ -256,12 +256,12 @@ Options:
   -h, --help  Print help
 ```
 
-## hc keys
+## adk keys
 
 ```text
 Press named keys (enter, esc, up, ctrl+c, alt+x, f5, a...)
 
-Usage: hc keys [OPTIONS] <TERMINAL> <KEYS>...
+Usage: adk keys [OPTIONS] <TERMINAL> <KEYS>...
 
 Arguments:
   <TERMINAL>  The terminal: `t7`, a name, or `machine/t7`
@@ -272,12 +272,12 @@ Options:
   -h, --help  Print help
 ```
 
-## hc kill
+## adk kill
 
 ```text
 End a terminal's program (hangup, then escalate)
 
-Usage: hc kill [OPTIONS] [TERMINAL]
+Usage: adk kill [OPTIONS] [TERMINAL]
 
 Arguments:
   [TERMINAL]  The terminal: `t7`, a name, or `machine/t7`
@@ -287,12 +287,12 @@ Options:
   -h, --help  Print help
 ```
 
-## hc label
+## adk label
 
 ```text
 Set labels (key=value; key= removes)
 
-Usage: hc label [OPTIONS] <TERMINAL> <K=V>...
+Usage: adk label [OPTIONS] <TERMINAL> <K=V>...
 
 Arguments:
   <TERMINAL>  The terminal: `t7`, a name, or `machine/t7`
@@ -303,12 +303,12 @@ Options:
   -h, --help  Print help
 ```
 
-## hc ls
+## adk ls
 
 ```text
 List live terminals
 
-Usage: hc ls [OPTIONS]
+Usage: adk ls [OPTIONS]
 
 Options:
       --all          Include finished terminals
@@ -317,18 +317,18 @@ Options:
   -h, --help         Print help
 ```
 
-## hc machine
+## adk machine
 
 ```text
 Other machines, reached over ssh
 
-Usage: hc machine [OPTIONS] <COMMAND>
+Usage: adk machine [OPTIONS] <COMMAND>
 
 Commands:
-  add     Add a machine you reach with ssh: hc machine add vps
+  add     Add a machine you reach with ssh: adk machine add vps
   ls      List the machines added here
   login   Log in again (a password or code) after the machine says it needs one. On Windows: reconnect once its SSH keys work
-  update  Copy this hc there and restart hc there (its terminals keep running)
+  update  Copy this adk there and restart adk there (its terminals keep running)
   rename  Give a machine a new name here
   rm      Forget a machine (its terminals keep running there)
   help    Print this message or the help of the given subcommand(s)
@@ -338,12 +338,12 @@ Options:
   -h, --help  Print help
 ```
 
-## hc machine add
+## adk machine add
 
 ```text
-Add a machine you reach with ssh: hc machine add vps
+Add a machine you reach with ssh: adk machine add vps
 
-Usage: hc machine add [OPTIONS] [TARGET]
+Usage: adk machine add [OPTIONS] [TARGET]
 
 Arguments:
   [TARGET]  How ssh reaches it: `vps`, `can@10.0.0.7`, `can@10.0.0.7:2222`, a Host from ~/.ssh/config
@@ -358,12 +358,12 @@ Options:
   -h, --help               Print help
 ```
 
-## hc machine login
+## adk machine login
 
 ```text
 Log in again (a password or code) after the machine says it needs one. On Windows: reconnect once its SSH keys work
 
-Usage: hc machine login [OPTIONS] <MACHINE>
+Usage: adk machine login [OPTIONS] <MACHINE>
 
 Arguments:
   <MACHINE>  The machine's name
@@ -373,24 +373,24 @@ Options:
   -h, --help  Print help
 ```
 
-## hc machine ls
+## adk machine ls
 
 ```text
 List the machines added here
 
-Usage: hc machine ls [OPTIONS]
+Usage: adk machine ls [OPTIONS]
 
 Options:
       --json  JSON output even in a terminal
   -h, --help  Print help
 ```
 
-## hc machine rename
+## adk machine rename
 
 ```text
 Give a machine a new name here
 
-Usage: hc machine rename [OPTIONS] <MACHINE> <NEW_NAME>
+Usage: adk machine rename [OPTIONS] <MACHINE> <NEW_NAME>
 
 Arguments:
   <MACHINE>   The machine's name now
@@ -401,12 +401,12 @@ Options:
   -h, --help  Print help
 ```
 
-## hc machine rm
+## adk machine rm
 
 ```text
 Forget a machine (its terminals keep running there)
 
-Usage: hc machine rm [OPTIONS] <MACHINE>
+Usage: adk machine rm [OPTIONS] <MACHINE>
 
 Arguments:
   <MACHINE>  The machine's name
@@ -416,12 +416,12 @@ Options:
   -h, --help  Print help
 ```
 
-## hc machine update
+## adk machine update
 
 ```text
-Copy this hc there and restart hc there (its terminals keep running)
+Copy this adk there and restart adk there (its terminals keep running)
 
-Usage: hc machine update [OPTIONS] <MACHINE>
+Usage: adk machine update [OPTIONS] <MACHINE>
 
 Arguments:
   <MACHINE>  The machine's name
@@ -431,12 +431,12 @@ Options:
   -h, --help  Print help
 ```
 
-## hc put
+## adk put
 
 ```text
 Send a local file beside a terminal (on its machine); prints where it landed
 
-Usage: hc put [OPTIONS] <TERMINAL> <FILE>
+Usage: adk put [OPTIONS] <TERMINAL> <FILE>
 
 Arguments:
   <TERMINAL>  The terminal: `t7`, a name, or `machine/t7`
@@ -447,12 +447,12 @@ Options:
   -h, --help  Print help
 ```
 
-## hc read
+## adk read
 
 ```text
 Print a terminal's screen and history
 
-Usage: hc read [OPTIONS] [TERMINAL]
+Usage: adk read [OPTIONS] [TERMINAL]
 
 Arguments:
   [TERMINAL]  The terminal: `t7`, a name, or `machine/t7`
@@ -463,12 +463,12 @@ Options:
   -h, --help           Print help
 ```
 
-## hc rm
+## adk rm
 
 ```text
 Remove a finished terminal
 
-Usage: hc rm [OPTIONS] [TERMINAL]
+Usage: adk rm [OPTIONS] [TERMINAL]
 
 Arguments:
   [TERMINAL]  The terminal: `t7`, a name, or `machine/t7`
@@ -478,12 +478,12 @@ Options:
   -h, --help  Print help
 ```
 
-## hc run
+## adk run
 
 ```text
-Start a program, or a template by name with its task: hc run reviewer "review src/x.rs"
+Start a program, or a template by name with its task: adk run reviewer "review src/x.rs"
 
-Usage: hc run [OPTIONS] [ARGV]...
+Usage: adk run [OPTIONS] [ARGV]...
 
 Arguments:
   [ARGV]...  Program and arguments, or a template name and its task. With neither argv nor line: that machine's own shell
@@ -505,24 +505,24 @@ Options:
   -h, --help               Print help
 ```
 
-## hc schema
+## adk schema
 
 ```text
 Every API method with its JSON Schema, for app builders
 
-Usage: hc schema [OPTIONS]
+Usage: adk schema [OPTIONS]
 
 Options:
       --json  JSON output even in a terminal
   -h, --help  Print help
 ```
 
-## hc send
+## adk send
 
 ```text
 Paste text into a terminal and press Enter (waits for a person's unfinished draft)
 
-Usage: hc send [OPTIONS] <TERMINAL> <TEXT>
+Usage: adk send [OPTIONS] <TERMINAL> <TEXT>
 
 Arguments:
   <TERMINAL>  The terminal: `t7`, a name, or `machine/t7`
@@ -537,12 +537,12 @@ Options:
   -h, --help               Print help
 ```
 
-## hc server
+## adk server
 
 ```text
 Start, stop or inspect the core
 
-Usage: hc server [OPTIONS] <COMMAND>
+Usage: adk server [OPTIONS] <COMMAND>
 
 Commands:
   start    
@@ -556,12 +556,12 @@ Options:
   -h, --help  Print help
 ```
 
-## hc server restart
+## adk server restart
 
 ```text
 Restart the core (e.g. after an update); programs keep running
 
-Usage: hc server restart [OPTIONS]
+Usage: adk server restart [OPTIONS]
 
 Options:
       --fresh  Take this shell's environment for new terminals; run from a terminal outside Herdr
@@ -569,69 +569,69 @@ Options:
   -h, --help   Print help
 ```
 
-## hc server start
+## adk server start
 
 ```text
-Usage: hc server start [OPTIONS]
+Usage: adk server start [OPTIONS]
 
 Options:
       --json  JSON output even in a terminal
   -h, --help  Print help
 ```
 
-## hc server status
+## adk server status
 
 ```text
-Usage: hc server status [OPTIONS]
+Usage: adk server status [OPTIONS]
 
 Options:
       --json  JSON output even in a terminal
   -h, --help  Print help
 ```
 
-## hc server stop
+## adk server stop
 
 ```text
-Usage: hc server stop [OPTIONS]
+Usage: adk server stop [OPTIONS]
 
 Options:
       --json  JSON output even in a terminal
   -h, --help  Print help
 ```
 
-## hc templates
+## adk templates
 
 ```text
 Templates you can run by name (~/.config/agentdeck-core/templates)
 
-Usage: hc templates [OPTIONS]
+Usage: adk templates [OPTIONS]
 
 Options:
       --json  JSON output even in a terminal
   -h, --help  Print help
 ```
 
-## hc update
+## adk update
 
 ```text
-Swap this hc for another build and restart (terminals keep running)
+Swap this adk for another build and restart (terminals keep running)
 
-Usage: hc update [OPTIONS]
+Usage: adk update [OPTIONS]
 
 Options:
       --from <FILE>      A agentdeck-core binary to use (default: download the latest release)
       --json             JSON output even in a terminal
-      --version <X.Y.Z>  At least this release (`0.1.4`): nothing changes when this hc is already that or newer
+      --version <X.Y.Z>  At least this release (`0.1.4`): nothing changes when this adk is already that or newer
       --force            Allow an older version (saved state only moves forward), or a release of another protocol generation
   -h, --help             Print help
 ```
 
-## hc wait
+## adk wait
 
 ```text
 Wait for your children (--children any) or one terminal; a message to you also ends it
 
-Usage: hc wait [OPTIONS] [TERMINAL]
+Usage: adk wait [OPTIONS] [TERMINAL]
 
 Arguments:
   [TERMINAL]

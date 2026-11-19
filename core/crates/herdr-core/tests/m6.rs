@@ -64,7 +64,7 @@ fn invalid_config_keeps_pending_parent_notes_responsive_and_uses_the_default_hol
         let response: Value = serde_json::from_str(&response).unwrap();
         assert_eq!(response["result"]["reported"], true, "{response}");
         assert!(!text(&s, &p).contains("parent-got:"), "note submitted the draft early");
-        wait_until("note with invalid config", || text(&s, &p).contains(&format!("<hc>{kid} exited")));
+        wait_until("note with invalid config", || text(&s, &p).contains(&format!("<adk>{kid} exited")));
         assert!(start.elapsed() >= Duration::from_millis(2400), "default draft hold was skipped");
         let log = std::fs::read_to_string(s.root.join("state/adk/test/core.log")).unwrap();
         assert_eq!(log.matches("using delivery defaults").count(), 1, "{log}");
@@ -93,9 +93,9 @@ fn a_parent_note_waits_for_a_draft_and_survives_a_dialog_while_waiting() {
     wait_until("parent dialog", || get(&s, &p)["status"]["state"] == "blocked");
     person.typed(b"\r");
     std::thread::sleep(Duration::from_millis(400));
-    assert!(!text(&s, &p).contains("<hc>"), "note answered the dialog");
+    assert!(!text(&s, &p).contains("<adk>"), "note answered the dialog");
     touch(&s, "free");
-    wait_until("note after the dialog", || text(&s, &p).contains(&format!("parent-got:<hc>{kid} is blocked")));
+    wait_until("note after the dialog", || text(&s, &p).contains(&format!("parent-got:<adk>{kid} is blocked")));
     let got = text(&s, &p);
     assert!(got.contains("parent-got:my draft"), "{got}");
     assert_eq!(got.matches("is blocked").count(), 1, "{got}");
@@ -166,19 +166,19 @@ fn only_a_blocked_errored_or_exited_child_is_a_note() {
     touch(&s, "a");
     wait_until("done", || get(&s, &kid)["status"]["state"] == "done");
     std::thread::sleep(Duration::from_millis(800));
-    assert!(!text(&s, &p).contains("<hc>"), "a finished turn is the child's to report");
+    assert!(!text(&s, &p).contains("<adk>"), "a finished turn is the child's to report");
     touch(&s, "b");
     wait_until("blocked note", || {
         text(&s, &p)
-            .contains(&format!("parent-got:<hc>{kid} reviewer is blocked (permission). See: hc read {kid}</hc>"))
+            .contains(&format!("parent-got:<adk>{kid} reviewer is blocked (permission). See: adk read {kid}</adk>"))
     });
     touch(&s, "e");
     wait_until("error note", || {
-        text(&s, &p).contains(&format!("parent-got:<hc>{kid} reviewer hit an error: boom. See: hc read {kid}</hc>"))
+        text(&s, &p).contains(&format!("parent-got:<adk>{kid} reviewer hit an error: boom. See: adk read {kid}</adk>"))
     });
     touch(&s, "c");
     wait_until("exit note", || {
-        text(&s, &p).contains(&format!("parent-got:<hc>{kid} reviewer exited (exit 3). Read: hc read {kid}</hc>"))
+        text(&s, &p).contains(&format!("parent-got:<adk>{kid} reviewer exited (exit 3). Read: adk read {kid}</adk>"))
     });
     assert_eq!(text(&s, &p).matches("is blocked").count(), 1, "each piece of news once");
 }
@@ -192,8 +192,8 @@ fn a_plain_programs_end_is_a_note_with_its_last_lines_unless_the_parent_saw_it()
     let silent = run(&s, &["--parent", &p], "w b; exit 4");
     touch(&s, "a");
     wait_until("success note", || {
-        text(&s, &p).contains(&format!("parent-got:<hc>{ok} build exited (exit 0). Last lines:"))
-            && text(&s, &p).contains(&format!("parent-got:Read: hc read {ok}</hc>"))
+        text(&s, &p).contains(&format!("parent-got:<adk>{ok} build exited (exit 0). Last lines:"))
+            && text(&s, &p).contains(&format!("parent-got:Read: adk read {ok}</adk>"))
     });
     let got: Vec<String> = text(&s, &p).lines().map(String::from).collect();
     let line = |n: u32| got.contains(&format!("parent-got:line{n}"));
@@ -202,7 +202,7 @@ fn a_plain_programs_end_is_a_note_with_its_last_lines_unless_the_parent_saw_it()
 
     touch(&s, "b");
     wait_until("failure note, nothing to show", || {
-        text(&s, &p).contains(&format!("parent-got:<hc>{silent} exited (exit 4). Read: hc read {silent}</hc>"))
+        text(&s, &p).contains(&format!("parent-got:<adk>{silent} exited (exit 4). Read: adk read {silent}</adk>"))
     });
     // A program it waited for is no note: it has the result already.
     hc_in(&s, &p, &["--json", "run", "sh", "-c", "echo waited-for"]);
@@ -224,11 +224,11 @@ fn notes_reach_a_working_parent_but_never_a_blocked_one() {
     touch(&s, "a");
     touch(&s, "b");
     std::thread::sleep(Duration::from_millis(800));
-    assert!(!text(&s, &p).contains("<hc>"), "never typed into a blocked parent");
+    assert!(!text(&s, &p).contains("<adk>"), "never typed into a blocked parent");
     touch(&s, "free");
     wait_until("both notes, while it works", || {
         let t = text(&s, &p);
-        t.contains(&format!("<hc>{a} exited (exit 0)")) && t.contains(&format!("<hc>{b} is blocked (permission)"))
+        t.contains(&format!("<adk>{a} exited (exit 0)")) && t.contains(&format!("<adk>{b} is blocked (permission)"))
     });
 }
 
@@ -261,7 +261,7 @@ fn only_news_the_parent_has_not_seen_becomes_a_note() {
 
     touch(&s, "free");
     std::thread::sleep(Duration::from_millis(1500));
-    assert!(!text(&s, &p).contains("<hc>"), "nothing new to tell: {}", text(&s, &p));
+    assert!(!text(&s, &p).contains("<adk>"), "nothing new to tell: {}", text(&s, &p));
 }
 
 #[test]
@@ -355,7 +355,7 @@ fn messages_between_agents_say_who_sent_them() {
     wait_until("reported", || get(&s, &sender)["reported"] == true && get(&s, &agent)["reported"] == true);
 
     hc_in(&s, &sender, &["send", &agent, "review it"]);
-    wait_until("tagged", || text(&s, &agent).contains(&format!("got:<hc from=\"{sender} boss\">review it</hc>")));
+    wait_until("tagged", || text(&s, &agent).contains(&format!("got:<adk from=\"{sender} boss\">review it</adk>")));
     s.json(&["send", &agent, "from a person"]);
     let line = |t: &str, want: &str| text(&s, t).lines().any(|l| l.trim_end() == want);
     wait_until("a person's send is untouched", || line(&agent, "got:from a person"));
@@ -382,7 +382,7 @@ fn notes_off_means_plain_messages_too() {
     touch(&s, "a");
     wait_until("blocked", || get(&s, &kid)["status"]["state"] == "blocked");
     std::thread::sleep(Duration::from_millis(1000));
-    assert!(!text(&s, &sender).contains("<hc>"), "{}", text(&s, &sender));
+    assert!(!text(&s, &sender).contains("<adk>"), "{}", text(&s, &sender));
 }
 
 #[test]
@@ -393,7 +393,7 @@ fn no_notes_into_programs_that_are_not_agents() {
     touch(&s, "a");
     wait_until("blocked", || get(&s, &kid)["status"]["state"] == "blocked");
     std::thread::sleep(Duration::from_millis(1000));
-    assert!(!text(&s, &p).contains("<hc>"));
+    assert!(!text(&s, &p).contains("<adk>"));
 }
 
 /// `hc wait --children <mode>` inside `p`, in the background.

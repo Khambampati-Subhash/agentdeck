@@ -249,13 +249,13 @@ pub fn connect_error(error: &io::Error, existing_only: bool) -> Option<crate::rp
         Some(crate::rpc::RpcError::new(
             "unavailable",
             format!("the Windows core exists but this process cannot access its pipe: {error}"),
-            "if it was started elevated or over SSH, stop it with 'hc server stop' in an elevated terminal on that Windows machine, then open Herdr or run 'hc server start' in a normal desktop terminal",
+            "if it was started elevated or over SSH, stop it with 'adk server stop' in an elevated terminal on that Windows machine, then open AgentDeck or run 'adk server start' in a normal desktop terminal",
         ))
     } else if existing_only {
         Some(crate::rpc::RpcError::new(
             "unavailable",
             format!("the Windows core is not reachable: {error}"),
-            "open Herdr on that Windows machine, or run 'hc server start' there",
+            "open AgentDeck on that Windows machine, or run 'adk server start' there",
         ))
     } else {
         None
@@ -601,7 +601,7 @@ pub fn spawn_detached(cmd: Command, log: File) -> io::Result<()> {
             if std::env::var_os("SSH_CONNECTION").is_some() && job_kills_on_close() {
                 DeleteProcThreadAttributeList(list);
                 return Err(io::Error::other(
-                    "this ssh session ends everything it started when you log out, and won't let hc leave: start hc once outside ssh (hc server start in a local terminal), then ssh in",
+                    "this ssh session ends everything it started when you log out, and won't let adk leave: start adk once outside ssh (adk server start in a local terminal), then ssh in",
                 ));
             }
             started = start(flags);

@@ -33,7 +33,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Cmd {
-    /// Start a program, or a template by name with its task: hc run reviewer "review src/x.rs".
+    /// Start a program, or a template by name with its task: adk run reviewer "review src/x.rs".
     Run(RunParams),
     /// List live terminals.
     Ls(ListParams),
@@ -82,12 +82,12 @@ enum Cmd {
     Events(SubscribeParams),
     /// Templates you can run by name (~/.config/agentdeck-core/templates).
     Templates,
-    /// Swap this hc for another build and restart (terminals keep running).
+    /// Swap this adk for another build and restart (terminals keep running).
     Update {
         /// A agentdeck-core binary to use (default: download the latest release).
         #[arg(long, value_name = "FILE", conflicts_with = "version")]
         from: Option<std::path::PathBuf>,
-        /// At least this release (`0.1.4`): nothing changes when this hc is
+        /// At least this release (`0.1.4`): nothing changes when this adk is
         /// already that or newer.
         #[arg(long, value_name = "X.Y.Z", value_parser = release_version)]
         version: Option<String>,
@@ -98,7 +98,7 @@ enum Cmd {
     },
     /// Every API method with its JSON Schema, for app builders.
     Schema,
-    /// Speak the protocol over stdin/stdout (`ssh box hc connect`).
+    /// Speak the protocol over stdin/stdout (`ssh box adk connect`).
     Connect {
         /// The adk session to reach, like ADK_SESSION (one command that reads
         /// the same in sh, cmd and PowerShell).
@@ -164,7 +164,7 @@ pub fn main() -> i32 {
     let cli = match Cli::try_parse_from(std::env::args_os().take(1).chain(args.iter().cloned())) {
         Ok(cli) => cli,
         Err(e) if !e.use_stderr() || !(piped || args.iter().any(|a| a == "--json")) => e.exit(),
-        Err(e) => return fail(&RpcError::new("usage", usage_message(&e), "see `hc --help`"), true),
+        Err(e) => return fail(&RpcError::new("usage", usage_message(&e), "see `adk --help`"), true),
     };
     // A template's trailing flags may include --json: parse them before choosing how to print.
     let (cmd, asked) = match cli.cmd {
@@ -266,12 +266,12 @@ fn cancelled() -> RpcError {
     RpcError::new("cancelled", "", "")
 }
 
-/// Bare `hc`: a picker with "new" on top in a terminal, an overview when piped.
+/// Bare `adk`: a picker with "new" on top in a terminal, an overview when piped.
 fn bare(paths: &Paths, json: bool) -> Result<Option<Out>, RpcError> {
     let list = call(paths, "terminal.list", json!({}))?;
     if !interactive(json) {
         let mut r = list;
-        r["commands"] = json!(["hc run <cmd>", "hc ls", "hc read <t>", "hc attach <t>", "hc --skill"]);
+        r["commands"] = json!(["adk run <cmd>", "adk ls", "adk read <t>", "adk attach <t>", "adk --skill"]);
         let human = table(&r);
         return Ok(Some(Out { json: r, human }));
     }
@@ -469,12 +469,13 @@ fn run(cmd: Option<Cmd>, json: bool, asked: bool) -> Result<Option<Out>, RpcErro
             let r = call("terminal.read", to(&p))?;
             let mut human = r["text"].as_str().unwrap_or_default().to_string();
             if r["why"] == "working" {
-                human.push_str("\n[hc] only its screen: it is working; read again once it stops for its history");
+                human.push_str("\n[adk] only its screen: it is working; read again once it stops for its history");
             } else if let Some(state @ ("blocked" | "error")) = r["why"].as_str() {
-                human
-                    .push_str(&format!("\n[hc] only its screen: it is {state}; history is not scrolled in this state"));
+                human.push_str(&format!(
+                    "\n[adk] only its screen: it is {state}; history is not scrolled in this state"
+                ));
             } else if r["complete"] == false {
-                human.push_str("\n[hc] incomplete: older output may be missing");
+                human.push_str("\n[adk] incomplete: older output may be missing");
             }
             // Its output is text: plain even when piped, JSON only when asked.
             if !asked {
@@ -599,7 +600,7 @@ fn run(cmd: Option<Cmd>, json: bool, asked: bool) -> Result<Option<Out>, RpcErro
                         m.generation,
                         crate::api::GENERATION
                     ),
-                    "update the apps that use hc first, then hc update --force",
+                    "update the apps that use adk first, then adk update --force",
                 ));
             }
             if version.is_none()
@@ -630,7 +631,7 @@ fn run(cmd: Option<Cmd>, json: bool, asked: bool) -> Result<Option<Out>, RpcErro
     }))
 }
 
-/// A template's task is plain text, so `--name x` after it is hc's, not part
+/// A template's task is plain text, so `--name x` after it is adk's, not part
 /// of the task. A program's arguments stay its own.
 /// Flags given before the program stay; flags after the task are added.
 /// Also says whether those flags asked for --json.
@@ -653,12 +654,12 @@ fn flags_after_task(paths: &Paths, p: RunParams) -> Result<(RunParams, bool), Rp
         ..p
     };
     if merged.parent.is_some() && merged.no_parent {
-        return Err(RpcError::new("usage", "--parent and --no-parent together", "see `hc run --help`"));
+        return Err(RpcError::new("usage", "--parent and --no-parent together", "see `adk run --help`"));
     }
     Ok((merged, json))
 }
 
-/// The task with hc's flags moved out of it, parsed on their own (behind a
+/// The task with adk's flags moved out of it, parsed on their own (behind a
 /// `--`, so a flag missing its value can't take the template's name).
 fn trailing_flags(paths: &Paths, argv: &[String]) -> Result<Option<(RunParams, bool)>, RpcError> {
     use clap::CommandFactory;
@@ -689,7 +690,7 @@ fn trailing_flags(paths: &Paths, argv: &[String]) -> Result<Option<(RunParams, b
     match Cli::try_parse_from(args) {
         Ok(Cli { cmd: Some(Cmd::Run(q)), json, .. }) => Ok(Some((q, json))),
         Ok(_) => Ok(None),
-        Err(e) => Err(RpcError::new("usage", usage_message(&e), "see `hc run --help`")),
+        Err(e) => Err(RpcError::new("usage", usage_message(&e), "see `adk run --help`")),
     }
 }
 
@@ -715,7 +716,7 @@ fn here() -> Option<String> {
     Some(logical.unwrap_or_else(|| real.display().to_string()))
 }
 
-/// A folder here as the caller means it: relative ones start where hc runs,
+/// A folder here as the caller means it: relative ones start where adk runs,
 /// not where the core does.
 fn from_here(cwd: Option<String>) -> Option<String> {
     match (cwd, here()) {
@@ -724,7 +725,7 @@ fn from_here(cwd: Option<String>) -> Option<String> {
     }
 }
 
-/// Who is asking: this hc terminal, else the shell or script that ran us.
+/// Who is asking: this adk terminal, else the shell or script that ran us.
 fn caller() -> String {
     client::terminal_id().unwrap_or_else(|| format!("ppid:{}", crate::platform::parent_pid()))
 }
@@ -771,7 +772,7 @@ fn follow_events(paths: &Paths, params: Value, json: bool) -> Result<(), RpcErro
 fn restart(paths: &Paths, fresh: bool) -> Result<(), RpcError> {
     if fresh && std::env::var_os(crate::brand::TERMINAL_ID_VAR).is_some() {
         eprintln!(
-            "hc: this shell carries AgentDeck's environment; run --fresh from a terminal outside AgentDeck or unset unwanted variables first"
+            "adk: this shell carries AgentDeck's environment; run --fresh from a terminal outside AgentDeck or unset unwanted variables first"
         );
     }
     let environment: std::collections::BTreeMap<_, _> =
@@ -779,7 +780,7 @@ fn restart(paths: &Paths, fresh: bool) -> Result<(), RpcError> {
     let Some(stream) = client::connect_existing(paths) else {
         if fresh {
             crate::restart::prepare_start(paths, environment).map_err(|e| {
-                RpcError::new("unavailable", e.to_string(), "retry hc server restart --fresh once the core is running")
+                RpcError::new("unavailable", e.to_string(), "retry adk server restart --fresh once the core is running")
             })?;
         }
         return Ok(());
@@ -790,7 +791,7 @@ fn restart(paths: &Paths, fresh: bool) -> Result<(), RpcError> {
             return Err(RpcError::new(
                 "refused",
                 "--fresh needs a newer running core",
-                "run hc update, then retry hc server restart --fresh",
+                "run adk update, then retry adk server restart --fresh",
             ));
         }
         json!({"environment": environment})
@@ -814,35 +815,37 @@ fn stop(paths: &Paths) -> Result<Out, RpcError> {
 }
 
 /// A run that waited: its output as text (like read), a last line when there
-/// is more to say, and the program's exit code as hc's (124: still running).
+/// is more to say, and the program's exit code as adk's (124: still running).
 fn ran(r: &Value) -> Result<Option<Out>, RpcError> {
     use std::io::Write;
     let t = r["address"].as_str().unwrap_or("?");
     // An older hc (on another machine) ignores the wait: it only started it.
     if r.get("wait").is_none() {
-        let fix = t.split_once('/').map(|(m, _)| format!(": hc machine update {m}")).unwrap_or_default();
-        println!("[hc] started as {t}, not waited on: that hc is older{fix}");
+        let fix = t.split_once('/').map(|(m, _)| format!(": adk machine update {m}")).unwrap_or_default();
+        println!("[adk] started as {t}, not waited on: that adk is older{fix}");
         std::process::exit(0);
     }
     let w = &r["wait"];
     let status = w["status"].as_str().unwrap_or("no status");
     let (note, code) = match w["reason"].as_str() {
-        Some("timeout") => (Some(format!("still running as {t}: hc wait {t}, hc read {t}")), 124),
+        Some("timeout") => (Some(format!("still running as {t}: adk wait {t}, adk read {t}")), 124),
         Some("exit") => match (w["exit_code"].as_i64(), w["signal"].as_i64()) {
             (Some(0), _) => (None, 0),
             (Some(c), _) => (Some(format!("{t} exited (exit {c})")), c as i32),
             (_, Some(sig)) => (Some(format!("{t} ended by signal {sig}")), 128 + sig as i32),
             _ => (Some(format!("{t} ended")), 1),
         },
-        _ if status == "blocked" => (Some(format!("{t} is blocked: read it, then answer with hc send or hc keys")), 0),
-        _ => (Some(format!("{t} is {status}: hc send {t} <text>")), 0),
+        _ if status == "blocked" => {
+            (Some(format!("{t} is blocked: read it, then answer with adk send or adk keys")), 0)
+        }
+        _ => (Some(format!("{t} is {status}: adk send {t} <text>")), 0),
     };
     let mut text = r["output"].as_str().unwrap_or_default().trim_end().to_string();
     if let Some(first) = r.get("first_message").filter(|f| f["sent"] != true) {
-        text.push_str(&format!("\n[hc] first message NOT sent: {}", first["reason"].as_str().unwrap_or("?")));
+        text.push_str(&format!("\n[adk] first message NOT sent: {}", first["reason"].as_str().unwrap_or("?")));
     }
     if let Some(note) = note {
-        text.push_str(&format!("\n[hc] {note}"));
+        text.push_str(&format!("\n[adk] {note}"));
     }
     let mut out = std::io::stdout();
     let _ = writeln!(out, "{}", text.trim_start_matches('\n')).and_then(|_| out.flush());

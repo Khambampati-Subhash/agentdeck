@@ -22,7 +22,7 @@ pub fn check_autostart() -> Result<(), RpcError> {
     Err(RpcError::new(
         "unavailable",
         message,
-        "open Herdr on that Windows machine, or run 'hc server start' there in a normal desktop terminal; then reconnect",
+        "open AgentDeck on that Windows machine, or run 'adk server start' there in a normal desktop terminal; then reconnect",
     ))
 }
 

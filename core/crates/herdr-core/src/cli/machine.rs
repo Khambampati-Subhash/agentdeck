@@ -5,14 +5,14 @@ use crate::api::{MachineAddParams, MachineParams, MachineRenameParams};
 
 #[derive(Subcommand)]
 pub(super) enum MachineCmd {
-    /// Add a machine you reach with ssh: hc machine add vps.
+    /// Add a machine you reach with ssh: adk machine add vps.
     Add(MachineAddParams),
     /// List the machines added here.
     Ls,
     /// Log in again (a password or code) after the machine says it needs one.
     /// On Windows: reconnect once its SSH keys work.
     Login(MachineParams),
-    /// Copy this hc there and restart hc there (its terminals keep running).
+    /// Copy this adk there and restart adk there (its terminals keep running).
     Update(MachineParams),
     /// Give a machine a new name here.
     Rename(MachineRenameParams),
@@ -46,9 +46,9 @@ pub(super) fn machine(
             }
             let m = match call("machine.add", to(&p)) {
                 Err(e) if (p.install || at_terminal()) && matches!(e.kind.as_str(), "hc_missing" | "incompatible") => {
-                    let what = if e.kind == "hc_missing" { "has no hc" } else { "has an hc too old to talk to" };
+                    let what = if e.kind == "hc_missing" { "has no adk" } else { "has an adk too old to talk to" };
                     if !p.install {
-                        eprint!("{target} {what}. Copy this hc ({}) there? [Y/n] ", env!("CARGO_PKG_VERSION"));
+                        eprint!("{target} {what}. Copy this adk ({}) there? [Y/n] ", env!("CARGO_PKG_VERSION"));
                         let mut answer = String::new();
                         std::io::stdin().read_line(&mut answer).map_err(|err| RpcError::internal(err.to_string()))?;
                         if answer.trim().to_lowercase().starts_with('n') {
@@ -61,7 +61,7 @@ pub(super) fn machine(
                 }
                 other => other?,
             };
-            let human = format!("added {}: {} answers, hc {}", s(&m["name"]), s(&m["target"]), s(&m["version"]));
+            let human = format!("added {}: {} answers, adk {}", s(&m["name"]), s(&m["target"]), s(&m["version"]));
             Out { json: m, human }
         }
         MachineCmd::Ls => {
@@ -74,7 +74,7 @@ pub(super) fn machine(
                     let session = m["session"].as_str().map(|x| format!(" session {x}")).unwrap_or_default();
                     let state = line_state(m);
                     format!(
-                        "{:<16} {state}  \x1b[2m{}{session} \u{b7} hc {}\x1b[22m",
+                        "{:<16} {state}  \x1b[2m{}{session} \u{b7} adk {}\x1b[22m",
                         s(&m["name"]),
                         s(&m["target"]),
                         s(&m["version"])
@@ -82,7 +82,7 @@ pub(super) fn machine(
                 })
                 .collect();
             let human =
-                if rows.is_empty() { "no machines yet: hc machine add <ssh-target>".into() } else { rows.join("\n") };
+                if rows.is_empty() { "no machines yet: adk machine add <ssh-target>".into() } else { rows.join("\n") };
             Out { json: r, human }
         }
         MachineCmd::Login(p) => {
@@ -99,7 +99,7 @@ pub(super) fn machine(
                 return Err(RpcError::new(
                     "machine_unknown",
                     format!("unknown machine {:?}", p.machine),
-                    "see `hc machine ls`",
+                    "see `adk machine ls`",
                 ));
             };
             crate::machines::login(paths, reach_of(m))?;
@@ -115,7 +115,7 @@ pub(super) fn machine(
                 return Err(RpcError::new(
                     "machine_unknown",
                     format!("unknown machine {:?}", p.machine),
-                    "see `hc machine ls`",
+                    "see `adk machine ls`",
                 ));
             };
             let version = crate::machines::install(paths, reach_of(&m), m["session"].as_str())?;

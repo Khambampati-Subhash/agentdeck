@@ -145,9 +145,9 @@ impl Line {
                     "unavailable",
                     format!("{machine} didn't answer within {} s", deadline.as_secs()),
                     if method == "terminal.send" {
-                        "it may still have been typed; check with hc read before retrying"
+                        "it may still have been typed; check with adk read before retrying"
                     } else {
-                        "it may be busy or stuck; hc machine ls shows its line"
+                        "it may be busy or stuck; adk machine ls shows its line"
                     },
                 )
             })?,
@@ -861,20 +861,20 @@ async fn line(core: &Core, m: &Machine) -> Result<Arc<Line>, RpcError> {
             "unavailable",
             format!("{} needs a login typed by a person", m.name),
             if cfg!(windows) {
-                format!("set up its SSH keys, then: hc machine login {}", m.name)
+                format!("set up its SSH keys, then: adk machine login {}", m.name)
             } else {
-                format!("in a terminal: hc machine login {}", m.name)
+                format!("in a terminal: adk machine login {}", m.name)
             },
         )),
         Some(LineState::NeedsUpdate { .. }) => Err(RpcError::new(
             "needs_update",
-            format!("{}'s hc speaks another protocol generation", m.name),
-            format!("hc machine update {}", m.name),
+            format!("{}'s adk speaks another protocol generation", m.name),
+            format!("adk machine update {}", m.name),
         )),
         Some(LineState::Unreachable { why, .. }) => Err(RpcError::new(
             "unavailable",
             format!("{} is unreachable: {why}", m.name),
-            "hc machine ls shows when it comes back",
+            "adk machine ls shows when it comes back",
         )),
         _ => Err(RpcError::new("unavailable", format!("still connecting to {}", m.name), "try again in a moment")),
     }
@@ -988,15 +988,15 @@ async fn forward_once(core: &Core, m: &Machine, method: &str, mut params: Value)
     if method == "terminal.run" && own_shell && !line.features.iter().any(|f| f == "shell") {
         return Err(RpcError::new(
             "needs_update",
-            format!("{}'s hc is older and can't pick its own shell", m.name),
-            format!("hc machine update {}", m.name),
+            format!("{}'s adk is older and can't pick its own shell", m.name),
+            format!("adk machine update {}", m.name),
         ));
     }
     let reply = line.call(&m.name, method, params, deadline).await.map_err(|e| match e.kind.as_str() {
         "unknown_method" => RpcError::new(
             "needs_update",
-            format!("{}'s hc is older and has no {method}", m.name),
-            format!("hc machine update {}", m.name),
+            format!("{}'s adk is older and has no {method}", m.name),
+            format!("adk machine update {}", m.name),
         ),
         _ => e,
     })?;

@@ -74,7 +74,7 @@ pub(crate) fn tail(text: String, id: u32) -> String {
     }
     let from = text[from..].find('\n').map_or(from, |at| from + at + 1);
     format!(
-        "[hc] earlier output cut: hc read {} --lines {FINISHED_LINES}\n{}",
+        "[adk] earlier output cut: adk read {} --lines {FINISHED_LINES}\n{}",
         crate::terminals::address(id),
         &text[from..]
     )
@@ -98,7 +98,7 @@ pub(super) async fn start(
         RpcError::new(
             "unavailable",
             format!("no holder: {e}"),
-            "run hc server restart on this machine, then retry; see holder.log and core.log in the state directory",
+            "run adk server restart on this machine, then retry; see holder.log and core.log in the state directory",
         )
     })?;
     let settings = crate::config::load(&core.paths.config)?;
@@ -139,7 +139,7 @@ pub(super) async fn start(
                 RpcError::new(
                     "unavailable",
                     "no holder: the holder disconnected before the terminal could start",
-                    "retry; if it keeps failing, run hc server restart on this machine and check holder.log",
+                    "retry; if it keeps failing, run adk server restart on this machine and check holder.log",
                 )
             })?
             .instance
@@ -262,7 +262,7 @@ mod tests {
     fn a_long_output_keeps_whole_lines_from_its_end_even_mid_character() {
         let text = "é".repeat(30_000) + "\nlast line";
         let cut = super::tail(text, 7);
-        assert!(cut.starts_with("[hc] earlier output cut: hc read t7") && cut.ends_with("\nlast line"));
+        assert!(cut.starts_with("[adk] earlier output cut: adk read t7") && cut.ends_with("\nlast line"));
         assert_eq!(super::tail("short".into(), 7), "short");
     }
 }

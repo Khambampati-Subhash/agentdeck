@@ -496,7 +496,7 @@ async fn handle(
             None => Err(RpcError::new(
                 "needs_framed",
                 "attach needs a framed connection",
-                "send hello with framed: true first, or use `hc attach`",
+                "send hello with framed: true first, or use `adk attach`",
             )),
         },
         Ok(Some((to, params))) => crate::remote::forward_to(core, &to, method, params).await,

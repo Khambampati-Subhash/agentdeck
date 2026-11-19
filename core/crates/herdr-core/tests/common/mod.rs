@@ -110,17 +110,17 @@ impl Session {
     /// Runs a command that must succeed and returns its JSON stdout.
     pub fn json(&self, args: &[&str]) -> Value {
         let out = self.hc(&[&["--json"], args].concat());
-        assert!(out.status.success(), "hc {args:?} failed: {}\n{}", out.status, String::from_utf8_lossy(&out.stderr));
+        assert!(out.status.success(), "adk {args:?} failed: {}\n{}", out.status, String::from_utf8_lossy(&out.stderr));
         serde_json::from_slice(&out.stdout)
-            .unwrap_or_else(|e| panic!("hc {args:?}: bad json ({e}): {}", String::from_utf8_lossy(&out.stdout)))
+            .unwrap_or_else(|e| panic!("adk {args:?}: bad json ({e}): {}", String::from_utf8_lossy(&out.stdout)))
     }
 
     /// Runs a command that must fail; returns (exit code, JSON error from stderr).
     pub fn err(&self, args: &[&str]) -> (i32, Value) {
         let out = self.hc(args);
-        assert!(!out.status.success(), "hc {args:?} unexpectedly succeeded");
+        assert!(!out.status.success(), "adk {args:?} unexpectedly succeeded");
         let err = serde_json::from_slice(&out.stderr)
-            .unwrap_or_else(|e| panic!("hc {args:?}: bad json error ({e}): {}", String::from_utf8_lossy(&out.stderr)));
+            .unwrap_or_else(|e| panic!("adk {args:?}: bad json error ({e}): {}", String::from_utf8_lossy(&out.stderr)));
         (out.status.code().unwrap_or(-1), err)
     }
 

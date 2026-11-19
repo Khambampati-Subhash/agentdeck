@@ -93,7 +93,7 @@ fn note(t: &Terminal, address: &str, last: &[String]) -> String {
         true => ". ".to_string(),
         false => format!(". Last lines:\n{}\n", last.join("\n")),
     };
-    format!("<hc>{address}{name} {what}{gap}{look}: hc read {address}</hc>")
+    format!("<adk>{address}{name} {what}{gap}{look}: adk read {address}</adk>")
 }
 
 impl Core {
@@ -152,13 +152,13 @@ impl Core {
         if let Some(afar) = from.filter(|f| f.rsplit_once('/').is_some_and(|(_, local)| parse_id(local).is_some()))
             && target.is_some_and(|t| t.reported)
         {
-            return format!("<hc from=\"{afar}\">{text}</hc>");
+            return format!("<adk from=\"{afar}\">{text}</adk>");
         }
         match sender.filter(|s| s.reported && target.is_some_and(|t| t.reported)) {
             Some(s) if reach => {
-                format!("<hc from=\"{}\" reach=\"hc send {} when done or stuck\">{text}</hc>", who(s), s.address)
+                format!("<adk from=\"{}\" reach=\"adk send {} when done or stuck\">{text}</adk>", who(s), s.address)
             }
-            Some(s) => format!("<hc from=\"{}\">{text}</hc>", who(s)),
+            Some(s) => format!("<adk from=\"{}\">{text}</adk>", who(s)),
             None => text.to_string(),
         }
     }
@@ -327,26 +327,26 @@ mod tests {
         });
         t.status.as_mut().unwrap().state = "blocked".into();
         t.status.as_mut().unwrap().kind = Some("permission".into());
-        assert_eq!(note(t, "t1", &[]), "<hc>t1 reviewer is blocked (permission). See: hc read t1</hc>");
+        assert_eq!(note(t, "t1", &[]), "<adk>t1 reviewer is blocked (permission). See: adk read t1</adk>");
         t.status.as_mut().unwrap().state = "error".into();
         t.status.as_mut().unwrap().msg = format!("rate limited\n{}", "x".repeat(500));
         assert_eq!(
             note(t, "t1", &[]),
-            "<hc>t1 reviewer hit an error: rate limited. See: hc read t1</hc>",
+            "<adk>t1 reviewer hit an error: rate limited. See: adk read t1</adk>",
             "its first line"
         );
         t.status.as_mut().unwrap().msg.clear();
-        assert_eq!(note(t, "t1", &[]), "<hc>t1 reviewer hit an error. See: hc read t1</hc>");
+        assert_eq!(note(t, "t1", &[]), "<adk>t1 reviewer hit an error. See: adk read t1</adk>");
         r.finish(id, Some(3), None, "exited", 1);
         assert_eq!(
             note(&r.terminals[&id], "rohan/t1", &[]),
-            "<hc>rohan/t1 reviewer exited (exit 3). Read: hc read rohan/t1</hc>"
+            "<adk>rohan/t1 reviewer exited (exit 3). Read: adk read rohan/t1</adk>"
         );
         let last = last_lines("a\n\n  \nb\x1b[201~\tc\n");
         assert_eq!(last, ["a", "b[201~\tc"], "blanks and control characters dropped");
         assert_eq!(
             note(&r.terminals[&id], "t1", &last),
-            "<hc>t1 reviewer exited (exit 3). Last lines:\na\nb[201~\tc\nRead: hc read t1</hc>"
+            "<adk>t1 reviewer exited (exit 3). Last lines:\na\nb[201~\tc\nRead: adk read t1</adk>"
         );
     }
 
