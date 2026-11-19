@@ -262,10 +262,10 @@ fn marked(file: &Path, mark: &str) -> bool {
     std::fs::read(file).unwrap().ends_with(mark.as_bytes())
 }
 
-/// An installed hc, with `hc.exe` linked to it.
+/// An installed hc, with `adk.exe` linked to it.
 fn installed(s: &Session) -> PathBuf {
     let exe = release(&s.root.join("inst"), "old-build");
-    std::fs::hard_link(&exe, s.root.join(r"inst\hc.exe")).unwrap();
+    std::fs::hard_link(&exe, s.root.join(r"inst\adk.exe")).unwrap();
     exe
 }
 
@@ -281,7 +281,7 @@ fn update_swaps_the_whole_release_while_its_terminals_run() {
     let t = serde_json::from_slice::<Value>(&run.stdout).unwrap()["address"].as_str().unwrap().to_string();
     // Not hc's, even when named like hc's files: never cleaned up. An old
     // update's own leftover is.
-    let theirs = [s.root.join(r"inst\settings.old-backup"), s.root.join(r"inst\hc.exe.old-backup")];
+    let theirs = [s.root.join(r"inst\settings.old-backup"), s.root.join(r"inst\adk.exe.old-backup")];
     for f in &theirs {
         std::fs::write(f, "keep").unwrap();
     }
@@ -293,7 +293,7 @@ fn update_swaps_the_whole_release_while_its_terminals_run() {
     assert!(theirs.iter().all(|f| f.is_file()), "update deleted a file that isn't adk's");
     assert!(!leftover.exists(), "an old update's leftover stays");
     assert!(marked(&exe, "new-build"), "agentdeck-core.exe swapped");
-    assert!(marked(&s.root.join(r"inst\hc.exe"), "new-build"), "hc.exe follows it");
+    assert!(marked(&s.root.join(r"inst\adk.exe"), "new-build"), "adk.exe follows it");
     assert_eq!(s.json(&["get", &t])["state"], "live", "its terminal kept running");
 }
 
@@ -310,7 +310,7 @@ fn an_update_that_cannot_finish_puts_everything_back() {
     drop(held);
     assert!(!out.status.success(), "the update should have failed");
     assert!(marked(&exe, "old-build"), "agentdeck-core.exe back");
-    assert!(marked(&s.root.join(r"inst\hc.exe"), "old-build"), "hc.exe back");
+    assert!(marked(&s.root.join(r"inst\adk.exe"), "old-build"), "adk.exe back");
     assert!(s.root.join(r"inst\conpty\conpty.dll").is_file());
     assert!(hc_at(&s, &exe, &["--version"]).status.success(), "adk still runs");
 }

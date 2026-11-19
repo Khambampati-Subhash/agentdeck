@@ -28,10 +28,14 @@ side-by-side:
 offline:
     scripts/check-offline
 
-# The offline guard, core's own fmt, cargo-deny, clippy (Unix and Windows) and suite, the app suite.
-check: offline
+# Our own scripts' tests.
+scripts:
+    python3 -I -B -m unittest discover -s scripts -p 'test_*.py'
+
+# The offline guard, our scripts, core's own fmt, cargo-deny, clippy (Unix and Windows) and suite, the app's mod tests (Bun) and suite.
+check: offline scripts
     cd core && just check
-    cd app && cargo test --locked
+    cd app && just test
 
 # Opens our build in a scratch home and core session, never the real Herdr setup.
 dev: build
