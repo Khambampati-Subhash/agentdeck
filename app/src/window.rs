@@ -1985,7 +1985,7 @@ impl AppWindow {
                 let Some(name) = machine["name"].as_str() else { continue };
                 let state = machine["state"].as_str().unwrap_or("unavailable");
                 let reason = (state != "connected").then(|| machine["why"].as_str().map(str::to_owned).unwrap_or_else(|| match state {
-                    "needs_update" => format!("{name} needs a core update; run hc machine update {name}"),
+                    "needs_update" => format!("{name} needs a core update; run adk machine update {name}"),
                     "needs_login" => format!("{name} needs login; run adk machine login {name}"),
                     _ => format!("{name} is {state}"),
                 }));
@@ -2374,7 +2374,7 @@ impl AppWindow {
             Some(slot) if slot.available => Ok(()),
             Some(slot) => Err(slot.error.clone().unwrap_or_else(|| "This machine's layout is unavailable. Try again when it reconnects.".into())),
             None => Err(match machine {
-                Some(m) => format!("AgentDeck has no machine called {m}. See hc machine ls; machines added with --temp stay out of AgentDeck."),
+                Some(m) => format!("AgentDeck has no machine called {m}. See adk machine ls; machines added with --temp stay out of AgentDeck."),
                 None => "This machine's layout is unavailable. Try again when it reconnects.".into(),
             }),
         }

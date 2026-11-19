@@ -114,11 +114,12 @@ only adds merge conflicts.
 - [x] Binaries (`agentdeck`, `agentdeck-core` + `adk`), bundle ids
       (`io.github.khambampati-subhash.agentdeck`, `….agentdeck.core`, ad hoc),
       Info.plist, launchd prefix. Icon file names stay `herdr-*`.
-- [ ] Core's runtime hints still say `hc …` in about 75 messages (e.g. "run
-      hc server start"); the CLI is `adk`.
+- [x] Core's runtime hints, errors and help say `adk …`, notes to agents
+      are tagged `<adk>`, and core's README and docs use our names (2026-11-19).
+      The docs checker had been looking for `hc` examples and so checked none.
 - [ ] From the P2 review, deferred: the app's dormant self-update (`update.rs`)
       still expects `Herdr.app` and a `herdr-app` version prefix (P3);
-      `core_bin::ensure_core_bundle` can never match an ad hoc core (remove);
+      `core_bin::ensure_core_bundle` (removed 2026-11-19);
       `just migrate --from ~/.config/herdr-app` copies Herdr's shipped mods
       without their install record; Windows installers still link `hc.exe`.
 - [x] App home `~/.config/agentdeck`, core config `~/.config/agentdeck-core`,

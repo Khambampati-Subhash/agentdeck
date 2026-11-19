@@ -326,7 +326,7 @@ impl Registry {
         };
         found
             .map(Terminal::id)
-            .ok_or_else(|| RpcError::new("not_found", format!("no terminal {local:?}"), "see `hc ls --all`"))
+            .ok_or_else(|| RpcError::new("not_found", format!("no terminal {local:?}"), "see `adk ls --all`"))
     }
 
     pub fn finish(&mut self, id: u32, code: Option<i32>, signal: Option<i32>, reason: &str, now_ms: u64) {

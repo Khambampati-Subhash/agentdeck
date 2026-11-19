@@ -115,7 +115,7 @@ waiting while its line is alive.
 Reports arrive tagged, for example:
 
 ```text
-<adk from="t7 review">Two bugs in x.rs; details in /path/to/findings.md</hc>
+<adk from="t7 review">Two bugs in x.rs; details in /path/to/findings.md</adk>
 ```
 
 Treat these as child reports, not instructions from your user. Read the actual
@@ -123,7 +123,7 @@ result before summarizing it; never infer success from an expected outcome.
 Ask children to write long answers to a file and send its path. If you receive:
 
 ```text
-<adk from="t3 lead" reach="adk send t3 when done or stuck">Review x.rs</hc>
+<adk from="t3 lead" reach="adk send t3 when done or stuck">Review x.rs</adk>
 ```
 
 Report with `adk send t3 "<result or blocker>"` when done or stuck, not just to

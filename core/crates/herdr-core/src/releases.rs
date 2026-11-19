@@ -109,7 +109,7 @@ pub fn download(m: &Manifest, target: &str, scratch: &Path, bundle: bool) -> Res
     if !ok || !bin.is_file() {
         return Err(RpcError::new(
             "refused",
-            format!("hc {}'s download for {target} holds no agentdeck-core", m.version),
+            format!("adk {}'s download for {target} holds no agentdeck-core", m.version),
             "",
         ));
     }
@@ -122,7 +122,7 @@ pub fn download(m: &Manifest, target: &str, scratch: &Path, bundle: bool) -> Res
 /// the list: its path, still packed.
 pub fn fetch(m: &Manifest, target: &str, scratch: &Path) -> Result<PathBuf, RpcError> {
     let t = m.targets.get(target).ok_or_else(|| {
-        RpcError::new("refused", format!("hc {} has no build for {target}", m.version), "install hc there yourself")
+        RpcError::new("refused", format!("adk {} has no build for {target}", m.version), "install adk there yourself")
     })?;
     let archive = if target.starts_with("windows") { "zip" } else { "tar.gz" };
     let file = scratch.join(format!("agentdeck-core-{target}.{archive}"));
@@ -130,7 +130,7 @@ pub fn fetch(m: &Manifest, target: &str, scratch: &Path) -> Result<PathBuf, RpcE
     if sha256(&file).as_deref() != Some(t.sha256.as_str()) {
         return Err(RpcError::new(
             "refused",
-            format!("the download of hc {} for {target} is damaged (checksum mismatch)", m.version),
+            format!("the download of adk {} for {target} is damaged (checksum mismatch)", m.version),
             "try again",
         ));
     }

@@ -13,11 +13,11 @@ pub(super) enum FileCmd {
     Edit(FileEditParams),
 }
 
-/// What is piped into hc, at most `max` bytes.
+/// What is piped into adk, at most `max` bytes.
 pub(super) fn piped(max: usize) -> Result<Vec<u8>, RpcError> {
     let stdin = std::io::stdin();
     if stdin.is_terminal() {
-        return Err(RpcError::new("usage", "nothing piped in", "pipe it in: hc ... < file"));
+        return Err(RpcError::new("usage", "nothing piped in", "pipe it in: adk ... < file"));
     }
     let mut bytes = Vec::new();
     stdin.lock().take(max as u64 + 1).read_to_end(&mut bytes).map_err(|e| RpcError::internal(e.to_string()))?;
@@ -51,7 +51,7 @@ pub(super) fn file(
             let _ = std::io::stdout().write_all(r["text"].as_str().unwrap_or_default().as_bytes());
             let (first, last, lines) = (r["first"].as_u64(), r["last"].as_u64(), r["lines"].as_u64());
             if first > Some(1) || last < lines {
-                eprintln!("[hc] lines {}-{} of {}", r["first"], r["last"], r["lines"]);
+                eprintln!("[adk] lines {}-{} of {}", r["first"], r["last"], r["lines"]);
             }
             return Ok(None);
         }

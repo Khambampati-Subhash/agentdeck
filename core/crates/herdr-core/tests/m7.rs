@@ -318,10 +318,10 @@ fn an_agent_starting_a_worker_tells_it_who_asked_and_how_to_answer() {
     let out = s.cmd().env("ADK_TERMINAL_ID", &boss).args(["run", "--bg", "reviewer", "review x"]).output().unwrap();
     let t: Value = serde_json::from_slice(&out.stdout).unwrap();
     let t = t["address"].as_str().unwrap().to_string();
-    let open = format!("got:<hc from=\"{boss} boss\" reach=\"hc send {boss} when done or stuck\">You review code.");
+    let open = format!("got:<adk from=\"{boss} boss\" reach=\"adk send {boss} when done or stuck\">You review code.");
     wait_until("tagged first message", || {
         let text = text(&s, &t);
-        text.contains(&open) && text.contains("got:review x</hc>")
+        text.contains(&open) && text.contains("got:review x</adk>")
     });
 }
 

@@ -329,7 +329,7 @@ pub fn installer_startup() -> bool {
         Err(io::Error::other("expected source executable and destination entry point"))
     };
     if let Err(error) = result {
-        eprintln!("hc: bundle install failed: {error}");
+        eprintln!("adk: bundle install failed: {error}");
         std::process::exit(1);
     }
     std::process::exit(0)
@@ -355,7 +355,7 @@ fn legacy_notice_once(state: &Path, out: &mut impl std::io::Write) {
     if super::private_dir(state).is_ok()
         && std::fs::OpenOptions::new().write(true).create_new(true).open(state.join("bundle-upgrade-notice")).is_ok()
     {
-        let _ = writeln!(out, "hc: run hc update to finish installing AgentDeck Core");
+        let _ = writeln!(out, "adk: run adk update to finish installing AgentDeck Core");
     }
 }
 
@@ -373,7 +373,7 @@ mod tests {
         let mut out = Vec::new();
         legacy_notice_once(&state, &mut out);
         legacy_notice_once(&state, &mut out);
-        assert_eq!(out, b"hc: run hc update to finish installing AgentDeck Core\n");
+        assert_eq!(out, b"adk: run adk update to finish installing AgentDeck Core\n");
         assert!(state.join("bundle-upgrade-notice").is_file());
         std::fs::remove_dir_all(root).unwrap();
     }

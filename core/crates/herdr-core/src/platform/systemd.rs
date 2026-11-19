@@ -64,7 +64,7 @@ fn manager() -> Result<PathBuf, bool> {
     }
 }
 
-const NO_MANAGER: &str = "hc: no systemd user manager here: the core ends with whatever started it";
+const NO_MANAGER: &str = "adk: no systemd user manager here: the core ends with whatever started it";
 
 /// Starts `cmd` as a user service with stderr appended to `log`. None: no
 /// user manager here, start it the plain way.
@@ -81,7 +81,7 @@ pub fn spawn(cmd: &Command, log: &Path) -> Option<io::Result<()>> {
     let guarded = match ensure_shutdown_guard(&run, log) {
         Ok(()) => true,
         Err(e) => {
-            eprintln!("hc: {e}; starting without shutdown ordering");
+            eprintln!("adk: {e}; starting without shutdown ordering");
             false
         }
     };
@@ -335,9 +335,9 @@ fn enable_linger(mut command: Command, user: String) -> io::Result<std::thread::
             .status()
             .is_ok_and(|s| s.success());
         if enabled {
-            eprintln!("hc: turned on linger for {user}, so the core outlives your logins");
+            eprintln!("adk: turned on linger for {user}, so the core outlives your logins");
         } else {
-            eprintln!("hc: the core stops when your last login ends; `sudo loginctl enable-linger {user}` keeps it");
+            eprintln!("adk: the core stops when your last login ends; `sudo loginctl enable-linger {user}` keeps it");
         }
     })
 }

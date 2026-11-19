@@ -82,7 +82,7 @@ pub(super) fn place(t: &Value) -> Option<String> {
 
 /// One row per terminal, children under their parent: a status dot, the
 /// address, then name, agent, template and where (else folder) lined up, and
-/// the status. With `header`, a dim title row goes first (for `hc ls`; the
+/// the status. With `header`, a dim title row goes first (for `adk ls`; the
 /// picker's rows speak for themselves).
 pub(super) fn items(terminals: &[Value], header: bool) -> Vec<picker::Item> {
     const TITLES: [&str; 4] = ["NAME", "AGENT", "TEMPLATE", "WHERE"];
@@ -143,7 +143,7 @@ pub(super) fn items(terminals: &[Value], header: bool) -> Vec<picker::Item> {
     title.into_iter().chain(rows).collect()
 }
 
-/// The facts an agent acts on; `hc get` has the full record.
+/// The facts an agent acts on; `adk get` has the full record.
 pub(super) fn short(t: &Value) -> Value {
     let keep = ["address", "name", "template", "parent", "state", "turn", "exit_code", "signal", "reason", "cwd"];
     let mut out: serde_json::Map<String, Value> =
@@ -181,9 +181,9 @@ pub(super) fn describe_wait(r: &Value) -> String {
         Some("exit") => format!("{t} exited (exit {}, turn {})", r["exit_code"], r["turn"]),
         Some("timeout") => format!("{t} still running: {word}, turn {} (wait again to keep waiting)", r["turn"]),
         Some("output") => format!("{t} printed it ({word}, turn {})", r["turn"]),
-        Some("not_started") => format!("{t} hasn't started on it ({word}): hc read {t}, then hc wait {t}"),
+        Some("not_started") => format!("{t} hasn't started on it ({word}): adk read {t}, then adk wait {t}"),
         Some("running") => format!("{t} still running: {word}, turn {}", r["turn"]),
-        _ => format!("{t} {word}, turn {}. Read: hc read {t}", r["turn"]),
+        _ => format!("{t} {word}, turn {}. Read: adk read {t}", r["turn"]),
     }
 }
 
@@ -246,12 +246,14 @@ pub(super) fn line_state(m: &Value) -> String {
         Some("needs_login") => {
             let keys = if cfg!(windows) { "set up its SSH keys, then " } else { "" };
             format!(
-                "needs login{}: {keys}hc machine login {}",
+                "needs login{}: {keys}adk machine login {}",
                 since.unwrap_or_default(),
                 m["name"].as_str().unwrap_or("?")
             )
         }
-        Some("needs_update") => format!("needs an hc update: hc machine update {}", m["name"].as_str().unwrap_or("?")),
+        Some("needs_update") => {
+            format!("needs an adk update: adk machine update {}", m["name"].as_str().unwrap_or("?"))
+        }
         Some(state) => format!("{state}{}{why}", since.unwrap_or_default()),
         None => "?".into(),
     }
@@ -289,11 +291,11 @@ pub(super) fn exec_out(r: &Value) -> ! {
     let _ = out.write_all(&bytes("stdout")).and_then(|_| out.flush());
     let _ = err.write_all(&bytes("stderr"));
     if r["truncated"] == true {
-        let _ = writeln!(err, "[hc] output cut: kept the first 8 MB of stdout, 1 MB of stderr");
+        let _ = writeln!(err, "[adk] output cut: kept the first 8 MB of stdout, 1 MB of stderr");
     }
     let code = match (r["timed_out"].as_bool(), r["code"].as_i64(), r["signal"].as_i64()) {
         (Some(true), _, _) => {
-            let _ = writeln!(err, "[hc] timed out after {} ms: ended", r["ms"]);
+            let _ = writeln!(err, "[adk] timed out after {} ms: ended", r["ms"]);
             124
         }
         (_, Some(code), _) => code as i32,

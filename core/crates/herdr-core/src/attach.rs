@@ -334,7 +334,7 @@ pub fn run(paths: &Paths, terminal: &str, observe: bool, history: usize) -> Resu
     Ok(match ending {
         Some(end) => format!("[{address} finished: {}]", end["reason"].as_str().unwrap_or("ended")),
         None if detached => format!("[detached from {address}]"),
-        None => format!("[lost the core; it keeps {address} running: hc attach {address}]"),
+        None => format!("[lost the core; it keeps {address} running: adk attach {address}]"),
     })
 }
 

@@ -107,7 +107,7 @@ pub fn startup() -> bool {
         return false;
     };
     if let Err(error) = result {
-        eprintln!("hc: launchd detach failed: {error}");
+        eprintln!("adk: launchd detach failed: {error}");
         std::process::exit(1);
     }
     true
@@ -138,7 +138,7 @@ pub fn prepare_core() {
             if let Ok(paths) = crate::paths::Paths::from_env() {
                 fallback(&paths.state.join("core.log"), &error);
             } else {
-                eprintln!("hc: cannot move core startup to launchd: {error}");
+                eprintln!("adk: cannot move core startup to launchd: {error}");
             }
         }
     }
@@ -166,7 +166,7 @@ pub fn spawn(cmd: &mut Command, log: &Path) -> bool {
 }
 
 fn fallback(log: &Path, error: &io::Error) {
-    let reason = format!("hc: launchd startup failed; starting directly (may end with the launching app): {error}");
+    let reason = format!("adk: launchd startup failed; starting directly (may end with the launching app): {error}");
     eprintln!("{reason}");
     if let Ok(mut file) = std::fs::OpenOptions::new().create(true).append(true).open(log) {
         let _ = writeln!(file, "{reason}");
@@ -364,7 +364,7 @@ fn job_state(output: &str) -> String {
 impl Drop for Job {
     fn drop(&mut self) {
         if let Err(error) = self.remove() {
-            eprintln!("hc: cannot remove launchd job {}: {error}", self.target);
+            eprintln!("adk: cannot remove launchd job {}: {error}", self.target);
         }
         let _ = std::fs::remove_dir_all(&self.dir);
     }
@@ -389,7 +389,7 @@ fn remove_stale(domain: &str, now: Duration) {
     for label in stale_labels(&list, now) {
         let target = format!("{domain}/{label}");
         if let Err(error) = launchctl(&[OsStr::new("bootout"), OsStr::new(&target)]) {
-            eprintln!("hc: cannot remove finished launchd job {target}: {error}");
+            eprintln!("adk: cannot remove finished launchd job {target}: {error}");
         }
     }
 }
@@ -422,7 +422,7 @@ fn remove_stale_dirs(root: &Path, now: Duration) {
             continue;
         }
         if let Err(error) = std::fs::remove_dir_all(&path) {
-            eprintln!("hc: cannot remove abandoned launchd directory {}: {error}", path.display());
+            eprintln!("adk: cannot remove abandoned launchd directory {}: {error}", path.display());
         }
     }
 }

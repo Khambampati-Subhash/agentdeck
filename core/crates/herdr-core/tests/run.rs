@@ -88,7 +88,7 @@ fn a_quick_command_returns_its_output_and_exit_code_and_leaves_no_note() {
     assert_eq!(out.status.code(), Some(3), "the program's exit code");
     assert!(String::from_utf8_lossy(&out.stdout).contains("hi"));
     std::thread::sleep(std::time::Duration::from_millis(500));
-    assert!(!text(&s, &parent).contains("<hc>"), "it saw the exit itself: no note\n{}", text(&s, &parent));
+    assert!(!text(&s, &parent).contains("<adk>"), "it saw the exit itself: no note\n{}", text(&s, &parent));
 
     let (code, out) = hc(&s, &["run", "echo a && echo b | tr b c"]);
     assert_eq!(code, 0);
@@ -113,7 +113,7 @@ fn pagers_never_hold_a_run_and_huge_output_keeps_its_tail() {
     let (code, out) = hc(&s, &["run", "awk 'BEGIN{for(i=1;i<=1000;i++) printf \"%0180d\\n\", i}'"]);
     assert_eq!(code, 0);
     assert!(out.len() < 60_000, "capped: {} bytes", out.len());
-    assert!(out.starts_with("[hc] earlier output cut: hc read t"), "{}", &out[..100]);
+    assert!(out.starts_with("[adk] earlier output cut: adk read t"), "{}", &out[..100]);
     assert!(out.trim_end().ends_with(&format!("{:0180}", 1000)), "the tail is kept");
 }
 

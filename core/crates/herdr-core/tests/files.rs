@@ -31,7 +31,7 @@ fn files_are_written_read_and_edited_here_and_on_a_machine() {
         assert!(read.stdout == src.as_bytes() && read.stderr.is_empty(), "{on:?}: all of it, as is");
         let part = s.hc(&file(&["read", "src/lib.rs", "--offset", "4", "--limit", "3"]));
         assert_eq!(String::from_utf8_lossy(&part.stdout), "fn f2() -> u32 {\n    2\n}\n");
-        assert_eq!(String::from_utf8_lossy(&part.stderr).trim(), "[hc] lines 4-6 of 18000");
+        assert_eq!(String::from_utf8_lossy(&part.stderr).trim(), "[adk] lines 4-6 of 18000");
 
         const NEW_FN: &str = "fn added() -> u32 {\n    0\n}\n\nfn f5000() -> u32 {";
         s.json(&file(&[

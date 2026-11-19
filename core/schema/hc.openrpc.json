@@ -3616,7 +3616,7 @@
       }
     },
     {
-      "description": "Add another machine: dial it over ssh, check that hc answers there, and keep it under a name.",
+      "description": "Add another machine: dial it over ssh, check that adk answers there, and keep it under a name.",
       "errors": [
         {
           "code": -32602,

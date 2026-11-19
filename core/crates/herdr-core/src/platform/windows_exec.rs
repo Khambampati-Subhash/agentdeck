@@ -57,7 +57,7 @@ pub fn check_via(target: &str) -> io::Result<()> {
 }
 
 pub fn via_add_hint(target: &str) -> String {
-    format!("hc machine add --via '{}' --name <name>", target.replace('\'', "''"))
+    format!("adk machine add --via '{}' --name <name>", target.replace('\'', "''"))
 }
 
 pub fn via_command(target: &str, line: &str) -> io::Result<std::process::Command> {
@@ -82,7 +82,7 @@ mod via_tests {
         assert_eq!(words, ["bridge.exe", "C:\\folder\\", "a\"b", ""]);
         assert!(check_via(r#""" arg"#).is_err());
         assert!(check_via("bridge.exe\narg").is_err());
-        assert_eq!(via_add_hint("bridge.exe it's"), "hc machine add --via 'bridge.exe it''s' --name <name>");
+        assert_eq!(via_add_hint("bridge.exe it's"), "adk machine add --via 'bridge.exe it''s' --name <name>");
     }
 }
 

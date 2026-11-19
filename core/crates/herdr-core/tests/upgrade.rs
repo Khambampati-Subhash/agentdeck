@@ -151,7 +151,7 @@ fn an_update_keeps_terminals_and_machines_running() {
         if !String::from_utf8(rohan.hc(&["run", "--help"]).stdout).unwrap().contains("--bg") {
             let out = String::from_utf8(s.hc(&["run", "--on", "rohan", "echo there"]).stdout).unwrap();
             assert!(
-                out.contains("not waited on") && out.contains("hc machine update rohan"),
+                out.contains("not waited on") && out.contains("adk machine update rohan"),
                 "an older side's run is named: {out}"
             );
         }

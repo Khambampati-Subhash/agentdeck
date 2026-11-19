@@ -290,7 +290,7 @@ fn update_swaps_the_whole_release_while_its_terminals_run() {
     let new = release(&s.root.join("new"), "new-build");
     let out = hc_at(&s, &exe, &["update", "--from", new.to_str().unwrap()]);
     assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
-    assert!(theirs.iter().all(|f| f.is_file()), "update deleted a file that isn't hc's");
+    assert!(theirs.iter().all(|f| f.is_file()), "update deleted a file that isn't adk's");
     assert!(!leftover.exists(), "an old update's leftover stays");
     assert!(marked(&exe, "new-build"), "agentdeck-core.exe swapped");
     assert!(marked(&s.root.join(r"inst\hc.exe"), "new-build"), "hc.exe follows it");
@@ -312,7 +312,7 @@ fn an_update_that_cannot_finish_puts_everything_back() {
     assert!(marked(&exe, "old-build"), "agentdeck-core.exe back");
     assert!(marked(&s.root.join(r"inst\hc.exe"), "old-build"), "hc.exe back");
     assert!(s.root.join(r"inst\conpty\conpty.dll").is_file());
-    assert!(hc_at(&s, &exe, &["--version"]).status.success(), "hc still runs");
+    assert!(hc_at(&s, &exe, &["--version"]).status.success(), "adk still runs");
 }
 
 #[test]
@@ -406,7 +406,7 @@ fn status_does_not_start_a_core() {
     let s = Session::new();
     let out = cmd(&s.name, &s.root).args(["server", "status"]).output().unwrap();
     assert!(!out.status.success());
-    assert!(String::from_utf8_lossy(&out.stderr).contains("hc server start"));
+    assert!(String::from_utf8_lossy(&out.stderr).contains("adk server start"));
     assert!(!s.root.join("state").exists(), "status created runtime state");
 }
 
@@ -446,7 +446,7 @@ fn implicit_ssh_start_reports_desktop_conflict_or_starts_headless() {
     } else {
         let error: Value = serde_json::from_slice(&out.stderr).unwrap();
         assert!(error["error"]["message"].as_str().unwrap().contains("desktop session"), "{error}");
-        assert!(error["error"]["hint"].as_str().unwrap().contains("open Herdr on that Windows machine"), "{error}");
+        assert!(error["error"]["hint"].as_str().unwrap().contains("open AgentDeck on that Windows machine"), "{error}");
         assert_ne!(s.out(&["server", "status"]).0, 0, "refused startup left a core");
     }
 }

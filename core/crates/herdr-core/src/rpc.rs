@@ -16,7 +16,7 @@ impl RpcError {
         RpcError { code: -32000, kind: kind.into(), message: message.into(), hint: hint.into() }
     }
     fn protocol(code: i64, kind: &str, message: impl Into<String>) -> Self {
-        RpcError { code, kind: kind.into(), message: message.into(), hint: "see `hc schema`".into() }
+        RpcError { code, kind: kind.into(), message: message.into(), hint: "see `adk schema`".into() }
     }
     pub fn parse_error(message: impl Into<String>) -> Self {
         Self::protocol(-32700, "parse_error", message)
