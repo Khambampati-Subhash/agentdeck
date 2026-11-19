@@ -1,0 +1,186 @@
+# Every main push and PR: the repo scripts, core's lint, and both halves'
+# clippy and tests on macOS arm64 (the only platform AgentDeck ships).
+#
+# Adapted from upstream's own app/.github/workflows/ci.yml and
+# core/.github/workflows/ci.yml (GitHub only runs this root directory).
+# Rust caches use one pinned toolchain and only main pushes save, so PR
+# caches can't evict the ones everybody restores.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Only superseded PR runs share a group; every other commit runs independently.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  RUST_TOOLCHAIN: 1.95.0
+  ZIG_VERSION: 0.16.0
+  # File/line backtraces without full debug info: smaller target, faster cache.
+  CARGO_PROFILE_DEV_DEBUG: "1"
+  CARGO_PROFILE_TEST_DEBUG: "1"
+  # Incremental state only bloats a cache: CI builds each commit once.
+  CARGO_INCREMENTAL: "0"
+  SAVE_CACHES: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+  # Each core test binary aborts if it runs this long (a hang, not a slow
+  # test): GitHub's runners are slower than ours.
+  HC_TEST_WATCHDOG_S: "120"
+  # Core's fixed-timing check (50 ms to finish a key sequence) skips here.
+  HC_TEST_SLOW_RUNNER: "1"
+
+jobs:
+  # Our own scripts: no herdr.dev in shipped code, and the script tests
+  # (the bundle and install tests are macOS-only and skip themselves here).
+  repo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: scripts/check-offline
+      - run: python3 -I -B -m unittest discover -s scripts -p 'test_*.py'
+
+  # Upstream core's lint job: formatting, advisories and Windows clippy from
+  # Linux (zig stubbed: type-checking needs no libghostty-vt).
+  core-lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: core
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          components: clippy, rustfmt
+          targets: x86_64-pc-windows-msvc
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: core -> target
+          key: lint
+          cache-bin: false
+          save-if: ${{ env.SAVE_CACHES }}
+      - run: cargo fmt --all -- --check
+      # Advisories (RustSec), licenses, sources: core/deny.toml.
+      - uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2.1.1
+        with:
+          command: check
+          manifest-path: core/Cargo.toml
+      - run: mkdir -p vendor/ghostty
+      - run: cargo clippy --locked --target x86_64-pc-windows-msvc --all-targets -- -D warnings
+        env:
+          ZIG: ${{ github.workspace }}/core/scripts/zig-stub.sh
+
+  core-test:
+    runs-on: macos-15
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+        working-directory: core
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: true
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          components: clippy
+      - uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2.2.1
+        with:
+          version: ${{ env.ZIG_VERSION }}
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: core -> target
+          key: macos-dev-zig${{ env.ZIG_VERSION }}
+          cache-workspace-crates: true
+          cache-bin: false
+          save-if: ${{ env.SAVE_CACHES }}
+      - run: cargo clippy --locked --all-targets -- -D warnings
+      # Upstream's macOS selection: full-screen scrolling tests (stitch) are
+      # off on macOS CI because runner timing is unreliable; 2 threads so each
+      # test's terminals keep their timing on 3 cores.
+      - name: Tests (including human docs)
+        run: |
+          only=()
+          for t in crates/herdr-core/tests/*.rs; do
+            name=$(basename "$t" .rs)
+            [ "$name" = stitch ] || only+=(--test "$name")
+          done
+          only+=(--lib --bins)
+          cargo test --locked --no-fail-fast "${only[@]}" -- --test-threads 2
+
+  app-test:
+    runs-on: macos-15
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+        working-directory: app
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: true
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2.2.1
+        with:
+          version: ${{ env.ZIG_VERSION }}
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.4
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: app -> target
+          key: macos-dev-zig${{ env.ZIG_VERSION }}
+          cache-workspace-crates: true
+          cache-bin: false
+          save-if: ${{ env.SAVE_CACHES }}
+      # The mod tests: the same files as app/justfile's `test` recipe.
+      - name: Mod tests
+        run: >-
+          bun test scripts/files.test.ts scripts/machine-add.test.ts
+          scripts/picker.test.ts scripts/palette.test.ts scripts/agents.test.ts
+          scripts/spaces.test.ts scripts/worktree.test.ts scripts/prboard.test.ts
+          scripts/issues.test.ts scripts/prchecks.test.ts scripts/pragent.test.ts
+          scripts/propen.test.ts
+      # Upstream's macOS selection: every integration test but shot_pixels
+      # (it needs the native window renderer and its own opt-in), plus --bins.
+      # Unoptimized dev dependencies cut test compile time.
+      - name: Tests
+        run: |
+          only=()
+          for t in tests/*.rs; do
+            name=$(basename "$t" .rs)
+            [ "$name" = shot_pixels ] || only+=(--test "$name")
+          done
+          only+=(--bins)
+          cargo test --locked --config 'profile.dev.package."*".opt-level=0' "${only[@]}"
+
+  # One stable required check: every job must pass.
+  ci-ok:
+    needs: [repo, core-lint, core-test, app-test]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: >-
+          [ "${{ needs.repo.result }}" = success ] &&
+          [ "${{ needs.core-lint.result }}" = success ] &&
+          [ "${{ needs.core-test.result }}" = success ] &&
+          [ "${{ needs.app-test.result }}" = success ]
