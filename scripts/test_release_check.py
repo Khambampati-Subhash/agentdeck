@@ -71,6 +71,35 @@ class ReleaseCheck(unittest.TestCase):
         self.assertEqual(out.returncode, 1)
         self.assertIn('no "## agentdeck-v0.1.0" in CHANGELOG.md', out.stderr)
 
+    def write(self, changelog):
+        with open(self.version_file, "w") as f:
+            f.write("0.1.0\n")
+        with open(self.changelog, "w") as f:
+            f.write(changelog)
+
+    def test_longer_version_header_does_not_count(self):
+        self.write("# AgentDeck changelog\n\n## agentdeck-v0.1.01 (2026-11-19)\nContent.\n")
+        out = self.run_it("agentdeck-v0.1.0")
+        self.assertEqual(out.returncode, 1)
+        self.assertIn('no "## agentdeck-v0.1.0" in CHANGELOG.md', out.stderr)
+
+    def test_deeper_heading_does_not_count(self):
+        self.write("# AgentDeck changelog\n\n### agentdeck-v0.1.0 (2026-11-19)\nContent.\n")
+        out = self.run_it("agentdeck-v0.1.0")
+        self.assertEqual(out.returncode, 1)
+        self.assertIn('no "## agentdeck-v0.1.0" in CHANGELOG.md', out.stderr)
+
+    def test_bare_header_counts(self):
+        self.write("# AgentDeck changelog\n\n## agentdeck-v0.1.0\nContent.\n")
+        out = self.run_it("agentdeck-v0.1.0")
+        self.assertEqual(out.returncode, 0, out.stderr)
+
+    def test_empty_section_fails(self):
+        self.write("# AgentDeck changelog\n\n## agentdeck-v0.1.0 (2026-11-19)\n\n## agentdeck-v0.0.1\nOld.\n")
+        out = self.run_it("agentdeck-v0.1.0")
+        self.assertEqual(out.returncode, 1)
+        self.assertIn("is empty", out.stderr)
+
     def test_bad_tag_shape_fails(self):
         with open(self.version_file, "w") as f:
             f.write("0.1.0\n")

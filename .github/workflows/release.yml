@@ -13,6 +13,9 @@ on:
       - .github/workflows/release.yml
       - scripts/bundle-mac-app
       - scripts/release-check
+      - core/scripts/mac-bundle
+      - core/distribution/macos-Info.plist
+      - app/assets/icons/Herdr.icns
       - VERSION
       - CHANGELOG.md
   workflow_dispatch:
@@ -118,6 +121,10 @@ jobs:
           VERSION: ${{ needs.build.outputs.version }}
         run: |
           scripts/release-check "$TAG" --notes "$RUNNER_TEMP/notes.md"
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::error::a release for $TAG already exists; delete the draft or upload to it"
+            exit 1
+          fi
           gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --draft --verify-tag \
             --title "AgentDeck $VERSION" --notes-file "$RUNNER_TEMP/notes.md" \
             "dist/AgentDeck-$VERSION-macos-arm64.zip" dist/SHA256SUMS

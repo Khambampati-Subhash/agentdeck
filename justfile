@@ -64,7 +64,7 @@ dev-clean:
 version:
     @cat VERSION
 
-# Creates an annotated release tag locally (refuses unless on main with a clean tree).
+# Creates an annotated release tag locally (refuses unless on a clean main that equals origin/main).
 tag:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -75,6 +75,11 @@ tag:
     fi
     if [[ -n "$(git status --porcelain)" ]]; then
         echo "Error: working tree is not clean" >&2
+        exit 1
+    fi
+    git fetch origin main
+    if [[ "$(git rev-parse main)" != "$(git rev-parse origin/main)" ]]; then
+        echo "Error: local main differs from origin/main (pull or push first)" >&2
         exit 1
     fi
     VERSION=$(cat VERSION)

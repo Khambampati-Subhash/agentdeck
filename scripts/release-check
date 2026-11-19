@@ -7,7 +7,7 @@ Usage:
 Checks:
 - TAG matches ^agentdeck-v\\d+\\.\\d+\\.\\d+$
 - TAG's version equals VERSION (stripped)
-- CHANGELOG.md has a section headed ## TAG
+- CHANGELOG.md has a non-empty section headed "## TAG" (alone or then a space)
 
 With --notes, writes that section's body to FILE.
 Exit 0 if OK, 1 with a one-line reason.
@@ -64,32 +64,27 @@ def main():
         print(f"CHANGELOG.md not found at {changelog_file}", file=sys.stderr)
         return 1
 
-    # Check for section
-    section_header = f"## {args.tag}"
-    if section_header not in changelog:
+    # Find the section: a line "## TAG" alone or followed by a space.
+    header = re.compile(rf"^## {re.escape(args.tag)}( |$)")
+    lines = changelog.split("\n")
+    start = next((i for i, line in enumerate(lines) if header.match(line)), None)
+    if start is None:
         print(f'no "## {args.tag}" in CHANGELOG.md', file=sys.stderr)
         return 1
 
-    # Extract section body if --notes requested
+    section_lines = []
+    for line in lines[start + 1:]:
+        if line.startswith("## "):
+            break
+        section_lines.append(line)
+    notes_content = "\n".join(section_lines).strip()
+    if not notes_content:
+        print(f'"## {args.tag}" in CHANGELOG.md is empty', file=sys.stderr)
+        return 1
+
     if args.notes:
-        lines = changelog.split("\n")
-        in_section = False
-        section_lines = []
-
-        for line in lines:
-            if line.startswith(section_header):
-                in_section = True
-                continue
-            elif in_section:
-                if line.startswith("## "):
-                    # Next section starts
-                    break
-                section_lines.append(line)
-
-        # Write notes, stripping leading/trailing empty lines
-        notes_content = "\n".join(section_lines).strip() + "\n"
         with open(args.notes, "w") as f:
-            f.write(notes_content)
+            f.write(notes_content + "\n")
 
     return 0
 

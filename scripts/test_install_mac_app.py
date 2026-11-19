@@ -8,7 +8,6 @@ import tempfile
 import unittest
 
 SCRIPT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "install-mac-app")
-LSREGISTER = "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
 
 
 @unittest.skipUnless(sys.platform == "darwin", "macOS only")
@@ -36,9 +35,6 @@ class InstallMacApp(unittest.TestCase):
         self.core_path = os.path.join(self.app_path, "Contents/Helpers/AgentDeck Core.app")
 
     def tearDown(self):
-        # Unregister the scratch app from lsregister
-        if os.path.exists(self.app_path):
-            subprocess.run([LSREGISTER, "-u", self.app_path], capture_output=True)
         shutil.rmtree(self.root)
 
     def test_lsenvironment_path_uses_final_installed_location(self):
@@ -47,6 +43,8 @@ class InstallMacApp(unittest.TestCase):
         env["HOME"] = self.test_home
         env["APP_BIN"] = self.app_bin
         env["CORE_BIN"] = self.core_bin
+        # Never register the scratch app in the real LaunchServices database.
+        env["ADK_LSREGISTER"] = "0"
 
         result = subprocess.run(
             [SCRIPT, "--no-build"],

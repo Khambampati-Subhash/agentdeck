@@ -8,10 +8,12 @@
 #
 # Usage: scripts/install-mac-app            (build and install)
 #        scripts/install-mac-app --no-build (install what's already built)
+# Env:   APP_BIN, CORE_BIN  binaries to install (default: the release builds)
+#        ADK_LSREGISTER=0   skip registering with LaunchServices (tests: lsregister
+#                           writes the real user's database even with HOME changed)
 set -euo pipefail
 
 NAME="AgentDeck"
-ID="io.github.khambampati-subhash.agentdeck"
 HOME_DIR="${AGENTDECK_HOME:-$HOME/.config/agentdeck}"
 OLD_APP="$HOME/Applications/AgentOS.app"
 # Installs before the rename used this home and core session ("agentos").
@@ -41,9 +43,8 @@ case "$APP" in *Herdr.app*) echo "install-mac-app: refusing to touch $APP" >&2; 
 staging_dir="$HOME/Applications/.agentdeck-staging"
 rm -rf "$staging_dir"
 mkdir -p "$staging_dir"
-version="0.1.0"
-[[ -f "$root/VERSION" ]] && version="$(cat "$root/VERSION")"
-sh "$root/scripts/bundle-mac-app" --app-bin "$app_bin" --core-bin "$core_bin" --version "$version" "$staging_dir"
+version="$(cat "$root/VERSION")"
+"$root/scripts/bundle-mac-app" --app-bin "$app_bin" --core-bin "$core_bin" --version "$version" "$staging_dir"
 staged_app="$staging_dir/$NAME.app"
 staged_core="$staged_app/Contents/Helpers/AgentDeck Core.app"
 
@@ -67,14 +68,17 @@ pb "Add :LSEnvironment:PATH string $CORE_APP/Contents/MacOS:$HOME/.local/bin:/op
 # Re-sign the bundle with per-machine settings
 codesign --force --sign - "$staged_app"
 
-# Swap the bundle in atomically (doesn't interrupt a running copy)
+# Swap the bundle in: the old one is moved aside whole, then the new one moved
+# in (not atomic; a running copy keeps its open files).
 mkdir -p "$HOME/Applications"
 [[ -d $APP ]] && mv "$APP" "$APP.old"
 mv "$staged_app" "$APP"
 rm -rf "$APP.old" "$staging_dir"
 lsregister=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
-"$lsregister" -f "$APP"
-"$lsregister" -f "$CORE_APP"
+if [[ ${ADK_LSREGISTER:-1} != 0 ]]; then
+  "$lsregister" -f "$APP"
+  "$lsregister" -f "$CORE_APP"
+fi
 mkdir -p "$HOME/.local/bin"
 ln -sfn "$APP/Contents/MacOS/$NAME" "$HOME/.local/bin/agentdeck"
 ln -sfn "$CORE" "$HOME/.local/bin/adk"

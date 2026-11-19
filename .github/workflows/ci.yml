@@ -38,7 +38,8 @@ env:
 
 jobs:
   # Our own scripts: no herdr.dev in shipped code, and the script tests
-  # (the bundle and install tests are macOS-only and skip themselves here).
+  # (the bundle and install tests are macOS-only: they skip here and run in
+  # app-test).
   repo:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -151,6 +152,11 @@ jobs:
           cache-workspace-crates: true
           cache-bin: false
           save-if: ${{ env.SAVE_CACHES }}
+      # Our script tests again, now with the macOS-only bundle and install
+      # tests (ADK_LSREGISTER=0 in the test: nothing gets registered).
+      - name: Script tests (macOS)
+        working-directory: .
+        run: python3 -I -B -m unittest discover -s scripts -p 'test_*.py'
       # The mod tests: the same files as app/justfile's `test` recipe.
       - name: Mod tests
         run: >-
