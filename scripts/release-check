@@ -1,0 +1,93 @@
+#!/usr/bin/env python3
+"""Validates a release tag against VERSION and CHANGELOG.md.
+
+Usage:
+    release-check TAG [--notes FILE] [--root DIR]
+
+Checks:
+- TAG matches ^agentdeck-v\\d+\\.\\d+\\.\\d+$
+- TAG's version equals VERSION (stripped)
+- CHANGELOG.md has a non-empty section headed "## TAG" (alone or then a space)
+
+With --notes, writes that section's body to FILE.
+Exit 0 if OK, 1 with a one-line reason.
+"""
+import argparse
+import os
+import re
+import sys
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Validate release tag")
+    parser.add_argument("tag", help="Release tag (e.g., agentdeck-v0.1.0)")
+    parser.add_argument("--notes", metavar="FILE", help="Write release notes to FILE")
+    parser.add_argument("--root", metavar="DIR", default=None,
+                        help="Repo root (default: script's parent directory)")
+    args = parser.parse_args()
+
+    # Determine repo root
+    if args.root:
+        root = args.root
+    else:
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    # Check tag shape
+    tag_pattern = r"^agentdeck-v\d+\.\d+\.\d+$"
+    if not re.match(tag_pattern, args.tag):
+        print(f"Tag {args.tag} does not match {tag_pattern}", file=sys.stderr)
+        return 1
+
+    # Extract version from tag
+    tag_version = args.tag.replace("agentdeck-v", "")
+
+    # Read VERSION file
+    version_file = os.path.join(root, "VERSION")
+    try:
+        with open(version_file) as f:
+            file_version = f.read().strip()
+    except FileNotFoundError:
+        print(f"VERSION file not found at {version_file}", file=sys.stderr)
+        return 1
+
+    # Check version match
+    if tag_version != file_version:
+        print(f"Tag says {tag_version} but VERSION says {file_version}", file=sys.stderr)
+        return 1
+
+    # Read CHANGELOG
+    changelog_file = os.path.join(root, "CHANGELOG.md")
+    try:
+        with open(changelog_file) as f:
+            changelog = f.read()
+    except FileNotFoundError:
+        print(f"CHANGELOG.md not found at {changelog_file}", file=sys.stderr)
+        return 1
+
+    # Find the section: a line "## TAG" alone or followed by a space.
+    header = re.compile(rf"^## {re.escape(args.tag)}( |$)")
+    lines = changelog.split("\n")
+    start = next((i for i, line in enumerate(lines) if header.match(line)), None)
+    if start is None:
+        print(f'no "## {args.tag}" in CHANGELOG.md', file=sys.stderr)
+        return 1
+
+    section_lines = []
+    for line in lines[start + 1:]:
+        if line.startswith("## "):
+            break
+        section_lines.append(line)
+    notes_content = "\n".join(section_lines).strip()
+    if not notes_content:
+        print(f'"## {args.tag}" in CHANGELOG.md is empty', file=sys.stderr)
+        return 1
+
+    if args.notes:
+        with open(args.notes, "w") as f:
+            f.write(notes_content + "\n")
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

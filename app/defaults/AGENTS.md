@@ -687,8 +687,8 @@ What's about the user, never a look:
   (path absolute or relative to `~/.config/agentdeck`). Changes apply live,
   including the Play buttons in Settings > Alerts.
 - `core`: the agentdeck-core binary to use, when it isn't where Herdr looks
-  (PATH, the login shell's PATH, `~/.local/bin`, Homebrew, mise, Nix,
-  cargo). Read at start.
+  (on macOS the one inside AgentDeck.app first, then PATH, `~/.local/bin`,
+  Homebrew, mise, Nix, cargo, the login shell's PATH). Read at start.
 - `font`, `font_size`, `ui_font`: used where the layout doesn't set its
   own. Herdr (main) leaves these unset. Bigger panels: `zoom`.
 - `font_ligatures`: programming ligatures are off by default; set `true` to

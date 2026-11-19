@@ -8,10 +8,12 @@
 #
 # Usage: scripts/install-mac-app            (build and install)
 #        scripts/install-mac-app --no-build (install what's already built)
+# Env:   APP_BIN, CORE_BIN  binaries to install (default: the release builds)
+#        ADK_LSREGISTER=0   skip registering with LaunchServices (tests: lsregister
+#                           writes the real user's database even with HOME changed)
 set -euo pipefail
 
 NAME="AgentDeck"
-ID="io.github.khambampati-subhash.agentdeck"
 HOME_DIR="${AGENTDECK_HOME:-$HOME/.config/agentdeck}"
 OLD_APP="$HOME/Applications/AgentOS.app"
 # Installs before the rename used this home and core session ("agentos").
@@ -30,67 +32,53 @@ if [[ ${1:-} != --no-build ]]; then
   (cd "$root/core" && cargo build --release --locked)
   (cd "$root/app" && cargo build --release --locked)
 fi
-app_bin="$root/app/target/release/agentdeck"
-core_bin="$root/core/target/release/agentdeck-core"
+app_bin="${APP_BIN:-$root/app/target/release/agentdeck}"
+core_bin="${CORE_BIN:-$root/core/target/release/agentdeck-core}"
 [[ -x $app_bin && -x $core_bin ]] || { echo "install-mac-app: build first (no --no-build)" >&2; exit 1; }
 
 # Never write over an installed Herdr.
 case "$APP" in *Herdr.app*) echo "install-mac-app: refusing to touch $APP" >&2; exit 1 ;; esac
 
-mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$HOME_DIR"
+# Build the bundle in a staging directory
+staging_dir="$HOME/Applications/.agentdeck-staging"
+rm -rf "$staging_dir"
+mkdir -p "$staging_dir"
+version="$(cat "$root/VERSION")"
+"$root/scripts/bundle-mac-app" --app-bin "$app_bin" --core-bin "$core_bin" --version "$version" "$staging_dir"
+staged_app="$staging_dir/$NAME.app"
+staged_core="$staged_app/Contents/Helpers/AgentDeck Core.app"
+
+mkdir -p "$HOME_DIR"
 # A pre-rename core may still run the "agentos" session: keep its binary, outside the app.
 if [[ -x "$CORE_APP/Contents/MacOS/herdr-core" ]]; then
   mkdir -p "$OLD_HOME" && rm -rf "$OLD_HOME/AgentOS Core.app" && mv "$CORE_APP" "$OLD_HOME/AgentOS Core.app"
   old_core="$OLD_HOME/AgentOS Core.app/Contents/MacOS/herdr-core"
   [[ -f $OLD_HOME/settings.json ]] && sed -i '' "s|\"$CORE_APP/Contents/MacOS/herdr-core\"|\"$old_core\"|" "$OLD_HOME/settings.json"
 fi
-# Replace atomically so installing doesn't interrupt a running copy.
-cp "$app_bin" "$APP/Contents/MacOS/$NAME.new" && mv -f "$APP/Contents/MacOS/$NAME.new" "$APP/Contents/MacOS/$NAME"
-chmod +x "$APP/Contents/MacOS/$NAME"
-# Running cores keep their files: the new bundle is signed aside, then swapped in.
-staged="$APP/Contents/Helpers/.core.new.app"
-rm -rf "$staged" "$staged.old"
-mkdir -p "$APP/Contents/Helpers"
-sh "$root/core/scripts/mac-bundle" "$core_bin" "$staged"
-codesign --force --sign - "$staged"
-[[ -d $CORE_APP ]] && mv "$CORE_APP" "$staged.old"
-mv "$staged" "$CORE_APP"
-rm -rf "$staged.old" "$APP/Contents/MacOS/herdr-core" # the bare core of earlier installs
-cp "$root/app/assets/icons/Herdr.icns" "$APP/Contents/Resources/$NAME.icns"
 
 # The app's core is the one inside the bundle (kept if settings already exist).
 settings="$HOME_DIR/settings.json"
 [[ -f $settings ]] || printf '{ "core": "%s" }\n' "$CORE" > "$settings"
 
-cat > "$APP/Contents/Info.plist" <<PLIST
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0"><dict>
-    <key>CFBundleExecutable</key><string>$NAME</string>
-    <key>CFBundleIdentifier</key><string>$ID</string>
-    <key>CFBundleName</key><string>$NAME</string>
-    <key>CFBundleDisplayName</key><string>$NAME</string>
-    <key>CFBundleIconFile</key><string>$NAME</string>
-    <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>0.1.0</string>
-    <key>CFBundleVersion</key><string>1</string>
-    <key>NSMicrophoneUsageDescription</key><string>Terminal programs running in $NAME can use the microphone, for example for voice input.</string>
-    <key>NSCameraUsageDescription</key><string>Terminal programs running in $NAME can use the camera.</string>
-    <key>NSAppleEventsUsageDescription</key><string>Terminal programs running in $NAME can use AppleScript to control other apps.</string>
-    <key>NSPrincipalClass</key><string>NSApplication</string>
-    <key>NSHighResolutionCapable</key><true/>
-    <key>LSEnvironment</key><dict/>
-</dict></plist>
-PLIST
-# Finder starts apps without a login shell: give it the env it needs.
-pb() { /usr/libexec/PlistBuddy -c "$1" "$APP/Contents/Info.plist"; }
+# Add per-machine environment to the staged bundle
+pb() { /usr/libexec/PlistBuddy -c "$1" "$staged_app/Contents/Info.plist"; }
 [[ $HOME_DIR == "$HOME/.config/agentdeck" ]] || pb "Add :LSEnvironment:AGENTDECK_HOME string $HOME_DIR"
 pb "Add :LSEnvironment:PATH string $CORE_APP/Contents/MacOS:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 
-codesign --force --sign - "$APP"
+# Re-sign the bundle with per-machine settings
+codesign --force --sign - "$staged_app"
+
+# Swap the bundle in: the old one is moved aside whole, then the new one moved
+# in (not atomic; a running copy keeps its open files).
+mkdir -p "$HOME/Applications"
+[[ -d $APP ]] && mv "$APP" "$APP.old"
+mv "$staged_app" "$APP"
+rm -rf "$APP.old" "$staging_dir"
 lsregister=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
-"$lsregister" -f "$APP"
-"$lsregister" -f "$CORE_APP"
+if [[ ${ADK_LSREGISTER:-1} != 0 ]]; then
+  "$lsregister" -f "$APP"
+  "$lsregister" -f "$CORE_APP"
+fi
 mkdir -p "$HOME/.local/bin"
 ln -sfn "$APP/Contents/MacOS/$NAME" "$HOME/.local/bin/agentdeck"
 ln -sfn "$CORE" "$HOME/.local/bin/adk"

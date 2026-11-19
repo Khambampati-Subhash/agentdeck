@@ -59,3 +59,31 @@ adk *args:
 dev-clean:
     -ADK_SESSION=adk-dev core/target/debug/agentdeck-core server stop
     rm -rf {{dev_root}}
+
+# Prints the version from VERSION.
+version:
+    @cat VERSION
+
+# Creates an annotated release tag locally (refuses unless on a clean main that equals origin/main).
+tag:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    BRANCH=$(git rev-parse --abbrev-ref HEAD)
+    if [[ "$BRANCH" != "main" ]]; then
+        echo "Error: must be on main branch (currently on $BRANCH)" >&2
+        exit 1
+    fi
+    if [[ -n "$(git status --porcelain)" ]]; then
+        echo "Error: working tree is not clean" >&2
+        exit 1
+    fi
+    git fetch origin main
+    if [[ "$(git rev-parse main)" != "$(git rev-parse origin/main)" ]]; then
+        echo "Error: local main differs from origin/main (pull or push first)" >&2
+        exit 1
+    fi
+    VERSION=$(cat VERSION)
+    TAG="agentdeck-v$VERSION"
+    scripts/release-check "$TAG"
+    git tag -a "$TAG" -m "Release $TAG"
+    echo "Created tag $TAG (not pushed)"

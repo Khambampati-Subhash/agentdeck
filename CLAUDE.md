@@ -6,11 +6,13 @@ window) and `core/` is [herdr-core](https://github.com/herdrdev/herdr-core)
 (`hc`, the runtime that keeps every terminal alive). Both are Apache-2.0;
 see `NOTICE.md`.
 
-**Status (2026-11-19):** P0 (import, build), P1 (no link to herdr.dev,
-PR #2), the forge loop (PR #1) and P2, the rename (PR #3), are on `main`. P2: `agentdeck` and `agentdeck-core`/`adk`, `~/.config/agentdeck`,
-`AGENTDECK_HOME`/`ADK_*`, our own bundle ids; `just side-by-side` shows it and
-stock Herdr apart. Worktree spaces nest under their repo's first space.
-Open items are in `docs/plan.md`.
+**Status (2026-11-20):** P0 (import, build), P1 (no link to herdr.dev,
+PR #2), the forge loop (PR #1), P2, the rename (PR #3), and P3 (build and
+release, PR #6) are on `main`. P3 added CI (macOS arm64), versioning
+(`VERSION`, `agentdeck-vX.Y.Z` tags, `just tag`), bundled core in
+AgentDeck.app, and a release workflow (tag → draft GitHub release).
+`agentdeck-v0.1.0` is tagged, and its draft release waits for the user to
+publish it. Open items are in `docs/plan.md`.
 Update this line at the end of every milestone.
 
 ## Docs
@@ -77,6 +79,11 @@ After cloning: `git submodule update --init --depth 1` (Ghostty).
   The user has the real Herdr installed: never use its default session or `~/.config/herdr-app`.
 - Install: `just install` (~/Applications/AgentDeck.app, `agentdeck` and `adk` in ~/.local/bin); `just migrate` copies the old AgentOS settings.
 - Side by side with stock Herdr: `just side-by-side`.
+- Versioning: `just version` prints it; `just tag` checks VERSION and CHANGELOG with
+  scripts/release-check, then makes a local annotated tag on a clean main, never pushes.
+  Releases: push an `agentdeck-vX.Y.Z` tag to trigger the release workflow, which
+  builds a draft GitHub release. No pre-release tags (release-check accepts only X.Y.Z).
+- Script tests: `just scripts` runs Python tests in `scripts/test_*.py`.
 - Mod check: `app/target/debug/agentdeck check <mod folder>`.
 - Screenshot a running scratch window: `agentdeck shot out.png`.
 

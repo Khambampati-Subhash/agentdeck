@@ -145,16 +145,20 @@ seeing each other's terminals, settings or core. `scripts/side-by-side` passes
 
 ## P3: our build and release
 
-- [ ] The app's release pipeline under our names: `scripts/package` builds
-      `agentdeck-<os>-<arch>.tar.gz` holding `AgentDeck.app` (Linux: `agentdeck`),
-      `distribution/install.sh` installs it, and `update.rs` finds, checks the
-      version of and relaunches `AgentDeck.app/Contents/MacOS/AgentDeck`.
-- [ ] GitHub Actions on our repo: macOS arm64 build and tests for both halves
+- [x] Not needed: no update channel (decided 2026-11-19); upstream's `scripts/package`,
+      `distribution/install.sh` and `update.rs` stay dormant.
+- [x] GitHub Actions on our repo: macOS arm64 build and tests for both halves
       (adapted from upstream CI). Linux comes later if wanted.
-- [ ] Versioning: `agentdeck-vX.Y.Z` tags. Our CHANGELOG lists our changes on
+- [x] Versioning: `agentdeck-vX.Y.Z` tags. Our CHANGELOG lists our changes on
       top of the upstream versions.
-- [ ] Optional: our own update channel (GitHub Releases) replacing what P1
-      turned off.
+- [x] Self-contained Mac app bundle (`scripts/bundle-mac-app`, `scripts/install-mac-app`)
+      with ad hoc signing. Release workflow builds a draft GitHub release from a tag.
+- [ ] First release (`agentdeck-v0.1.0`): tagged 2026-11-20, draft release awaits the user publishing it.
+- [ ] Upstream's app docs check (`bun test scripts/docs.test.ts`,
+      `bun scripts/docs.ts check`) and `app/scripts/test_distribution.py` don't run in our
+      CI or `just check`.
+- [ ] Flaky under full-suite load:
+      `mods::tests::known_agents_uses_snapshot_and_refreshes_changed_commands`.
 
 ## P4: upstream sync
 
@@ -187,6 +191,7 @@ do it, it's a mod):
 
 ## Open questions
 
-- macOS only, or also Linux and Windows builds?
+- macOS arm64 only for now (decided 2026-11-19). Linux and Windows builds
+  deferred.
 - Keep the Win98 layout and mods, or drop them (their fonts carry their own
   licences)?

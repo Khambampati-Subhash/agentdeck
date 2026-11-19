@@ -1,11 +1,11 @@
-//! Finding agentdeck-core (`adk`) on this machine. The app doesn't carry one: it
-//! uses the core people installed, or installs the core's own release.
+//! Finding agentdeck-core (`adk`) on this machine.
 //!
-//! Where it looks, in order: `core` in settings.json; this process's PATH;
-//! the person's login shell's PATH (an app opened from the Dock or a
-//! launcher doesn't get it); then the usual install places. A candidate
-//! counts only if `--version` says `adk …`: another program may share the
-//! name.
+//! Where it looks, in order: `core` in settings.json; on macOS, the core
+//! bundled inside AgentDeck.app (`Contents/Helpers/AgentDeck Core.app`); this
+//! process's PATH and the usual install places; then the person's login
+//! shell's PATH (an app opened from the Dock or a launcher doesn't get it).
+//! A candidate counts only if `--version` says `adk …`: another program may
+//! share the name.
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -80,6 +80,12 @@ pub fn version(bin: &Path) -> Option<String> {
     (out.status.success() && text.starts_with(crate::brand::CORE_VERSION_PREFIX)).then_some(text)
 }
 
+/// The core bundled inside this app, if the given executable is inside a `.app`.
+fn bundled_core(exe: &Path) -> Option<PathBuf> {
+    let app_root = exe.ancestors().find(|a| a.extension().and_then(|e| e.to_str()) == Some("app"))?;
+    Some(app_root.join("Contents/Helpers/AgentDeck Core.app/Contents/MacOS/agentdeck-core"))
+}
+
 /// The first agentdeck-core found, or None.
 pub fn find(configured: Option<&str>) -> Option<PathBuf> {
     let home = crate::mods::home();
@@ -90,6 +96,14 @@ pub fn find(configured: Option<&str>) -> Option<PathBuf> {
     // Tests: HERDR_CORE_DIRS replaces every place Herdr would look.
     if let Some(dirs) = std::env::var_os("HERDR_CORE_DIRS") {
         return pick(std::env::split_paths(&dirs).flat_map(|d| names(&d)).collect());
+    }
+    // The core bundled inside AgentDeck.app itself.
+    if cfg!(target_os = "macos") {
+        if let Some(bundled) = std::env::current_exe().ok().and_then(|e| e.canonicalize().ok()).and_then(|e| bundled_core(&e)) {
+            if let Some(found) = pick(vec![bundled]) {
+                return Some(found);
+            }
+        }
     }
     // The quick places first; the login shell (slow) only if they have none.
     let path = std::env::var_os("PATH").unwrap_or_default();
@@ -303,5 +317,20 @@ mod tests {
         let real = dir.join("agentdeck-core");
         assert_eq!(version(&real).as_deref(), Some("adk 0.1.1"));
         assert_eq!(find(Some(real.to_str().unwrap())), Some(real));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn bundled_core_follows_the_bundle() {
+        let app_exe = Path::new("/Applications/My Apps/Deck.app/Contents/MacOS/AgentDeck");
+        let expected = PathBuf::from("/Applications/My Apps/Deck.app/Contents/Helpers/AgentDeck Core.app/Contents/MacOS/agentdeck-core");
+        assert_eq!(bundled_core(app_exe), Some(expected));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn no_bundled_core_outside_an_app() {
+        let plain_exe = Path::new("/x/target/debug/agentdeck");
+        assert_eq!(bundled_core(plain_exe), None);
     }
 }
