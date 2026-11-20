@@ -480,8 +480,7 @@ export default class extends View {
 }"#);
     let seen = Rc::new(RefCell::new(Vec::new()));
     let calls = seen.clone();
-    gpui_shell::policy::set_default(Policy::new()
-        .with_host_module(module(Instance { name: "test".into(), props: Value::Null }, 0)).unwrap()
+    gpui_shell::policy::set_default(with_modules(Policy::new(), Instance { name: "test".into(), props: Value::Null }, 0)
         .with_host_module(HostModule::new("fixture").function("note", move |a| {
             calls.borrow_mut().push(a.string(0)?.to_owned());
             Ok(HostValue::Null)
@@ -579,8 +578,7 @@ export default class extends View {
     let fixture = Fixture::new(&source);
     let reading = Rc::new(Cell::new(false));
     let started = reading.clone();
-    gpui_shell::policy::set_default(Policy::new().with_capabilities(capabilities())
-        .with_host_module(module(Instance { name: "read-test".into(), props: Value::Null }, 44)).unwrap()
+    gpui_shell::policy::set_default(with_modules(Policy::new().with_capabilities(capabilities()), Instance { name: "read-test".into(), props: Value::Null }, 44)
         .with_host_module(HostModule::new("fixture").function("noteRead", move |_| {
             started.set(true);
             Ok(HostValue::Null)
