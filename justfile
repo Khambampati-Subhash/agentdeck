@@ -32,6 +32,10 @@ offline:
 scripts:
     python3 -I -B -m unittest discover -s scripts -p 'test_*.py'
 
+# Pulls upstream (herdr-app or herdr-core) into app/ or core/.
+sync-upstream half *args:
+    scripts/sync-upstream pull {{half}} {{args}}
+
 # The offline guard, our scripts, core's own fmt, cargo-deny, clippy (Unix and Windows) and suite, the app's mod tests (Bun) and suite.
 check: offline scripts
     cd core && just check
