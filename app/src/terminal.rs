@@ -1427,7 +1427,7 @@ fn copied_files(item: &ClipboardItem) -> Option<Vec<std::path::PathBuf>> {
 }
 
 /// The clipboard's image saved to a file of its own, for its path to be pasted.
-/// `hc put --json`'s answer: the path there, or why it refused (on stderr).
+/// `adk put --json`'s answer: the path there, or why it refused (on stderr).
 fn put_answer(stdout: &[u8], stderr: &[u8]) -> Result<String, String> {
     let json = |b: &[u8]| serde_json::from_slice::<serde_json::Value>(b).unwrap_or_default();
     if let Some(path) = json(stdout)["path"].as_str() {
@@ -1437,7 +1437,7 @@ fn put_answer(stdout: &[u8], stderr: &[u8]) -> Result<String, String> {
         return Err(why.to_owned());
     }
     let text = String::from_utf8_lossy(stderr).trim().to_owned();
-    Err(if text.is_empty() { "hc put gave no path".to_owned() } else { text })
+    Err(if text.is_empty() { "adk put gave no path".to_owned() } else { text })
 }
 
 fn refusal_notice(refused: &[(String, String)]) -> Option<(String, String)> {
@@ -4538,7 +4538,7 @@ mod tests {
     fn a_file_the_core_refuses_is_named_with_its_reason() {
         use super::{put_answer, refusal_notice};
         assert_eq!(put_answer(br#"{"path":"/tmp/a b.png"}"#, b""), Ok("/tmp/a b.png".to_owned()));
-        let big = br#"{"error":{"hint":"see `hc schema`","kind":"invalid_params","message":"too big to send to studio (16 MB at most)"}}"#;
+        let big = br#"{"error":{"hint":"see `adk schema`","kind":"invalid_params","message":"too big to send to studio (16 MB at most)"}}"#;
         let why = put_answer(b"", big).unwrap_err();
         assert_eq!(why, "too big to send to studio (16 MB at most)");
         assert_eq!(put_answer(b"", b"no such machine\n"), Err("no such machine".to_owned()));

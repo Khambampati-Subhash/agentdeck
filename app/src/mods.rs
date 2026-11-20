@@ -38,7 +38,7 @@ thread_local! {
     static CHECKING: Cell<bool> = const { Cell::new(false) };
 }
 
-/// True while `herdr-app check` loads a mod: `init()` runs there with live
+/// True while `agentdeck check` loads a mod: `init()` runs there with live
 /// exec and write capabilities, so mods can see it (`herdr.checking()`) and
 /// those side effects warn.
 fn checking() -> bool {

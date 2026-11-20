@@ -111,7 +111,7 @@ fn main() {
                 }
                 Ok(_) => {}
                 Err(error) => {
-                    eprintln!("herdr-app check: {error:#}");
+                    eprintln!("agentdeck check: {error:#}");
                     std::process::exit(1);
                 }
             }

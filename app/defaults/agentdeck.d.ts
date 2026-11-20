@@ -20,7 +20,7 @@ export function hc(args: string[]): Promise<ExecResult>;
 export function home(): string;
 /** The app's folder (`~/.config/agentdeck`, or `$AGENTDECK_HOME`): settings.json, keys.json, layouts/. */
 export function appHome(): string;
-/** True while `herdr-app check` loads this mod: `init()` runs for real there
+/** True while `agentdeck check` loads this mod: `init()` runs for real there
  *  (exec and writeTextFile included), so guard process side effects. */
 export function checking(): boolean;
 
@@ -300,7 +300,7 @@ export function window(): {
 };
 
 /** Sets the OS window's title, which window switchers, taskbars and time trackers read. The last
- *  call wins, whichever mod made it; null restores "Herdr". It doesn't outlive the app, so set it
+ *  call wins, whichever mod made it; null restores "AgentDeck". It doesn't outlive the app, so set it
  *  again when your mod starts. Call it when the title changes, not on every render. */
 export function setWindowTitle(title: string | null): null;
 

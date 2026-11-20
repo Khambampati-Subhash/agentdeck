@@ -433,7 +433,7 @@ mod tests {
             return;
         }
         let stamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
-        let label = format!("dev.herdr.check.test.{}.{stamp}", std::process::id());
+        let label = format!("io.github.khambampati-subhash.agentdeck.check.test.{}.{stamp}", std::process::id());
         let dir = crate::test_tmp().join(format!("herdr-check-test-{stamp}"));
         fs::DirBuilder::new().mode(0o700).create(&dir).unwrap();
         let mut job = Job { dir, target: format!("{domain}/{label}"), loaded: false, handed_off: false };

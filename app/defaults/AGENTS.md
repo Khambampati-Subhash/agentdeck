@@ -368,7 +368,7 @@ layout's look and a block can differ:
 - `font` / `font_size`: the terminals', the Files preview's and the Changes
   diff's (px at zoom 1); `ui_font`: the mods' (their text sizes are their own,
   in px, and follow zoom). Optional: without them a layout uses settings.json's,
-  else Herdr's (JetBrains Mono 14, Geist).
+  else AgentDeck's (JetBrains Mono 14, Geist).
   Herdr (main) leaves these unset; Terminals sets text size 15, and Herdr 98
   brings its own fonts.
   JetBrains Mono, Geist Mono and Geist ship with Herdr; any installed font
@@ -981,25 +981,25 @@ In `mod.json`, declare what the mod can open:
 {"place":"none","link_handlers":[{"kind":"file","pattern":"(?i)\\.png$"}]}
 ```
 
-Herdr offers the same URLs and paths it detects for native clicks, including
+AgentDeck offers the same URLs and paths it detects for native clicks, including
 recognized paths that are missing or remote. Rules use Rust regex search.
 File rules match decoded `file:` paths, and URL rules match the full URI.
 Each mod gets the link kind from its first matching rule. Plain paths use the
 native diagnostic suffix fallback. Bare filenames and backslash paths are skipped.
-The first time a mod has link rules on a personal layout, Herdr adds it to
+The first time a mod has link rules on a personal layout, AgentDeck adds it to
 that layout. Edit `link_handlers` to reorder or remove it.
 
 Export `handleLink(click)` from `link.js` (it can be async). It receives
-`{link, source}` and can import the usual functions from `"herdr"`. The source
+`{link, source}` and can import the usual functions from `"agentdeck"`. The source
 names the clicked terminal and its machine, cwd, pane, tab and space.
 `link.raw` keeps the original text or the OSC 8 destination. `link.path` is
-null for remote, unresolved or non-UTF-8 paths. For a file URI, Herdr can verify
+null for remote, unresolved or non-UTF-8 paths. For a file URI, AgentDeck can verify
 a local path when the host is empty or `localhost`. A link handler starts without opening
 a view and shares `localStorage` with views of the same mod with null props.
 Return `"handled"` when done or `"pass"` to try the next matching mod.
 If all pass, a local terminal uses the usual opener target. A matched file
 from a remote terminal has no opener target. A load or handler error stops
-the click, shows a toast and appears in `herdr-app status`.
+the click, shows a toast and appears in `agentdeck status`.
 
 ### Check before you finish
 
@@ -1011,7 +1011,7 @@ Loads and renders the mod's view if it has one. It checks link rules and
 verifies that `link.js` exports `handleLink` without running the module or
 its imports. It exits nonzero with the exact error. Run it after every change.
 
-`init()` runs for real during a check. Import `checking` from `"herdr"` and
+`init()` runs for real during a check. Import `checking` from `"agentdeck"` and
 use `if (checking()) return;` before starting helpers or writing files.
 `checking()` is true throughout a check and false in a live window.
 `exec`, `hc` and `writeTextFile` still run during checks and warn when called.
@@ -1211,7 +1211,7 @@ All of it is in `agentdeck.d.ts`. In short:
   Files also refreshes on its 10-second timer:
   `cx.spawn(async (cx) => { for (;;) { await watchFolder(dir); this.reload(); cx.notify(); } })`.
 - Window title: `setWindowTitle(title)` sets the OS window's title, which window switchers,
-  taskbars and time trackers read. The last call wins; `null` restores `Herdr`. Call it when the
+  taskbars and time trackers read. The last call wins; `null` restores `AgentDeck`. Call it when the
   title changes, not on every render.
 - App icon badge: `setBadge(text)` puts `text` on the app's Dock icon (macOS; other platforms
   ignore it), e.g. `setBadge(blocked ? String(blocked) : null)`. The last call wins; `null` or `""`

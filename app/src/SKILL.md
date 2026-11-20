@@ -33,7 +33,7 @@ To start one the person will look at later without moving them there, pass
 `--focus false`:
 
 ```sh
-herdr-app do space.new --name eng-123 --folder ~/code/app/eng-123 --argv '["claude"]' --task "Implement ENG-123" --focus false
+agentdeck do space.new --name eng-123 --folder ~/code/app/eng-123 --argv '["claude"]' --task "Implement ENG-123" --focus false
 ```
 
 Pick an explicit, useful name for every new space and tab; don't rely on
@@ -175,7 +175,7 @@ agentdeck shot /tmp/mod.png   # then look at the picture
 and checks the `handleLink` export in `link.js` without running the module.
 It exits nonzero with the exact error. Its shared state starts empty and stays
 in memory, leaving shared.json untouched. Its `init()` still runs: import
-`checking` from `"herdr"` and guard
+`checking` from `"agentdeck"` and guard
 process side effects with `if (checking()) return;`. It is true throughout a
 check and false in a live window; `exec`, `hc` and `writeTextFile` still run
 and warn during checks. Never call a mod done without a passing check.

@@ -3786,8 +3786,8 @@ impl AppWindow {
                     Ok(true) => {}
                     Ok(false) => return self.fail("no update is ready yet"),
                     Err(error) => {
-                        let reason = format!("Couldn't replace Herdr's files: {error}.");
-                        return self.fail(if cfg!(windows) { format!("Close Herdr's terminals (or restart Windows) and try again. {reason}") } else { reason });
+                        let reason = format!("Couldn't replace AgentDeck's files: {error}.");
+                        return self.fail(if cfg!(windows) { format!("Close AgentDeck's terminals (or restart Windows) and try again. {reason}") } else { reason });
                     }
                 }
                 self.drain_documents(window, cx);
@@ -4187,7 +4187,7 @@ impl AppWindow {
             Request::Run { name, args } => self.run(&name, args, window, cx),
             Request::OpenOverlay { id, spec } => self.open_overlay(id, spec, window, cx),
             Request::CloseOverlay { id } => self.close_overlay(&id, window, cx),
-            Request::SetWindowTitle(title) => window.set_window_title(title.as_deref().unwrap_or("Herdr")),
+            Request::SetWindowTitle(title) => window.set_window_title(title.as_deref().unwrap_or("AgentDeck")),
             Request::SetBadge(text) => crate::badge::set(text.as_deref()),
             Request::Refresh => self.refresh_mods(cx),
             Request::Control { cmd, reply } => {
@@ -7476,7 +7476,7 @@ export default class Probe extends View {
             cx.window_title()
         };
         assert_eq!(title(json!("acorn"), cx).as_deref(), Some("acorn"));
-        assert_eq!(title(json!(null), cx).as_deref(), Some("Herdr"));
+        assert_eq!(title(json!(null), cx).as_deref(), Some("AgentDeck"));
     }
 
     include!("window/pane_size_tests.rs");
