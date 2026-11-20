@@ -148,7 +148,7 @@ pub struct StatusResult {
     pub live: usize,
     pub finished: usize,
     /// The package manager this hc came from (homebrew, nix, mise, or
-    /// system package manager): it updates hc, `hc update` won't.
+    /// system package manager): it updates hc, `adk update` won't.
     /// Null for a replaceable plain install.
     pub installed_by: Option<String>,
 }
@@ -236,7 +236,7 @@ pub struct RunParams {
     /// with --on, that machine's home).
     #[arg(long)]
     pub cwd: Option<String>,
-    /// Run it on another machine (see `hc machine ls`); its address is `machine/t7`.
+    /// Run it on another machine (see `adk machine ls`); its address is `machine/t7`.
     #[arg(long, value_name = "MACHINE")]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub on: Option<String>,
@@ -604,7 +604,7 @@ pub struct ExecParams {
     #[arg(skip)]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub line: Option<String>,
-    /// Run it on another machine (see `hc machine ls`).
+    /// Run it on another machine (see `adk machine ls`).
     #[arg(long, value_name = "MACHINE")]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub on: Option<String>,
@@ -656,7 +656,7 @@ pub struct ExecResult {
 pub struct FileAt {
     /// The file: absolute, or from `cwd`.
     pub path: String,
-    /// On another machine (see `hc machine ls`).
+    /// On another machine (see `adk machine ls`).
     #[arg(long, value_name = "MACHINE")]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub on: Option<String>,
@@ -755,7 +755,7 @@ pub struct MachineAddParams {
     pub via: Option<String>,
     /// Mark it short-lived (a sandbox for a task), so clients can show it apart
     /// from machines that stay. hc treats it like any other; remove it with
-    /// `hc machine rm`.
+    /// `adk machine rm`.
     #[arg(long = "temp")]
     #[serde(default)]
     pub temporary: bool,

@@ -40,6 +40,9 @@ here with why. Files we only added aren't upstream's and aren't listed.
 | `app/src/mods.rs` (`known_agents`) | P3 (2026-11-20): `known_agents_with` takes the installed-command lookup, so its test runs without the person's interactive shell, which a busy machine can't start within the 30 s limit. Worth offering upstream: the test flakes there too. |
 | `app/src/core_bin/cli_link.rs` | The CLI link is made for `AgentDeck.app/Contents/MacOS/AgentDeck` (`brand::APP_BUNDLE`, `APP_EXE`), not `Herdr.app`, and leaves a link to stock Herdr alone (2026-11-20). |
 | `app/src/update.rs` | P4: the dormant updater names AgentDeck.app (doc comments, `PACKED` const on macOS uses `brand::APP_BUNDLE`). |
+| `core/crates/herdr-core/src/api/types.rs` | P4: clap help and OpenRPC schema say `adk` (not `hc`): `` `adk update` ``, `` `adk machine ls` ``, `` `adk machine rm` `` in /// docs that become clap --help text and OpenRPC method descriptions. |
+| `core/crates/herdr-core/src/config.rs` | P4: config field doc says `` `adk attach` `` (not `hc attach`), shown in config documentation. |
+| `core/docs/commands.md`, `core/schema/hc.openrpc.json` | P4: generated from the above (`` `just docs` `` and `HC_UPDATE_SCHEMA=1 cargo test --test m0` in core/). |
 
 ## Syncing
 
