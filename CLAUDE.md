@@ -8,10 +8,11 @@ see `NOTICE.md`.
 
 **Status (2026-11-20):** P0 (import, build), P1 (no link to herdr.dev,
 PR #2), the forge loop (PR #1), P2, the rename (PR #3), and P3 (build and
-release, PR #6) are on `main`. P3 added CI (macOS arm64), versioning
-(`VERSION`, `agentdeck-vX.Y.Z` tags, `just tag`), bundled core in
-AgentDeck.app, and a release workflow (tag → draft GitHub release).
-`agentdeck-v0.1.0` was published on 2026-11-20. Open items are in `docs/plan.md`.
+release, PRs #6 to #8) are on `main`. P3 added CI (macOS arm64, with the app
+docs and distribution checks), versioning (`VERSION`, `agentdeck-vX.Y.Z`
+tags, `just tag`), bundled core in AgentDeck.app, and a release workflow
+(tag → draft GitHub release). `agentdeck-v0.1.0` was published on 2026-11-20.
+Next is P4 (upstream sync). Open items are in `docs/plan.md`.
 Update this line at the end of every milestone.
 
 ## Docs
