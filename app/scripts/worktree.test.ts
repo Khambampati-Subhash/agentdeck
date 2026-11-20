@@ -124,7 +124,7 @@ for (const on of [undefined, null, "server"]) {
       expect(await worktree.create()).toBe("");
       expect(executions).toHaveLength(2);
       expect(executions.every(e => (e.on ?? null) === (on ?? null))).toBe(true);
-      expect(executions[1].args).toEqual(["worktree", "add", "/home/user/.herdr/worktrees/repo/feature", "feature"]);
+      expect(executions[1].args).toEqual(["worktree", "add", "/home/user/.agentdeck/worktrees/repo/feature", "feature"]);
       worktree.open({ path: "/repo/existing" });
       expect(destinations).toEqual([on ?? null, on ?? null]);
     });
@@ -179,7 +179,7 @@ test("a task brings an agent picker; Enter starts that agent with the task", asy
   expect(text).not.toContain("Pi");
   await worktree.create();
   expect(writes[0]).toEqual(["space.new", {
-    folder: "/home/user/.herdr/worktrees/repo/12-fix",
+    folder: "/home/user/.agentdeck/worktrees/repo/12-fix",
     machine: "",
     tab: undefined,
     argv: ["codex"],
@@ -261,11 +261,12 @@ test("no task, no picker: today's dialog is unchanged", async () => {
   });
   const rendered = worktree.render({}).node;
   const text = textOf(rendered);
-  expect(text).not.toContain("agent");
+  expect(text).not.toContain("Claude Code");
+  expect(text).not.toContain("Codex");
   expect(worktree.agents).toBeUndefined();
   await worktree.create();
   expect(writes[0]).toEqual(["space.new", {
-    folder: "/home/user/.herdr/worktrees/repo/fix",
+    folder: "/home/user/.agentdeck/worktrees/repo/fix",
     machine: "",
     tab: undefined,
     argv: undefined,
@@ -305,7 +306,7 @@ test("a branch with a task waits for Enter before it creates anything", async ()
   await settle();
   expect(executions.filter((e) => e.args.includes("worktree") && e.args.includes("add")).length).toBe(1);
   expect(writes).toEqual([["space.new", {
-    folder: "/home/user/.herdr/worktrees/repo/12-fix", machine: "", tab: undefined, argv: ["claude"], task: "Work on #12",
+    folder: "/home/user/.agentdeck/worktrees/repo/12-fix", machine: "", tab: undefined, argv: ["claude"], task: "Work on #12",
   }]]);
 });
 
@@ -316,7 +317,7 @@ test("a branch with no task still creates it on load", async () => {
   worktree.init({}, cx);
   await settle();
   expect(writes).toEqual([["space.new", {
-    folder: "/home/user/.herdr/worktrees/repo/fix", machine: "", tab: undefined, argv: undefined, task: undefined,
+    folder: "/home/user/.agentdeck/worktrees/repo/fix", machine: "", tab: undefined, argv: undefined, task: undefined,
   }]]);
 });
 

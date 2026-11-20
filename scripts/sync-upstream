@@ -1,0 +1,234 @@
+#!/usr/bin/env python3
+"""Syncs upstream (herdr-app or herdr-core) into app/ or core/.
+
+Usage:
+    sync-upstream pull <app|core> [ref]
+    sync-upstream check <app|core>
+
+`pull` fetches from upstream and merges. On conflict, lists the files and exits.
+`check` prints added lines to review, then runs offline/names checks and the suite.
+"""
+import argparse
+import os
+import re
+import subprocess
+import sys
+
+# Line-buffered stdout so output appears before child scripts when piped
+sys.stdout.reconfigure(line_buffering=True)
+
+
+def run_cmd(cmd, **kwargs):
+    """Run a command, wrapping errors with command and stderr."""
+    try:
+        # Decode with errors="replace" to handle any encoding issues
+        if 'text' in kwargs and kwargs['text']:
+            if 'encoding' not in kwargs:
+                kwargs['errors'] = 'replace'
+        return subprocess.run(cmd, **kwargs)
+    except subprocess.CalledProcessError as e:
+        cmd_str = ' '.join(cmd) if isinstance(cmd, list) else cmd
+        stderr = e.stderr if e.stderr else ''
+        print(f"command failed: {cmd_str}", file=sys.stderr)
+        if stderr:
+            print(stderr, file=sys.stderr)
+        sys.exit(2)
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Sync upstream into a half")
+    parser.add_argument("command", choices=["pull", "check"], help="pull or check")
+    parser.add_argument("half", choices=["app", "core"], help="app or core")
+    parser.add_argument("ref", nargs="?", default="master", help="upstream ref (default: master)")
+    args = parser.parse_args()
+
+    # Work from repo root
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    os.chdir(root)
+
+    if args.command == "pull":
+        return pull(args.half, args.ref)
+    else:
+        return check(args.half)
+
+
+def pull(half, ref):
+    """Fetch and merge upstream into the half."""
+    # Check if on main
+    current_branch = run_cmd(
+        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+        capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+    if current_branch == "main":
+        print("refuse to sync on main", file=sys.stderr)
+        return 2
+
+    # Check if tree is dirty
+    status_output = run_cmd(
+        ["git", "status", "--porcelain", "--untracked-files=no"],
+        capture_output=True, text=True, check=True
+    ).stdout
+
+    if status_output.strip():
+        print("working tree has staged or modified files", file=sys.stderr)
+        return 2
+
+    # Remote name
+    remote_name = f"upstream-{half}"
+
+    # Add remote if missing
+    remotes = run_cmd(
+        ["git", "remote"],
+        capture_output=True, text=True, check=True
+    ).stdout.splitlines()
+
+    if remote_name not in remotes:
+        upstream_url = os.environ.get("SYNC_UPSTREAM_URL")
+        if not upstream_url:
+            upstream_url = f"https://github.com/herdrdev/herdr-{half}.git"
+        run_cmd(
+            ["git", "remote", "add", remote_name, upstream_url],
+            check=True
+        )
+
+    # Fetch
+    run_cmd(
+        ["git", "fetch", "--no-tags", remote_name, ref],
+        check=True
+    )
+
+    # Get the short SHA of what we're merging
+    upstream_sha = run_cmd(
+        ["git", "rev-parse", "--short", "FETCH_HEAD^{commit}"],
+        capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+    # Merge message
+    merge_msg = f"repo: sync {half} with upstream {upstream_sha}"
+
+    # Attempt the merge
+    merge_result = subprocess.run(
+        ["git", "subtree", "merge", "--prefix=" + half, "FETCH_HEAD", "-m", merge_msg],
+        capture_output=True, text=True
+    )
+
+    if merge_result.returncode != 0:
+        # Check for conflicts
+        conflicts_output = run_cmd(
+            ["git", "diff", "--name-only", "--diff-filter=U"],
+            capture_output=True, text=True, check=True
+        ).stdout.strip()
+
+        if conflicts_output:
+            print("conflicts:")
+            for path in conflicts_output.splitlines():
+                print(path)
+            print(f"resolve them (docs/upstream.md#conflict-rules), commit, then: scripts/sync-upstream check {half}")
+            return 1
+        else:
+            # Merge failed without conflicts
+            print(merge_result.stderr, file=sys.stderr)
+            return 1
+
+    # Success: run check
+    return check(half)
+
+
+def check(half):
+    """Check added lines and run guards."""
+    # Find the base: merge-base with main
+    # Check if main exists
+    main_check = run_cmd(
+        ["git", "rev-parse", "--verify", "main"],
+        capture_output=True, text=True
+    )
+    if main_check.returncode != 0:
+        print("main branch not found", file=sys.stderr)
+        return 2
+
+    # Check if HEAD is main
+    current_branch = run_cmd(
+        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+        capture_output=True, text=True, check=True
+    ).stdout.strip()
+    if current_branch == "main":
+        print("cannot check on main", file=sys.stderr)
+        return 2
+
+    # Get merge base
+    base = run_cmd(
+        ["git", "merge-base", "HEAD", "main"],
+        capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+    # Check if there are any commits beyond the merge base that touch the half
+    commits_in_half = run_cmd(
+        ["git", "rev-list", f"{base}..HEAD", "--", half],
+        capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+    if not commits_in_half:
+        print(f"no commits syncing {half} on this branch", file=sys.stderr)
+        return 2
+
+    # Get added lines in the half with specific diff options
+    diff_output = run_cmd(
+        ["git", "diff", "--no-color", "--no-ext-diff", "--src-prefix=a/", "--dst-prefix=b/", f"{base}..HEAD", "--", half],
+        capture_output=True, text=True, check=True
+    ).stdout
+
+    # Filter for lines matching the patterns
+    patterns = [
+        r"herdr\.dev",
+        r"https?://",
+        r"reqwest",
+        r"curl",
+        r"telemetry",
+        r"Herdr",
+        r"herdr-app ",
+        r"\bhc ",
+        r"\[hc\]",
+        r"\bhc:",
+        r"herdr-core ",
+    ]
+    combined_pattern = re.compile("|".join(patterns))
+
+    print("added lines to review:", flush=True)
+    current_file = "(unknown)"
+    for line in diff_output.splitlines():
+        # File headers are "+++ b/..." or "+++ /dev/null"
+        if line.startswith("+++ b/"):
+            current_file = line[6:]  # Skip "+++ b/"
+        elif line.startswith("+++ /dev/null"):
+            current_file = "(deleted)"
+        elif line.startswith("+") and not line.startswith("+++"):
+            # This is an added line (not a +++ header or ++ at start of content)
+            content = line[1:]  # Skip the "+"
+            if combined_pattern.search(content):
+                print(f"{current_file}: {content}", flush=True)
+
+    # Run check-offline
+    result = subprocess.run(["scripts/check-offline"])
+    if result.returncode != 0:
+        return result.returncode
+
+    # Run check-names
+    result = subprocess.run(["scripts/check-names"])
+    if result.returncode != 0:
+        return result.returncode
+
+    # Run the suite (unless skipped)
+    if os.environ.get("SYNC_UPSTREAM_SKIP_SUITES") == "1":
+        return 0
+
+    if half == "core":
+        result = subprocess.run(["sh", "-c", "cd core && just check"])
+    else:
+        result = subprocess.run(["sh", "-c", "cd app && just test && just docs-check"])
+
+    return result.returncode
+
+
+if __name__ == "__main__":
+    sys.exit(main())

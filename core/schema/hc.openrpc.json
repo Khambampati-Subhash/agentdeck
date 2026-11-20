@@ -1051,7 +1051,7 @@
             "type": "array"
           },
           "installed_by": {
-            "description": "The package manager this hc came from (homebrew, nix, mise, or\nsystem package manager): it updates hc, `hc update` won't.\nNull for a replaceable plain install.",
+            "description": "The package manager this hc came from (homebrew, nix, mise, or\nsystem package manager): it updates hc, `adk update` won't.\nNull for a replaceable plain install.",
             "type": [
               "string",
               "null"
@@ -1705,11 +1705,11 @@
           }
         },
         {
-          "description": "Working directory (default: where hc runs; through the API, the core's;\nwith --on, that machine's home).",
+          "description": "Working directory (default: where adk runs; through the API, the core's;\nwith --on, that machine's home).",
           "name": "cwd",
           "required": false,
           "schema": {
-            "description": "Working directory (default: where hc runs; through the API, the core's;\nwith --on, that machine's home).",
+            "description": "Working directory (default: where adk runs; through the API, the core's;\nwith --on, that machine's home).",
             "type": [
               "string",
               "null"
@@ -1823,11 +1823,11 @@
           }
         },
         {
-          "description": "Run it on another machine (see `hc machine ls`); its address is `machine/t7`.",
+          "description": "Run it on another machine (see `adk machine ls`); its address is `machine/t7`.",
           "name": "on",
           "required": false,
           "schema": {
-            "description": "Run it on another machine (see `hc machine ls`); its address is `machine/t7`.",
+            "description": "Run it on another machine (see `adk machine ls`); its address is `machine/t7`.",
             "type": [
               "string",
               "null"
@@ -2978,11 +2978,11 @@
           }
         },
         {
-          "description": "Working directory (default: where hc runs; through the API, the core's;\nwith --on, that machine's home).",
+          "description": "Working directory (default: where adk runs; through the API, the core's;\nwith --on, that machine's home).",
           "name": "cwd",
           "required": false,
           "schema": {
-            "description": "Working directory (default: where hc runs; through the API, the core's;\nwith --on, that machine's home).",
+            "description": "Working directory (default: where adk runs; through the API, the core's;\nwith --on, that machine's home).",
             "type": [
               "string",
               "null"
@@ -3027,11 +3027,11 @@
           }
         },
         {
-          "description": "Run it on another machine (see `hc machine ls`).",
+          "description": "Run it on another machine (see `adk machine ls`).",
           "name": "on",
           "required": false,
           "schema": {
-            "description": "Run it on another machine (see `hc machine ls`).",
+            "description": "Run it on another machine (see `adk machine ls`).",
             "type": [
               "string",
               "null"
@@ -3116,11 +3116,11 @@
       "paramStructure": "by-name",
       "params": [
         {
-          "description": "Where a relative path starts (default: where hc runs; through the API,\nthe core's; with --on, that machine's home).",
+          "description": "Where a relative path starts (default: where adk runs; through the API,\nthe core's; with --on, that machine's home).",
           "name": "cwd",
           "required": false,
           "schema": {
-            "description": "Where a relative path starts (default: where hc runs; through the API,\nthe core's; with --on, that machine's home).",
+            "description": "Where a relative path starts (default: where adk runs; through the API,\nthe core's; with --on, that machine's home).",
             "type": [
               "string",
               "null"
@@ -3156,11 +3156,11 @@
           }
         },
         {
-          "description": "On another machine (see `hc machine ls`).",
+          "description": "On another machine (see `adk machine ls`).",
           "name": "on",
           "required": false,
           "schema": {
-            "description": "On another machine (see `hc machine ls`).",
+            "description": "On another machine (see `adk machine ls`).",
             "type": [
               "string",
               "null"
@@ -3227,11 +3227,11 @@
       "paramStructure": "by-name",
       "params": [
         {
-          "description": "Where a relative path starts (default: where hc runs; through the API,\nthe core's; with --on, that machine's home).",
+          "description": "Where a relative path starts (default: where adk runs; through the API,\nthe core's; with --on, that machine's home).",
           "name": "cwd",
           "required": false,
           "schema": {
-            "description": "Where a relative path starts (default: where hc runs; through the API,\nthe core's; with --on, that machine's home).",
+            "description": "Where a relative path starts (default: where adk runs; through the API,\nthe core's; with --on, that machine's home).",
             "type": [
               "string",
               "null"
@@ -3248,11 +3248,11 @@
           }
         },
         {
-          "description": "On another machine (see `hc machine ls`).",
+          "description": "On another machine (see `adk machine ls`).",
           "name": "on",
           "required": false,
           "schema": {
-            "description": "On another machine (see `hc machine ls`).",
+            "description": "On another machine (see `adk machine ls`).",
             "type": [
               "string",
               "null"
@@ -3340,11 +3340,11 @@
       "paramStructure": "by-name",
       "params": [
         {
-          "description": "Where a relative path starts (default: where hc runs; through the API,\nthe core's; with --on, that machine's home).",
+          "description": "Where a relative path starts (default: where adk runs; through the API,\nthe core's; with --on, that machine's home).",
           "name": "cwd",
           "required": false,
           "schema": {
-            "description": "Where a relative path starts (default: where hc runs; through the API,\nthe core's; with --on, that machine's home).",
+            "description": "Where a relative path starts (default: where adk runs; through the API,\nthe core's; with --on, that machine's home).",
             "type": [
               "string",
               "null"
@@ -3364,11 +3364,11 @@
           }
         },
         {
-          "description": "On another machine (see `hc machine ls`).",
+          "description": "On another machine (see `adk machine ls`).",
           "name": "on",
           "required": false,
           "schema": {
-            "description": "On another machine (see `hc machine ls`).",
+            "description": "On another machine (see `adk machine ls`).",
             "type": [
               "string",
               "null"
@@ -3677,11 +3677,11 @@
           }
         },
         {
-          "description": "The hc session on that machine (default: its default).",
+          "description": "The adk session on that machine (default: its default).",
           "name": "session",
           "required": false,
           "schema": {
-            "description": "The hc session on that machine (default: its default).",
+            "description": "The adk session on that machine (default: its default).",
             "type": [
               "string",
               "null"
@@ -3701,12 +3701,12 @@
           }
         },
         {
-          "description": "Mark it short-lived (a sandbox for a task), so clients can show it apart\nfrom machines that stay. hc treats it like any other; remove it with\n`hc machine rm`.",
+          "description": "Mark it short-lived (a sandbox for a task), so clients can show it apart\nfrom machines that stay. adk treats it like any other; remove it with\n`adk machine rm`.",
           "name": "temporary",
           "required": false,
           "schema": {
             "default": false,
-            "description": "Mark it short-lived (a sandbox for a task), so clients can show it apart\nfrom machines that stay. hc treats it like any other; remove it with\n`hc machine rm`.",
+            "description": "Mark it short-lived (a sandbox for a task), so clients can show it apart\nfrom machines that stay. adk treats it like any other; remove it with\n`adk machine rm`.",
             "type": "boolean"
           }
         },

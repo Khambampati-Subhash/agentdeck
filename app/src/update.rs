@@ -1,5 +1,5 @@
 //! The app's own updates. An installed app (Linux: `~/.local/share/herdr-app`,
-//! macOS: `Herdr.app`) checks `<release server>/app/latest.json` a little
+//! macOS: `AgentDeck.app`) checks `<release server>/app/latest.json` a little
 //! after it opens and every hour, downloads a newer build for this
 //! machine, checks its sha256 and unpacks it next to itself (`<install>.new`).
 //! The frame then shows "Restart"; the swap happens on restart or the next
@@ -7,8 +7,8 @@
 //! after a swap runs `hc update` for the core.
 //!
 //! A build from source never updates: only `scripts/package` (the release
-//! builds) sets `HERDR_APP_RELEASE`. `scripts/install-macos` makes a
-//! Herdr.app too, so the install's shape alone can't tell.
+//! builds) sets `HERDR_APP_RELEASE`. `scripts/install-macos` makes an
+//! AgentDeck.app too, so the install's shape alone can't tell.
 //!
 //! AgentDeck has no release server of its own: nothing is checked or downloaded
 //! unless `HERDR_RELEASES_URL` names one (tests point it at a local server).
@@ -22,6 +22,8 @@ use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Condvar, Mutex};
 use std::time::Duration;
+
+use crate::brand;
 
 const EVERY: Duration = Duration::from_secs(60 * 60);
 /// After a failed check or download (offline, a damaged file).
@@ -38,7 +40,7 @@ fn find_root() -> Option<PathBuf> {
     let exe = std::env::current_exe().ok()?.canonicalize().ok()?;
     let dir = exe.parent()?;
     if cfg!(target_os = "macos") {
-        // Herdr.app/Contents/MacOS/Herdr
+        // AgentDeck.app/Contents/MacOS/AgentDeck
         let bundle = dir.parent()?.parent()?;
         (bundle.extension()? == "app").then(|| bundle.to_path_buf())
     } else {
@@ -48,13 +50,13 @@ fn find_root() -> Option<PathBuf> {
 }
 
 /// The folder or bundle name inside a release tarball.
-const PACKED: &str = if cfg!(target_os = "macos") { "Herdr.app" } else { "herdr-app" };
+const PACKED: &str = if cfg!(target_os = "macos") { brand::APP_BUNDLE } else { "herdr-app" };
 
 fn beside(root: &Path, suffix: &str) -> PathBuf {
     let mut name = root.file_name().unwrap_or_default().to_os_string();
     name.push(suffix);
     // macOS: Spotlight skips a folder ending in `.noindex`, so a staged
-    // `Herdr.app.new` never shows up in search under that name.
+    // `AgentDeck.app.new` never shows up in search under that name.
     if cfg!(target_os = "macos") {
         name.push(".noindex");
     }

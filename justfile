@@ -28,12 +28,20 @@ side-by-side:
 offline:
     scripts/check-offline
 
+# Fails if upstream-only names come back (see scripts/names-allow.txt).
+names:
+    scripts/check-names
+
 # Our own scripts' tests.
 scripts:
     python3 -I -B -m unittest discover -s scripts -p 'test_*.py'
 
+# Pulls upstream (herdr-app or herdr-core) into app/ or core/.
+sync-upstream half *args:
+    scripts/sync-upstream pull {{half}} {{args}}
+
 # The offline guard, our scripts, core's own fmt, cargo-deny, clippy (Unix and Windows) and suite, the app's mod tests (Bun) and suite.
-check: offline scripts
+check: offline names scripts
     cd core && just check
     cd app && just test
     cd app && just docs-check
