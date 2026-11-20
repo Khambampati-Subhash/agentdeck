@@ -1,5 +1,9 @@
 # AgentDeck changelog
 
+## Unreleased
+
+- **Command line link**: AgentDeck.app from a release now links `agentdeck` into `~/.local/bin` when it runs from an Applications folder. 0.1.0 looked for `Herdr.app` and never made the link.
+
 ## agentdeck-v0.1.0 (2026-11-20)
 On herdr-app 0.1.14 and herdr-core 0.1.19.
 
