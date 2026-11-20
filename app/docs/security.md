@@ -11,8 +11,8 @@ Layouts can load mods. Check those references too.
 
 ## What stays on disk
 
-The default app home is `~/.config/herdr-app`, including on macOS and Windows (under your user home).
-`XDG_CONFIG_HOME` changes the config root. `HERDR_APP_HOME` selects an app home directly and takes precedence.
+The default app home is `~/.config/agentdeck`, including on macOS and Windows (under your user home).
+`XDG_CONFIG_HOME` changes the config root. `AGENTDECK_HOME` selects an app home directly and takes precedence.
 
 This folder holds your settings, keys, layouts, mods, generated agent guide and API types.
 It also holds mod data, shared state, window positions, this screen's focus and zoom, update notes and cached media, and telemetry while enabled.
