@@ -3,6 +3,8 @@
 ## Unreleased
 
 - **Command line link**: AgentDeck.app from a release now links `agentdeck` into `~/.local/bin` when it runs from an Applications folder. 0.1.0 looked for `Herdr.app` and never made the link.
+- **Upstream fixes**: the app and core now include upstream's fixes up to herdr-app 0.1.16 and herdr-core 0.1.21.
+- **Worktree folder**: new worktrees go under `~/.agentdeck/worktrees` instead of Herdr's `~/.herdr/worktrees` (or where `worktrees.directory` in settings.json says). Existing ones are left alone.
 
 ## agentdeck-v0.1.0 (2026-11-20)
 On herdr-app 0.1.14 and herdr-core 0.1.19.

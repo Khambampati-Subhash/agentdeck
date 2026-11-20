@@ -167,11 +167,11 @@ seeing each other's terminals, settings or core. `scripts/side-by-side` passes
 
 ## P4: upstream sync
 
-- [ ] `docs/upstream.md`: procedure (`git subtree pull --prefix=app
+- [x] `docs/upstream.md`: procedure (`git subtree pull --prefix=app
       upstream-app master`, same for core), a list of every file we changed and
       why, and a log of syncs.
-- [ ] `just sync-upstream`: pulls, re-runs the rename checks and tests.
-- [ ] First sync done for real, with any conflicts written down.
+- [x] `just sync-upstream`: pulls, re-runs the rename checks and tests.
+- [x] First sync done for real, with any conflicts written down.
 
 ## P5: improvements
 
