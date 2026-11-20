@@ -153,7 +153,7 @@ seeing each other's terminals, settings or core. `scripts/side-by-side` passes
       top of the upstream versions.
 - [x] Self-contained Mac app bundle (`scripts/bundle-mac-app`, `scripts/install-mac-app`)
       with ad hoc signing. Release workflow builds a draft GitHub release from a tag.
-- [ ] First release (`agentdeck-v0.1.0`): tagged 2026-11-20, draft release awaits the user publishing it.
+- [x] First release (`agentdeck-v0.1.0`), published 2026-11-20.
 - [ ] Upstream's app docs check (`bun test scripts/docs.test.ts`,
       `bun scripts/docs.ts check`) and `app/scripts/test_distribution.py` don't run in our
       CI or `just check`.

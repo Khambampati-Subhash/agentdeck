@@ -67,6 +67,11 @@ jobs:
       - uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2.2.1
         with:
           version: ${{ env.ZIG_VERSION }}
+      # Seed Zig's cache with packages from hosts that can hang (see
+      # .github/zig-deps/README.md). `zig fetch` must run inside a Zig project.
+      - name: Seed Zig packages
+        working-directory: core/vendor/ghostty
+        run: for f in "$GITHUB_WORKSPACE"/.github/zig-deps/*.tar.gz; do zig fetch "$f"; done
       # Clean release builds: no cache, so a release never reuses stale objects.
       - name: Build core
         working-directory: core

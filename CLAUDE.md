@@ -11,8 +11,7 @@ PR #2), the forge loop (PR #1), P2, the rename (PR #3), and P3 (build and
 release, PR #6) are on `main`. P3 added CI (macOS arm64), versioning
 (`VERSION`, `agentdeck-vX.Y.Z` tags, `just tag`), bundled core in
 AgentDeck.app, and a release workflow (tag → draft GitHub release).
-`agentdeck-v0.1.0` is tagged, and its draft release waits for the user to
-publish it. Open items are in `docs/plan.md`.
+`agentdeck-v0.1.0` was published on 2026-11-20. Open items are in `docs/plan.md`.
 Update this line at the end of every milestone.
 
 ## Docs
