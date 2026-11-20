@@ -204,10 +204,10 @@ class SyncUpstream(unittest.TestCase):
         self.assertIn("added lines to review:", out.stdout)
 
     def test_report_lists_added_herdr_lines(self):
-        """Upstream adds 'Herdr is ready' → report contains core/ path and 'Herdr is ready'."""
+        """Upstream adds 'Herdr is ready' and [hc] → report contains both."""
         # Add a file with "Herdr" to upstream
         with open(os.path.join(self.upstream, "toast.txt"), "w") as f:
-            f.write('toast("Herdr is ready")\n')
+            f.write('toast("Herdr is ready")\nprintln!("[hc] started")\n')
         subprocess.run(["git", "add", "toast.txt"], cwd=self.upstream, check=True, env=self.test_env)
         subprocess.run(["git", "commit", "-m", "add toast"], cwd=self.upstream, check=True, env=self.test_env)
 
@@ -217,8 +217,51 @@ class SyncUpstream(unittest.TestCase):
 
         # Check the report
         self.assertIn("added lines to review:", out.stdout)
-        self.assertIn("core/", out.stdout)
-        self.assertIn("Herdr is ready", out.stdout)
+        self.assertIn('core/toast.txt: toast("Herdr is ready")', out.stdout)
+        self.assertIn('core/toast.txt: println!("[hc] started")', out.stdout)
+
+    def test_check_ignores_sync_commits_on_other_branches(self):
+        """Sync merge on branch sync-a, new branch sync-b from main, check core → exit 2."""
+        # Add a commit to upstream
+        with open(os.path.join(self.upstream, "b.txt"), "w") as f:
+            f.write("new file\n")
+        subprocess.run(["git", "add", "b.txt"], cwd=self.upstream, check=True, env=self.test_env)
+        subprocess.run(["git", "commit", "-m", "add b"], cwd=self.upstream, check=True, env=self.test_env)
+
+        # Pull it on sync-a branch (we're on sync-core-test)
+        out = self.run_sync("pull", "core")
+        self.assertEqual(out.returncode, 0, out.stderr)
+
+        # Create a new sync branch from main
+        subprocess.run(["git", "checkout", "main"], cwd=self.ours, check=True, env=self.test_env)
+        subprocess.run(["git", "checkout", "-b", "sync-b"], cwd=self.ours, check=True, env=self.test_env)
+
+        # check core should exit 2 (no sync on this branch)
+        out = self.run_sync("check", "core")
+        self.assertEqual(out.returncode, 2)
+
+    def test_two_pulls_report_both_merges(self):
+        """Two pulls on one branch → check reports added lines from both merges."""
+        # First pull
+        with open(os.path.join(self.upstream, "b.txt"), "w") as f:
+            f.write("first\n")
+        subprocess.run(["git", "add", "b.txt"], cwd=self.upstream, check=True, env=self.test_env)
+        subprocess.run(["git", "commit", "-m", "add b"], cwd=self.upstream, check=True, env=self.test_env)
+
+        out = self.run_sync("pull", "core")
+        self.assertEqual(out.returncode, 0, out.stderr)
+
+        # Second pull
+        with open(os.path.join(self.upstream, "c.txt"), "w") as f:
+            f.write("Herdr second\n")
+        subprocess.run(["git", "add", "c.txt"], cwd=self.upstream, check=True, env=self.test_env)
+        subprocess.run(["git", "commit", "-m", "add c"], cwd=self.upstream, check=True, env=self.test_env)
+
+        out = self.run_sync("pull", "core")
+        self.assertEqual(out.returncode, 0, out.stderr)
+
+        # Should report lines from both b.txt and c.txt
+        self.assertIn("Herdr second", out.stdout)
 
 
 if __name__ == "__main__":
