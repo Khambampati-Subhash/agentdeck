@@ -110,6 +110,11 @@ jobs:
           cache-workspace-crates: true
           cache-bin: false
           save-if: ${{ env.SAVE_CACHES }}
+      # Seed Zig's cache with packages from hosts that can hang (see
+      # .github/zig-deps/README.md); Zig checks each one's hash.
+      - name: Seed Zig packages
+        working-directory: .
+        run: for f in .github/zig-deps/*.tar.gz; do zig fetch "$f"; done
       - run: cargo clippy --locked --all-targets -- -D warnings
       # Upstream's macOS selection: full-screen scrolling tests (stitch) are
       # off on macOS CI because runner timing is unreliable; 2 threads so each
@@ -152,6 +157,11 @@ jobs:
           cache-workspace-crates: true
           cache-bin: false
           save-if: ${{ env.SAVE_CACHES }}
+      # Seed Zig's cache with packages from hosts that can hang (see
+      # .github/zig-deps/README.md); Zig checks each one's hash.
+      - name: Seed Zig packages
+        working-directory: .
+        run: for f in .github/zig-deps/*.tar.gz; do zig fetch "$f"; done
       # Our script tests again, now with the macOS-only bundle and install
       # tests (ADK_LSREGISTER=0 in the test: nothing gets registered).
       - name: Script tests (macOS)
