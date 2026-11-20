@@ -1,5 +1,6 @@
-# path<TAB>exact substring<TAB>why it is not an upstream-only name
+# An entry exempts that substring in its whole file. Format: path<TAB>exact substring<TAB>why it is not an upstream-only name
 app/src/core_bin/cli_link.rs	/Applications/Herdr.app/	test checks we don't overwrite stock Herdr's CLI link
+core/crates/herdr-core/src/brand.rs	"HC_SESSION"	string constant in terminal identity vars list
 core/crates/herdr-core/src/SKILL.md	Existing Herdr.app	refers to stock Herdr in migration context
 core/crates/herdr-core/src/platform/macos_shutdown.rs	dev.herdr.test.	test-only launchd label prefix
 app/src/hc.rs	`hc connect`	code comment; P2 kept internal names in comments
