@@ -20,3 +20,5 @@ core/crates/herdr-core/src/cli/machine.rs	`hc machine …`	code comment; P2 kept
 core/crates/herdr-core/src/cli/update.rs	`hc update`	code comment; P2 kept internal names in comments
 core/crates/herdr-core/src/picker.rs	`hc ls`	code comment; P2 kept internal names in comments
 core/crates/herdr-core/src/server.rs	`hc server stop`	code comment; P2 kept internal names in comments
+core/crates/herdr-core/src/cli/run.rs	//! `hc run …`	code comment; P2 kept internal names in comments
+core/crates/herdr-core/src/cli/server.rs	//! `hc server …`	code comment; P2 kept internal names in comments
