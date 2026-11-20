@@ -35,11 +35,11 @@
 **Files:**
 - Create: `scripts/check-names`, `scripts/names-allow.txt`, `scripts/test_check_names.py`
 - Modify: `justfile` (`names` recipe; `check: offline names scripts`), `.github/workflows/ci.yml` (`repo` job runs `scripts/check-names` after `scripts/check-offline`)
-- Modify: `app/src/brand.rs`, `app/src/core_bin/cli_link.rs`, `app/src/update.rs:51` (fixes the check finds)
+- Modify: `app/src/update.rs` (the dormant updater's `Herdr.app` names), plus whatever else the check finds
 
 **Interfaces:**
 - Produces: `scripts/check-names` (exit 0 and `check-names: clean`, or prints each hit as `path:line:text` and exits 1 with `check-names: upstream names are back above; see scripts/names-allow.txt`). Allowlist lines are `path<TAB>exact substring<TAB>why`, the same format and matching as `scripts/offline-allow.txt`.
-- Produces: `brand::APP_BUNDLE = "AgentDeck.app"`, `brand::APP_EXE = "AgentDeck"` in `app/src/brand.rs`.
+- Consumes: `brand::APP_BUNDLE = "AgentDeck.app"`, `brand::APP_EXE = "AgentDeck"` in `app/src/brand.rs` (added by PR #9, the CLI link fix, which must be on `main` first).
 
 Patterns (extended regex, one alternation): `HERDR_APP_HOME`, `\bHC_(SESSION|SOCKET)\b`, `\.config/herdr-(app|core)`, `~/\.herdr\b`, `dev\.herdr\.`, `Herdr\.app`, `` `herdr-app [a-z] ``, `` `hc [a-z] ``. Paths: `app/src app/defaults app/scripts/docs.ts core/crates/herdr-core/src core/docs app/docs`; `*.md` files are included (guides users' agents read), unlike check-offline. `HC_TERMINAL_ID`/`HC_TERMINAL_SOCKET` are not in the pattern (kept on purpose for OSC 7501 reporters).
 
@@ -52,12 +52,11 @@ Patterns (extended regex, one alternation): `HERDR_APP_HOME`, `\bHC_(SESSION|SOC
 - [ ] **Step 2: Run** `python3 -I -B -m unittest scripts/test_check_names.py` — expect 5 errors (script missing).
 - [ ] **Step 3: Implement `scripts/check-names`** (bash, modelled on `scripts/check-offline`, reading the allowlist from `$root/scripts/names-allow.txt`).
 - [ ] **Step 4: Run the tests** — 5 pass.
-- [ ] **Step 5: Run `scripts/check-names` on the real tree** and triage every hit. Expected today: `app/src/core_bin/cli_link.rs` (all `Herdr.app` lines), `app/src/update.rs` (lines 2, 11, 41, 51, 57), `core/crates/herdr-core/src/SKILL.md:255`, `core/crates/herdr-core/src/platform/macos_shutdown.rs:241`.
-  - `cli_link.rs` is a bug: a downloaded `AgentDeck.app` never links `~/.local/bin/agentdeck` because `herdr_bundle` checks `Herdr.app/Contents/MacOS/Herdr`. Rename `herdr_bundle` to `app_bundle`, check `format!("{APP_BUNDLE}/Contents/MacOS/{APP_EXE}")`, and change the tests' paths in the same file to `AgentDeck.app/Contents/MacOS/AgentDeck`. Test first: change the test paths, run `cargo test --locked --bins -- core_bin::cli_link` (expect failures), then the code.
+- [ ] **Step 5: Run `scripts/check-names` on the real tree** and triage every hit. Expected today (PR #9 already fixed `app/src/core_bin/cli_link.rs`): `app/src/update.rs` (lines 2, 11, 41, 51, 57), `core/crates/herdr-core/src/SKILL.md:255`, `core/crates/herdr-core/src/platform/macos_shutdown.rs:241`.
   - `update.rs:51` `PACKED` becomes `brand::APP_BUNDLE` on macOS (the P2 plan said so; the updater is dormant). Doc comments on lines 2, 11, 41, 57 say `AgentDeck.app`.
   - `SKILL.md:255` and `macos_shutdown.rs:241` (a test-only launchd prefix): read the line; rename if it is ours to say, else allowlist with the reason.
 - [ ] **Step 6: Wire it in**: `justfile` `names: scripts/check-names`, `check: offline names scripts`; CI `repo` job step `- run: scripts/check-names`. Run `just names`, `just scripts`, `cd app && cargo test --locked --bins`. Expected: clean, all pass (except the sandbox-only `terminal::tests::other_drops_are_left_alone` when run inside a Claude Code session).
-- [ ] **Step 7: Note** `app/src/core_bin/cli_link.rs`, `update.rs` in `docs/upstream.md`'s table (P4: the CLI link and the dormant updater use `AgentDeck.app`). Commit: `repo: check-names guards against upstream names` and `app: the cli link and updater know AgentDeck.app`.
+- [ ] **Step 7: Note** `update.rs` in `docs/upstream.md`'s table (P4: the dormant updater names `AgentDeck.app`). Commit: `repo: check-names guards against upstream names` and `app: the dormant updater names AgentDeck.app`.
 
 ### Task 2: `docs/upstream.md` procedure and conflict rules
 
