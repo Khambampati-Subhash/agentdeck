@@ -11,7 +11,16 @@ mod unix;
 pub use unix::*;
 
 #[cfg(target_os = "linux")]
+mod linux_login;
+#[cfg(target_os = "linux")]
 pub mod systemd;
+
+/// Only a new SSH-started Linux core imports login settings; holders inherit the core.
+#[allow(unused_variables)]
+pub fn core_environment(cmd: &mut std::process::Command, state: &std::path::Path) {
+    #[cfg(target_os = "linux")]
+    linux_login::apply(cmd, state);
+}
 
 #[cfg(target_os = "macos")]
 mod macos_appkit;
@@ -25,6 +34,25 @@ mod macos_responsibility;
 mod macos_session;
 #[cfg(target_os = "macos")]
 mod macos_shutdown;
+
+/// Whether this core's systemd user manager stays alive after the last logout,
+/// and the account an administrator can enable lingering for.
+pub fn logout_linger() -> (Option<bool>, Option<String>) {
+    #[cfg(target_os = "linux")]
+    {
+        systemd::logout_linger()
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        (None, None)
+    }
+}
+
+/// Refresh logout survival away from request handling.
+pub fn start_logout_linger() {
+    #[cfg(target_os = "linux")]
+    systemd::start_logout_linger();
+}
 
 /// Whether foreground observations can distinguish a shell from its jobs.
 pub fn foreground_tracks_jobs() -> bool {
@@ -193,6 +221,8 @@ pub use windows_exec::*;
 #[cfg(windows)]
 mod windows_env;
 #[cfg(windows)]
+mod windows_foreground;
+#[cfg(windows)]
 mod windows_session;
 
 /// Whether the host is shutting down (Windows also includes logout).
@@ -249,6 +279,14 @@ pub(crate) fn restored_environment(
     }
     #[cfg(not(target_os = "linux"))]
     let _ = fresh;
+    #[cfg(target_os = "macos")]
+    // A logged-out login leaves its agent socket on disk with nobody listening.
+    let stale_agent = saved
+        .iter()
+        .any(|(key, value)| key == "SSH_AUTH_SOCK" && std::os::unix::net::UnixStream::connect(value).is_err());
+    // An SSH launcher's agent is forwarded: it ends with that connection.
+    #[cfg(target_os = "macos")]
+    let forwarded = SSH_LOGIN.iter().any(|name| current.contains_key(OsStr::new(name)));
     let named = environment_key_eq;
     let local = |key: &OsStr| {
         let paths = [
@@ -273,6 +311,7 @@ pub(crate) fn restored_environment(
         #[cfg(target_os = "macos")]
         {
             keep |= named(key, "XPC_SERVICE_NAME");
+            keep |= stale_agent && named(key, "SSH_AUTH_SOCK");
         }
         keep
     };
@@ -288,6 +327,10 @@ pub(crate) fn restored_environment(
     let mut env: std::collections::BTreeMap<_, _> =
         saved.into_iter().filter(|(key, _)| !local(key) && !discarded(key)).collect();
     env.extend(current.into_iter().filter(|(key, _)| local(key) && !discarded(key)));
+    #[cfg(target_os = "macos")]
+    if stale_agent && forwarded {
+        env.remove(OsStr::new("SSH_AUTH_SOCK"));
+    }
     env.insert(crate::sweep::RUNTIME.into(), "1".into());
     env
 }

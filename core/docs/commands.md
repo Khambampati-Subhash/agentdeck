@@ -113,6 +113,7 @@ Options:
       --terminal <TERMINAL>        Only this terminal
       --children-of <CHILDREN_OF>  Only children of this terminal
       --label <K=V>                Only terminals carrying all of these labels (repeatable)
+      --doc <NAME>                 Documents by name (repeatable); a name ending in `*` is a prefix. Naming narrows, so documents alone hear only them — name a terminal for both
   -h, --help                       Print help
 ```
 
@@ -564,7 +565,7 @@ Restart the core (e.g. after an update); programs keep running
 Usage: adk server restart [OPTIONS]
 
 Options:
-      --fresh  Take this shell's environment for new terminals; run from a terminal outside Herdr
+      --fresh  Take this shell's environment for new terminals; run from a terminal outside AgentDeck
       --json   JSON output even in a terminal
   -h, --help   Print help
 ```

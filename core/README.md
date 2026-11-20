@@ -48,6 +48,14 @@ For a terminal you want to keep even if its program is lost, use `adk run --keep
 Recovery starts a fresh shell, never reruns the task.
 A normal exit or an explicit kill still ends it.
 
+To show a lost kept program's last saved screen above the new shell, set
+`restore_screen = true` in the same config.toml described below. It defaults
+to false. Changes apply at the next recovery. A divider marks where the old
+program ended; on Windows its screen is in history. `adk read` includes that
+old output, so scripts reading it can match text from the lost program. Each saved screen
+is consumed or discarded once, even with the setting off. A power cut that
+saves nothing starts blank.
+
 ## Default shell
 
 With no program, `adk run --bg` starts the machine's shell: `$SHELL` (or
@@ -81,7 +89,7 @@ draft_wait = 60 # seconds a draft holds sends and notes; 0 keeps only the quiet 
 ```
 
 Both settings apply to the next delivery without restarting the core. Values must
-be finite, non-negative seconds that fit in a duration. If the config is invalid,
+be finite seconds that fit in a duration (a negative value means 0). If the config is invalid,
 delivery uses defaults and logs the config error once in `core.log`.
 Reverse sends allow at least the default 60-second draft hold.
 A parent configured above 60 seconds can still outwait a child configured below
@@ -160,7 +168,7 @@ cargo build --locked -p herdr-core
 just check
 ```
 
-`just install` installs this checkout and restarts your core. Running terminals keep running.
+`just install` installs this checkout and restarts your core. Running terminals keep running. A running core keeps its environment; if none is running, the one it starts gets only the login's own variables (PATH, HOME, USER, SHELL, locale, SSH agent and markers, display, session paths; see `scripts/restart-core.sh`), never the rest of the build shell's.
 
 `just docs` refreshes the command reference. `just docs-check` checks it and the examples; CI runs the same tests.
 

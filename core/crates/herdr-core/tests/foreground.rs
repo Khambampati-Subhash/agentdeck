@@ -51,7 +51,7 @@ fn root_agent_keeps_status_when_a_foreground_tool_returns() {
             )
         ),
     );
-    let t = run(&s, &[&agent]);
+    let t = run(&s, &["bash", &agent]);
     wait_until("root status", || get(&s, &t)["status"]["state"] == "working");
     touch(&s, "tool");
     wait_until("tool foreground", || {
@@ -70,10 +70,12 @@ fn a_shell_that_execs_an_agent_keeps_its_status() {
     s.env.push(("HC_FOREGROUND_MS".into(), "50".into()));
     let agent = executable(&s, &format!("#!/bin/sh\n{}", script(&s, "r state=working; read -r action")));
     let t = run(&s, &["sh", "-c", &format!("exec {agent}")]);
+    // Its argv is in front from the exec on, before it reports: wait for both.
+    wait_until("agent status", || get(&s, &t)["status"]["state"] == "working");
     wait_until("agent is the root program", || {
         get(&s, &t)["foreground"]["argv"].as_array().is_some_and(|argv| argv.contains(&json!(agent)))
     });
-    reported_and_kept(&s, &t, "working");
+    still_working_after_samples(&s, &t);
 }
 
 #[test]
@@ -112,16 +114,15 @@ fn a_shell_script_root_keeps_its_agents_status() {
     let agent = executable(&s, &format!("#!/bin/sh\n{}", script(&s, "r state=working; read -r action")));
     let wrapper = executable(&s, &format!("#!/bin/bash\n{agent}\n"));
     let t = run(&s, &["bash", &wrapper]);
+    wait_until("agent status", || get(&s, &t)["status"]["state"] == "working");
     wait_until("script root is foreground", || get(&s, &t)["foreground"]["pid"] == get(&s, &t)["pid"]);
-    reported_and_kept(&s, &t, "working");
+    still_working_after_samples(&s, &t);
 }
 
-/// The argv can name a script before it runs (macOS's /bin/sh re-execs bash
-/// first), so wait for its report, then let several foreground samples pass.
-fn reported_and_kept(s: &Session, t: &str, state: &str) {
-    wait_until("reported", || get(s, t)["reported"] == true);
-    std::thread::sleep(std::time::Duration::from_millis(250));
-    assert_eq!(get(s, t)["status"]["state"], state);
+/// About four foreground samples (`HC_FOREGROUND_MS` 50) after the agent reported, its status stands.
+fn still_working_after_samples(s: &Session, t: &str) {
+    std::thread::sleep(std::time::Duration::from_millis(200));
+    assert_eq!(get(s, t)["status"]["state"], "working");
 }
 
 #[test]

@@ -37,7 +37,7 @@ sha256() {
 }
 
 tmp=$(mktemp -d)
-trap 'rm -rf "$tmp"' EXIT
+trap 'rm -rf "$tmp" "$bin/agentdeck-core.staged"' EXIT
 
 [ -n "$releases" ] || fail "set HERDR_RELEASES_URL to an AgentDeck release server; AgentDeck has no default"
 manifest="$releases/core/latest.json"
@@ -65,7 +65,15 @@ esac
 curl -fsSL "$download" -o "$tmp/hc.tar.gz" || fail "download failed: $url"
 [ "$(sha256 "$tmp/hc.tar.gz")" = "$want" ] || fail "the download is damaged (checksum mismatch); try again"
 tar -xzf "$tmp/hc.tar.gz" -C "$tmp"
-"$tmp/agentdeck-core" --version >/dev/null 2>&1 || fail "the downloaded adk does not run on this machine"
+core=$tmp/agentdeck-core
+if ! "$core" --version >/dev/null 2>&1; then
+  # A noexec mount under the temp dir fails the check with EACCES, which is
+  # not "cannot run here": stage on the destination filesystem and re-check.
+  mkdir -p "$bin"
+  core=$bin/agentdeck-core.staged
+  cp "$tmp/agentdeck-core" "$core" && chmod 755 "$core" || fail "cannot stage adk in $bin"
+  "$core" --version >/dev/null 2>&1 || fail "the downloaded adk does not run on this machine"
+fi
 # App completion must converge even before the first bundled release exists.
 if [ "${HC_BUNDLE_ONLY:-0}" = 1 ] && [ ! -x "$tmp/AgentDeck Core.app/Contents/MacOS/agentdeck-core" ]; then
   exit 0
@@ -97,10 +105,10 @@ if [ "$bundle" = 1 ] && [ -x "$tmp/AgentDeck Core.app/Contents/MacOS/agentdeck-c
   say "adk $version $action as AgentDeck Core.app. Recreate pre-update terminals if macOS privacy access is broken; running terminals were kept."
 elif [ -x "$bin/agentdeck-core" ]; then
   # Swapped the planned way, so its terminals keep running.
-  "$bin/agentdeck-core" update --from "$tmp/agentdeck-core" >/dev/null || fail "updating $bin/agentdeck-core failed (see above)"
+  "$bin/agentdeck-core" update --from "$core" >/dev/null || fail "updating $bin/agentdeck-core failed (see above)"
   say "adk updated to $version."
 else
-  cp "$tmp/agentdeck-core" "$bin/agentdeck-core.new"
+  cp "$core" "$bin/agentdeck-core.new"
   chmod 755 "$bin/agentdeck-core.new"
   mv -f "$bin/agentdeck-core.new" "$bin/agentdeck-core"
   say "adk $version installed into $bin/agentdeck-core."

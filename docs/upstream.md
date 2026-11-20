@@ -17,7 +17,6 @@ here with why. Files we only added aren't upstream's and aren't listed.
 | Files | Why |
 | --- | --- |
 | `app/assets/icons/Herdr.icns`, `herdr-app.ico`, `herdr-ui-icon-clean.png`, `herdr-ui-icon-clean.svg`, `app/defaults/frame/welcome/herdr.png` | AgentDeck's own window-stack icon instead of Herdr's logo. |
-| `core/crates/herdr-core/tests/foreground.rs` | Tests wait for the agent's report before checking it is kept (flaky on macOS). |
 | `app/src/update.rs`, `update_notes.rs`, `core_bin.rs`, `setup.rs`, `app/distribution/install.sh`, `install.ps1`, `app/scripts/test_distribution.py`, `core/crates/herdr-core/src/releases.rs`, `machines.rs`, `core/crates/herdr-core/tests/distribution.rs`, `update.rs`, `core/distribution/install.sh`, `install.ps1`, `core/scripts/manifest` | P1: no update checks, downloads or installers from herdr.dev unless `HERDR_RELEASES_URL` names a release server. |
 | `app/src/telemetry.rs`, `feedback.rs`, `app/defaults/herdr.d.ts`, `app/defaults/frame/feedback/main.js`, `app/defaults/frame/settings/main.js` | P1: telemetry and feedback send only to an endpoint the person configures. |
 | `app/defaults/layouts/main.json`, `app/defaults/mods/tabs/main.js`, `app/defaults/frame/welcome/main.js`, `app/defaults/AGENTS.md`, `app/justfile` | The Pull requests panel (`prboard`, `prdiff` mods): a third panel beside Files and Changes, its tab bar button and welcome card, the mod guide, and its tests in `just test`. |
@@ -44,6 +43,8 @@ here with why. Files we only added aren't upstream's and aren't listed.
 | `core/crates/herdr-core/src/config.rs` | P4: config field doc says `` `adk attach` `` (not `hc attach`), shown in config documentation. |
 | `core/docs/commands.md`, `core/schema/hc.openrpc.json` | P4: generated from the above (`` `just docs` `` and `HC_UPDATE_SCHEMA=1 cargo test --test m0` in core/). |
 | `app/defaults/mods/worktree/main.js`, `app/defaults/AGENTS.md` | P4: worktrees live under `~/.agentdeck/worktrees`, not Herdr's `~/.herdr/worktrees`. |
+| `core/scripts/restart-core.sh` | P4 sync (2026-11-20): passes `ADK_SESSION` and `ADK_SOCKET` (not upstream's `HC_SESSION`/`HC_SOCKET`) through its `env -i`, so `just install` never restarts or starts a default-session core. |
+| `core/crates/herdr-core/src/cli/{run,server,machine}.rs`, `src/remote/{run,put}.rs`, `src/cli/tests.rs` | P4 sync (2026-11-20): the P2 renames re-applied to code upstream moved out of `cli.rs` and `remote.rs` (`[adk]` notes, `adk …` hints, `brand::TERMINAL_ID_VAR`); `server restart --fresh` help says a terminal outside AgentDeck. |
 
 ## Syncing
 
@@ -92,3 +93,4 @@ Per-kind rules:
 
 | Date | Half | Upstream | Commits | Conflicts | Notes |
 | --- | --- | --- | --- | --- | --- |
+| 2026-11-20 | core | c751780 | 47 | 12 | SKILL.md, cli.rs, cli/machine.rs, config.rs, platform/systemd.rs, remote.rs, tests/common/mod.rs, tests/foreground.rs, distribution/install.sh, docs/machines.md, schema (regenerated), scripts/install-local.sh. Upstream's own foreground test fix replaced ours (row dropped). No new network requests. |
