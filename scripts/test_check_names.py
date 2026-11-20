@@ -25,12 +25,13 @@ class CheckNames(unittest.TestCase):
         shutil.rmtree(self.root)
 
     def write_file(self, path, content):
-        """Write a file and git add it"""
+        """Write a file, git add it, and commit it"""
         full_path = os.path.join(self.root, path)
         os.makedirs(os.path.dirname(full_path), exist_ok=True)
         with open(full_path, "w") as f:
             f.write(content)
         subprocess.run(["git", "add", path], cwd=self.root, capture_output=True, check=True)
+        subprocess.run(["git", "commit", "-m", f"add {path}"], cwd=self.root, capture_output=True, check=True)
 
     def write_allowlist(self, lines):
         """Append lines to names-allow.txt"""
@@ -82,6 +83,25 @@ class CheckNames(unittest.TestCase):
         out = self.run_check()
         self.assertEqual(out.returncode, 1)
         self.assertIn("app/docs/x.md:1:", out.stdout)
+
+    def test_bare_hc_in_brackets_fails(self):
+        """[hc] prefix in code fails"""
+        self.write_file("core/crates/herdr-core/src/a.rs", 'println!("[hc] started")')
+        out = self.run_check()
+        self.assertEqual(out.returncode, 1)
+        self.assertIn("core/crates/herdr-core/src/a.rs:1:", out.stdout)
+
+    def test_hc_socket_and_config_fail(self):
+        """HC_SOCKET and .config/herdr-core fail"""
+        self.write_file("app/src/a.rs", 'std::env::var("HC_SOCKET")')
+        out = self.run_check()
+        self.assertEqual(out.returncode, 1)
+        self.assertIn("app/src/a.rs:1:", out.stdout)
+
+        self.write_file("app/src/b.rs", 'path.join(".config/herdr-core")')
+        out = self.run_check()
+        self.assertEqual(out.returncode, 1)
+        self.assertIn("app/src/b.rs:1:", out.stdout)
 
 
 if __name__ == "__main__":
