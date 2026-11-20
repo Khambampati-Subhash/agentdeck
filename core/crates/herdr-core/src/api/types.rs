@@ -232,7 +232,7 @@ pub struct RunParams {
     /// Name, unique among live terminals: 1-32 of a-z 0-9 - _ .
     #[arg(long)]
     pub name: Option<String>,
-    /// Working directory (default: where hc runs; through the API, the core's;
+    /// Working directory (default: where adk runs; through the API, the core's;
     /// with --on, that machine's home).
     #[arg(long)]
     pub cwd: Option<String>,
@@ -608,7 +608,7 @@ pub struct ExecParams {
     #[arg(long, value_name = "MACHINE")]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub on: Option<String>,
-    /// Working directory (default: where hc runs; through the API, the core's;
+    /// Working directory (default: where adk runs; through the API, the core's;
     /// with --on, that machine's home).
     #[arg(long)]
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -626,7 +626,7 @@ pub struct ExecParams {
     #[arg(skip)]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub input: Option<String>,
-    /// Feed what is piped into hc to its stdin.
+    /// Feed what is piped into adk to its stdin.
     #[arg(short = 'i', long)]
     #[serde(skip)]
     #[schemars(skip)]
@@ -660,7 +660,7 @@ pub struct FileAt {
     #[arg(long, value_name = "MACHINE")]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub on: Option<String>,
-    /// Where a relative path starts (default: where hc runs; through the API,
+    /// Where a relative path starts (default: where adk runs; through the API,
     /// the core's; with --on, that machine's home).
     #[arg(long)]
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -754,12 +754,12 @@ pub struct MachineAddParams {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub via: Option<String>,
     /// Mark it short-lived (a sandbox for a task), so clients can show it apart
-    /// from machines that stay. hc treats it like any other; remove it with
+    /// from machines that stay. adk treats it like any other; remove it with
     /// `adk machine rm`.
     #[arg(long = "temp")]
     #[serde(default)]
     pub temporary: bool,
-    /// Copy this hc there when it has none or one too old, without asking
+    /// Copy this adk there when it has none or one too old, without asking
     /// (for scripts; in a terminal you are asked).
     #[arg(long)]
     #[serde(skip)]
@@ -768,7 +768,7 @@ pub struct MachineAddParams {
     /// What to call it here (default: the target's host).
     #[arg(long)]
     pub name: Option<String>,
-    /// The hc session on that machine (default: its default).
+    /// The adk session on that machine (default: its default).
     #[arg(long)]
     pub session: Option<String>,
 }

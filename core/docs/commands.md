@@ -129,10 +129,10 @@ Arguments:
 Options:
       --json               JSON output even in a terminal
       --on <MACHINE>       Run it on another machine (see `adk machine ls`)
-      --cwd <CWD>          Working directory (default: where hc runs; through the API, the core's; with --on, that machine's home)
+      --cwd <CWD>          Working directory (default: where adk runs; through the API, the core's; with --on, that machine's home)
       --env <K=V>          Set on top of the core's environment, key=value (repeatable)
       --timeout <TIMEOUT>  Seconds before it and everything it started are ended (default 60, at most 600)
-  -i, --stdin              Feed what is piped into hc to its stdin
+  -i, --stdin              Feed what is piped into adk to its stdin
   -h, --help               Print help
 ```
 
@@ -167,7 +167,7 @@ Arguments:
 Options:
       --json          JSON output even in a terminal
       --on <MACHINE>  On another machine (see `adk machine ls`)
-      --cwd <CWD>     Where a relative path starts (default: where hc runs; through the API, the core's; with --on, that machine's home)
+      --cwd <CWD>     Where a relative path starts (default: where adk runs; through the API, the core's; with --on, that machine's home)
       --old <OLD>     Exact text found once in the file (repeatable, paired with --new in order)
       --new <NEW>     What replaces it
   -h, --help          Print help
@@ -186,7 +186,7 @@ Arguments:
 Options:
       --json             JSON output even in a terminal
       --on <MACHINE>     On another machine (see `adk machine ls`)
-      --cwd <CWD>        Where a relative path starts (default: where hc runs; through the API, the core's; with --on, that machine's home)
+      --cwd <CWD>        Where a relative path starts (default: where adk runs; through the API, the core's; with --on, that machine's home)
       --offset <OFFSET>  The first line to give, from 1
       --limit <LIMIT>    At most this many lines (default: all, up to 8 MB)
   -h, --help             Print help
@@ -205,7 +205,7 @@ Arguments:
 Options:
       --json          JSON output even in a terminal
       --on <MACHINE>  On another machine (see `adk machine ls`)
-      --cwd <CWD>     Where a relative path starts (default: where hc runs; through the API, the core's; with --on, that machine's home)
+      --cwd <CWD>     Where a relative path starts (default: where adk runs; through the API, the core's; with --on, that machine's home)
   -h, --help          Print help
 ```
 
@@ -351,10 +351,10 @@ Arguments:
 Options:
       --json               JSON output even in a terminal
       --via <COMMAND>      Reach it with this command instead of ssh: it is given a shell line to run there as its last argument, like ssh (`ssh -p 2222 -i key user@ip`, `fly ssh console -a app --pty=false -C`). It must pass bytes both ways untouched and ask nothing. Needs --name. On Windows, a program and its arguments (CommandLineToArgvW split, no shell), with the remote line appended as one argument, no console window; Unix stays an sh line. WSL: --via 'wsl.exe -d Ubuntu -e sh -c' --name wsl
-      --temp               Mark it short-lived (a sandbox for a task), so clients can show it apart from machines that stay. hc treats it like any other; remove it with `adk machine rm`
-      --install            Copy this hc there when it has none or one too old, without asking (for scripts; in a terminal you are asked)
+      --temp               Mark it short-lived (a sandbox for a task), so clients can show it apart from machines that stay. adk treats it like any other; remove it with `adk machine rm`
+      --install            Copy this adk there when it has none or one too old, without asking (for scripts; in a terminal you are asked)
       --name <NAME>        What to call it here (default: the target's host)
-      --session <SESSION>  The hc session on that machine (default: its default)
+      --session <SESSION>  The adk session on that machine (default: its default)
   -h, --help               Print help
 ```
 
@@ -491,7 +491,7 @@ Arguments:
 Options:
       --json               JSON output even in a terminal
       --name <NAME>        Name, unique among live terminals: 1-32 of a-z 0-9 - _ 
-      --cwd <CWD>          Working directory (default: where hc runs; through the API, the core's; with --on, that machine's home)
+      --cwd <CWD>          Working directory (default: where adk runs; through the API, the core's; with --on, that machine's home)
       --on <MACHINE>       Run it on another machine (see `adk machine ls`); its address is `machine/t7`
       --label <K=V>        Labels, key=value (repeatable)
       --parent <PARENT>    Parent terminal (default: the terminal it is started from)
