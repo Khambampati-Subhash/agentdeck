@@ -6,8 +6,8 @@ AgentDeck is a fork of Herdr (Apache-2.0, see [NOTICE.md](../NOTICE.md)):
 - `core/` is [herdr-core](https://github.com/herdrdev/herdr-core), imported with its history at `ce81486`.
 
 Both imports are subtree merges, so upstream commits keep their hashes and
-authors here, and later upstream fixes can be merged in (the process is
-written in P4, `docs/plan.md`).
+authors here, and later upstream fixes can be merged in. The sync procedure
+is below (`## Syncing`, `## Conflict rules`, `## Sync log`).
 
 ## Upstream files we changed
 
@@ -39,3 +39,50 @@ here with why. Files we only added aren't upstream's and aren't listed.
 | `app/scripts/docs.ts`, `scripts/docs.test.ts`, `docs/commands.md` (generated), `README.md` (the For agents examples), `docs/mods.md`, `docs/security.md` | P3 (2026-11-20): the docs checker runs `target/debug/agentdeck` with a scratch `AGENTDECK_HOME` under `/var/tmp` and checks `agentdeck` examples; the docs give `agentdeck` commands and the `~/.config/agentdeck` home. The rest of the app README is still upstream's. |
 | `app/src/mods.rs` (`known_agents`) | P3 (2026-11-20): `known_agents_with` takes the installed-command lookup, so its test runs without the person's interactive shell, which a busy machine can't start within the 30 s limit. Worth offering upstream: the test flakes there too. |
 | `app/src/core_bin/cli_link.rs` | The CLI link is made for `AgentDeck.app/Contents/MacOS/AgentDeck` (`brand::APP_BUNDLE`, `APP_EXE`), not `Herdr.app`, and leaves a link to stock Herdr alone (2026-11-20). |
+
+## Syncing
+
+Remotes:
+- `upstream-app` = `https://github.com/herdrdev/herdr-app.git`
+- `upstream-core` = `https://github.com/herdrdev/herdr-core.git`
+
+Both track branch `master`.
+
+Workflow:
+1. Create a sync branch from main: `git checkout -b sync-<half>-<YYYY-MM-DD> main` (never run on `main`).
+2. Run `just sync-upstream <half>` (where `<half>` is `app` or `core`). This runs `scripts/sync-upstream pull <half> [ref]`, which:
+   - Refuses a dirty tree or `main`
+   - Adds the remote if missing
+   - Fetches from the remote
+   - Runs `git subtree pull --prefix=<half> upstream-<half> <ref>` (default: `master`)
+   - On conflicts: lists the files, says "resolve them (docs/upstream.md#conflict-rules), commit, then: scripts/sync-upstream check <half>", exits 1 and leaves the merge in progress
+   - On success: runs `check`
+3. If conflicts occur, resolve them following the conflict rules below, commit, then run `scripts/sync-upstream check <half>`.
+4. The check prints "added lines to review:" (every added line mentioning herdr.dev, a URL, reqwest, curl, telemetry, Herdr, `herdr-app ` or `hc `), then runs:
+   - `scripts/check-offline` (fails if herdr.dev URLs come back)
+   - `scripts/check-names` (fails if `HERDR_APP_HOME`, `HC_SESSION`, `HC_SOCKET`, `~/.config/herdr-app`, `Herdr.app`, `` `hc …` `` hints come back; allowlist in `scripts/names-allow.txt`)
+   - The half's suite: core: `cd core && just check`; app: `cd app && just test && just docs-check`
+5. Review the added lines for:
+   - New requests to any server (not just herdr.dev): gate it or remove it and add a row to the table above
+   - New user-visible "Herdr" text: replace with AgentDeck's names
+6. For app syncs, also run a watched session (`just dev` with `scripts/watch-net` alongside, see `docs/plan.md` P1) to confirm no outbound connection.
+7. If lockfiles changed, run `just notices` in that half to update `THIRD-PARTY-NOTICES`.
+8. Open a PR and merge with `gh pr merge --merge` (never squash or rebase; subtree history must keep upstream's hashes).
+9. Add a line to `## Sync log` below.
+
+The subtree merge commit's message is `repo: sync <half> with upstream <short-sha>`.
+
+## Conflict rules
+
+Take upstream's change, then re-apply our divergence as the table above describes it for that file. Our divergence wins only where it is listed there.
+
+Per-kind rules:
+- **Generated files**: regenerate them. `app/docs/commands.md`: `cd app && just docs-generate`. `THIRD-PARTY-NOTICES`: `just notices` in that half.
+- **Renamed names**: keep ours (`agentdeck`, `adk`, `ADK_SESSION`, …) and move upstream's new code onto the constants in `app/src/brand.rs` or `core/crates/herdr-core/src/brand.rs`.
+- **Files P1 changed** (telemetry, feedback, update): upstream's logic, our gate (the env var checks P1 added).
+- **`SKILL.md` and `defaults/AGENTS.md`**: upstream's new text, our names (AgentDeck, `agentdeck`, `adk`, `ADK_SESSION`, …).
+
+## Sync log
+
+| Date | Half | Upstream | Commits | Conflicts | Notes |
+| --- | --- | --- | --- | --- | --- |
