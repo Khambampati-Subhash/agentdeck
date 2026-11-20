@@ -252,7 +252,7 @@ paths start at your current folder. Prefer explicit paths for remote work.
   Managed installs must be updated with their package manager instead, and
   one in a folder you can't write (Unix) the way it was installed.
 - On macOS, privacy requests from terminal programs belong to AgentDeck Core,
-  not Herdr.app. Existing Herdr.app grants do not transfer to the core.
+  not AgentDeck.app. Existing Herdr.app grants do not transfer to the core.
 - macOS installs keep the newest bundle at the fixed physical path
   `~/.local/share/agentdeck-core/active/AgentDeck Core.app`, selected by a `current`
   symlink, with `adk` and `agentdeck-core` links in
