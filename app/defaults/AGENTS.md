@@ -865,7 +865,7 @@ has 120 programs (agents, editors, runtimes, tools, databases, infra);
   that first tab (with `task`, it waits for Enter instead); when `task` is given without `argv`, the dialog shows an agent picker
   (installed agents only; with none it says so and creates nothing) and starts the chosen one with `task` as its first message
   (callers passing `task` should use height 300); checkouts go to
-  `~/.herdr/worktrees/<repo>/<branch>` on the space's machine, a constant
+  `~/.agentdeck/worktrees/<repo>/<branch>` on the space's machine, a constant
   at its top; the
   `spaces` sidebar nests a repo's worktree spaces under its main-checkout space (else its
   first space) and shows each

@@ -43,6 +43,7 @@ here with why. Files we only added aren't upstream's and aren't listed.
 | `core/crates/herdr-core/src/api/types.rs` | P4: clap help and OpenRPC schema say `adk` (not `hc`): `` `adk update` ``, `` `adk machine ls` ``, `` `adk machine rm` `` in /// docs that become clap --help text and OpenRPC method descriptions. |
 | `core/crates/herdr-core/src/config.rs` | P4: config field doc says `` `adk attach` `` (not `hc attach`), shown in config documentation. |
 | `core/docs/commands.md`, `core/schema/hc.openrpc.json` | P4: generated from the above (`` `just docs` `` and `HC_UPDATE_SCHEMA=1 cargo test --test m0` in core/). |
+| `app/defaults/mods/worktree/main.js`, `app/defaults/AGENTS.md` | P4: worktrees live under `~/.agentdeck/worktrees`, not Herdr's `~/.herdr/worktrees`. |
 
 ## Syncing
 
