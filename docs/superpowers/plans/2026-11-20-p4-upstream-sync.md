@@ -100,6 +100,8 @@ Patterns (extended regex, one alternation): `HERDR_APP_HOME`, `\bHC_(SESSION|SOC
 **Files:**
 - Modify: whatever upstream's 47 commits touch under `core/`; `docs/upstream.md` (table rows for any new divergence, sync log line).
 
+**Note:** Upstream moved CLI code from `cli.rs` into `cli/run.rs` and `cli/server.rs`, so P2's `adk`/`[adk]` renames must be re-applied there by hand. Upstream's new `core/scripts/restart-core.sh` passes `HC_SESSION`/`HC_SOCKET` only (needs `ADK_SESSION`/`ADK_SOCKET`).
+
 - [ ] **Step 1:** `git checkout -b sync-core-2026-11-20 main && just sync-upstream core`. Expected: exit 1, about 12 conflicted files (trial: `SKILL.md`, `cli.rs`, `cli/machine.rs`, `config.rs`, `platform/systemd.rs`, `remote.rs`, `tests/common/mod.rs`, `tests/foreground.rs`, `distribution/install.sh`, `docs/machines.md`, `schema/hc.openrpc.json`, `scripts/install-local.sh`).
 - [ ] **Step 2:** Resolve each by the conflict rules, one file at a time, checking its `docs/upstream.md` row. If `Cargo.lock` changed, `cd core && just notices`. Commit the merge.
 - [ ] **Step 3:** `scripts/sync-upstream check core`. Expected: guards clean, `just check` passes (rerun once if the first run times out on macOS's first-launch scan). Read every line of the added-lines report; rename visible `Herdr`/`hc` text to ours, and treat any new request to a server as a P1 issue (gate it or remove it, row in `docs/upstream.md`).
