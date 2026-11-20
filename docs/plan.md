@@ -154,11 +154,16 @@ seeing each other's terminals, settings or core. `scripts/side-by-side` passes
 - [x] Self-contained Mac app bundle (`scripts/bundle-mac-app`, `scripts/install-mac-app`)
       with ad hoc signing. Release workflow builds a draft GitHub release from a tag.
 - [x] First release (`agentdeck-v0.1.0`), published 2026-11-20.
-- [ ] Upstream's app docs check (`bun test scripts/docs.test.ts`,
-      `bun scripts/docs.ts check`) and `app/scripts/test_distribution.py` don't run in our
-      CI or `just check`.
-- [ ] Flaky under full-suite load:
-      `mods::tests::known_agents_uses_snapshot_and_refreshes_changed_commands`.
+- [x] Upstream's app docs check runs in CI and `just check`, against `agentdeck`
+      (2026-11-20). `app/scripts/test_distribution.py` runs in CI only: one case fails on
+      a Mac with `/Applications/Herdr.app`.
+- [ ] `app/README.md` is still upstream's: herdr.dev installers, Homebrew and Windows
+      installs, "telemetry is on by default", cloning herdr-app. Rewrite it for
+      AgentDeck as P2 did for `core/README.md`.
+- [x] Flaky under load: `mods::tests::known_agents_uses_snapshot_and_refreshes_changed_commands`
+      started the person's interactive shell, which a busy machine couldn't start within the
+      30 s limit (74 of 80 failed under load). It now passes a stand-in lookup and also
+      checks the cache (0 of 160 under the same load), 2026-11-20.
 
 ## P4: upstream sync
 
