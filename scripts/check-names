@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Fails if shipped code contains upstream-only names (Herdr.app, HERDR_APP_HOME,
+# etc.), outside the reasoned entries in scripts/names-allow.txt. AgentDeck is
+# the product name; "Herdr" stays only where it means upstream or is an internal
+# name kept on purpose.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+allow=scripts/names-allow.txt
+paths=(app/src app/defaults app/scripts/docs.ts core/crates/herdr-core/src core/docs app/docs)
+pattern='HERDR_APP_HOME|\bHC_(SESSION|SOCKET)\b|\.config/herdr-(app|core)|~/\.herdr\b|dev\.herdr\.|Herdr\.app|`herdr-app [a-z]|`hc [a-z]'
+bad=0
+while IFS= read -r hit; do
+  path=${hit%%:*}
+  text=${hit#*:*:}
+  ok=0
+  while IFS=$'\t' read -r apath sub _why; do
+    [[ -z $apath || $apath == \#* ]] && continue
+    if [[ $path == "$apath"* && $text == *"$sub"* ]]; then ok=1; break; fi
+  done < "$allow"
+  if (( ! ok )); then echo "$hit"; bad=1; fi
+done < <(git grep -n -I -E "$pattern" -- "${paths[@]}" || true)
+if (( bad )); then echo "check-names: upstream names are back above; see scripts/names-allow.txt" >&2; exit 1; fi
+echo "check-names: clean"
