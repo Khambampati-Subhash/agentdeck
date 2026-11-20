@@ -9,7 +9,7 @@ pub(super) enum ServerCmd {
     Status,
     /// Restart the core (e.g. after an update); programs keep running.
     Restart {
-        /// Take this shell's environment for new terminals; run from a terminal outside Herdr.
+        /// Take this shell's environment for new terminals; run from a terminal outside AgentDeck.
         #[arg(long)]
         fresh: bool,
     },

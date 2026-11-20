@@ -365,7 +365,7 @@ fn a_first_foreground_remote_child_can_reach_only_its_parent() {
     let probe = format!("{BIN} --json get {core_id}/{parent}");
     let out = s
         .cmd()
-        .env("HC_TERMINAL_ID", &parent)
+        .env("ADK_TERMINAL_ID", &parent)
         .args(["--json", "run", "--on", "rohan", "--no-notify", "sh", "-c", &probe])
         .output()
         .unwrap();
@@ -390,7 +390,7 @@ fn failed_or_detached_remote_runs_do_not_grant_access_to_the_caller() {
         let parent = run(&s, &["sleep", "100"]);
         let out = s
             .cmd()
-            .env("HC_TERMINAL_ID", &parent)
+            .env("ADK_TERMINAL_ID", &parent)
             .args(["--json", "run", "--on", "rohan", "--no-notify"])
             .args(&args)
             .output()
@@ -421,13 +421,13 @@ fn a_failed_remote_launch_preserves_a_concurrent_and_then_established_grant() {
     let address = format!("{core_id}/{parent}");
     let probe = script(&rohan, &format!("w release; {BIN} --json get {address}"));
     let mut command = s.cmd();
-    command.env("HC_TERMINAL_ID", &parent).args(["--json", "run", "--on", "rohan", "--no-notify", "sh", "-c", &probe]);
+    command.env("ADK_TERMINAL_ID", &parent).args(["--json", "run", "--on", "rohan", "--no-notify", "sh", "-c", &probe]);
     let foreground = std::thread::spawn(move || command.output().unwrap());
     wait_until("remote child started", || !addresses(&rohan.json(&["ls"])).is_empty());
     for pending in [true, false] {
         let failed = s
             .cmd()
-            .env("HC_TERMINAL_ID", &parent)
+            .env("ADK_TERMINAL_ID", &parent)
             .args(["--json", "run", "--on", "rohan", "missing-program-for-callback-test"])
             .output()
             .unwrap();

@@ -565,7 +565,7 @@ Restart the core (e.g. after an update); programs keep running
 Usage: adk server restart [OPTIONS]
 
 Options:
-      --fresh  Take this shell's environment for new terminals; run from a terminal outside Herdr
+      --fresh  Take this shell's environment for new terminals; run from a terminal outside AgentDeck
       --json   JSON output even in a terminal
   -h, --help   Print help
 ```

@@ -48,7 +48,7 @@ fn login_profile_output_is_bounded_while_it_runs() {
         let s = ssh_session(&format!("head -c 4194304 /dev/zero{redirect}\ntouch \"$HOME/overrun\"\n"));
         assert_eq!(value(&s), "");
         assert!(!s.root.join("overrun").exists(), "writer ran beyond the capture budget");
-        let log = std::fs::read_to_string(s.root.join("state/herdr-core/test/core.log")).unwrap();
+        let log = std::fs::read_to_string(s.root.join("state/adk/test/core.log")).unwrap();
         assert!(log.contains("exceeded 1 MiB"), "missing output-limit diagnostic");
         assert!(log.len() < (1 << 20) + 1024);
     }
@@ -113,7 +113,7 @@ fn failing_login_profile_falls_back_and_logs_the_shell_and_reason() {
     let mut s = ssh_session("echo profile failed\nexit 17\n");
     s.env.push(("LOGIN_TEST".into(), "inherited".into()));
     assert_eq!(value(&s), "inherited");
-    let log = std::fs::read_to_string(s.root.join("state/herdr-core/test/core.log")).unwrap();
+    let log = std::fs::read_to_string(s.root.join("state/adk/test/core.log")).unwrap();
     assert!(log.contains("/bin/bash") && log.contains("17") && log.contains("using inherited environment"), "{log}");
 }
 
@@ -124,6 +124,6 @@ fn a_login_profile_cannot_block_machine_start_forever() {
     let start = std::time::Instant::now();
     assert_eq!(value(&s), "inherited");
     assert!(start.elapsed() < std::time::Duration::from_secs(10));
-    let log = std::fs::read_to_string(s.root.join("state/herdr-core/test/core.log")).unwrap();
+    let log = std::fs::read_to_string(s.root.join("state/adk/test/core.log")).unwrap();
     assert!(log.contains("/bin/bash") && log.contains("exceeded 5 s"), "{log}");
 }

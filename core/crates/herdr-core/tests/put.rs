@@ -73,14 +73,14 @@ fn slow_uplink(s: &mut Session, rohan: &Session) {
     std::fs::write(&slow, script).unwrap();
     std::fs::set_permissions(&slow, std::os::unix::fs::PermissionsExt::from_mode(0o755)).unwrap();
     s.env.push((var, slow.display().to_string()));
-    let config = s.root.join("config/herdr-core/config.toml");
+    let config = s.root.join("config/agentdeck-core/config.toml");
     std::fs::create_dir_all(config.parent().unwrap()).unwrap();
     std::fs::write(config, "machine_timeout = 2\n").unwrap();
     s.json(&["machine", "add", "rohan"]);
 }
 
 fn parts(rohan: &Session) -> Vec<std::path::PathBuf> {
-    let files = rohan.root.join("state/herdr-core/test/files");
+    let files = rohan.root.join("state/adk/test/files");
     let dirs = std::fs::read_dir(files).into_iter().flatten().flatten();
     let all = dirs.flat_map(|d| std::fs::read_dir(d.path()).into_iter().flatten().flatten());
     all.map(|f| f.path()).filter(|p| p.file_name().unwrap().to_string_lossy().starts_with('.')).collect()
@@ -145,7 +145,7 @@ fn a_put_whose_caller_goes_leaves_nothing_there_and_the_next_one_goes_on() {
     assert_eq!(std::fs::read(r["path"].as_str().unwrap_or_default()).ok(), Some(bytes), "{r}");
     assert!(slow_runner() || took < std::time::Duration::from_millis(1500), "a call meanwhile took {took:?}");
     wait_until("the gone one's part is removed", || parts(&rohan).is_empty());
-    let files = rohan.root.join("state/herdr-core/test/files");
+    let files = rohan.root.join("state/adk/test/files");
     let landed: Vec<_> = std::fs::read_dir(files)
         .into_iter()
         .flatten()
@@ -312,7 +312,7 @@ fn puts_given_up_before_their_begin_ran_keep_no_slot() {
     for n in 100..120 {
         framed(&mut stays, 1000 + n, "terminal.get", serde_json::json!({"terminal": t}));
     }
-    let dir = s.root.join("state/herdr-core/test/files").join(&t);
+    let dir = s.root.join("state/adk/test/files").join(&t);
     let hidden = || {
         std::fs::read_dir(&dir)
             .into_iter()
@@ -354,7 +354,7 @@ fn a_late_piece_leaves_alone_a_put_that_took_its_handle_again() {
     let piece = |data: &[u8]| serde_json::json!({"transfer": h, "offset": 0, "data": herdr_core::put::encode(data)});
     assert!(framed(&mut conn, 2, "terminal.put_begin", begin(&a))["result"].is_object());
     // A's part becomes a fifo: writing a piece into it waits for a reader.
-    let part = s.root.join("state/herdr-core/test/files").join(&a).join(format!(".hc-put-{h}"));
+    let part = s.root.join("state/adk/test/files").join(&a).join(format!(".hc-put-{h}"));
     std::fs::remove_file(&part).unwrap();
     assert!(std::process::Command::new("mkfifo").arg(&part).status().unwrap().success());
     send(&mut conn, Some(3), "terminal.put_chunk", piece(b"old"));
@@ -427,13 +427,7 @@ fn one_handle_is_one_transfer_even_begun_twice_at_once() {
     assert_eq!(ok, 1, "{replies:?}");
     let hidden: usize = [&t1, &t2]
         .iter()
-        .map(|t| {
-            std::fs::read_dir(s.root.join("state/herdr-core/test/files").join(t))
-                .into_iter()
-                .flatten()
-                .flatten()
-                .count()
-        })
+        .map(|t| std::fs::read_dir(s.root.join("state/adk/test/files").join(t)).into_iter().flatten().flatten().count())
         .sum();
     assert_eq!(hidden, 1, "only the begun one keeps a part");
 }
@@ -482,7 +476,7 @@ fn a_piece_never_answered_gives_the_line_up_and_the_next_put_works() {
     std::fs::write(&ssh, script).unwrap();
     std::fs::set_permissions(&ssh, std::os::unix::fs::PermissionsExt::from_mode(0o755)).unwrap();
     s.env.push((var, ssh.display().to_string()));
-    let config = s.root.join("config/herdr-core/config.toml");
+    let config = s.root.join("config/agentdeck-core/config.toml");
     std::fs::create_dir_all(config.parent().unwrap()).unwrap();
     std::fs::write(config, "machine_timeout = 1\n").unwrap();
     s.json(&["machine", "add", "rohan"]);
@@ -526,7 +520,7 @@ fn failed_puts_over_a_machine_line_never_end_it() {
         let r = conn.call(id, "terminal.put", serde_json::json!({"terminal": there, "name": "x", "data": data}));
         assert_eq!(r["error"]["data"]["kind"], "finished", "{r}");
     }
-    let log = std::fs::read_to_string(rohan.root.join("state/herdr-core/test/core.log")).unwrap_or_default();
+    let log = std::fs::read_to_string(rohan.root.join("state/adk/test/core.log")).unwrap_or_default();
     assert!(!log.contains("too many puts"), "{log}");
     let alive = run(&s, &["--on", "rohan", "sleep", "100"]);
     let file = s.root.join("ok.txt");

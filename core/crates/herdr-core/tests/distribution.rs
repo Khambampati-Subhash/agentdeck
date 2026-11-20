@@ -294,8 +294,8 @@ fn the_install_script_installs_when_the_temp_dir_cannot_execute() {
     assert!(out.status.success(), "{stdout}{stderr}");
     assert!(stdout.contains("installed"));
     assert!(stdout.contains("updated"));
-    assert!(bin.join("herdr-core").is_file());
-    assert!(!bin.join("herdr-core.staged").exists(), "the stage is cleaned up");
+    assert!(bin.join("agentdeck-core").is_file());
+    assert!(!bin.join("agentdeck-core.staged").exists(), "the stage is cleaned up");
 }
 
 #[cfg(target_os = "macos")]

@@ -9,7 +9,7 @@ use std::os::unix::fs::symlink;
 #[test]
 fn failed_registry_and_stderr_writes_do_not_stop_persistence() {
     let s = Session::new();
-    let state = s.root.join("state/herdr-core/test");
+    let state = s.root.join("state/adk/test");
     fs::create_dir_all(&state).unwrap();
     symlink("/dev/full", state.join("core.log")).unwrap();
     let before = run(&s, &["sleep", "600"]);
@@ -35,7 +35,7 @@ fn failed_registry_and_stderr_writes_do_not_stop_persistence() {
 #[test]
 fn server_stop_replies_when_its_registry_flush_times_out() {
     let s = Session::new();
-    let state = s.root.join("state/herdr-core/test");
+    let state = s.root.join("state/adk/test");
     fs::create_dir_all(&state).unwrap();
     symlink("/dev/full", state.join("core.log")).unwrap();
     s.json(&["server", "status"]);

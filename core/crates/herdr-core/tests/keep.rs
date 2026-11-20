@@ -429,7 +429,7 @@ fn screen_restore_is_opt_in_and_enabling_it_later_does_not_replay_a_discarded_sc
 
 fn shows_what_was_left(setting: Option<bool>, lose: impl Fn(&Session, &serde_json::Value)) {
     let s = Session::new();
-    let config = s.root.join("config/herdr-core/config.toml");
+    let config = s.root.join("config/agentdeck-core/config.toml");
     std::fs::create_dir_all(config.parent().unwrap()).unwrap();
     if let Some(setting) = setting {
         std::fs::write(&config, format!("restore_screen = {setting}\n")).unwrap();
@@ -471,7 +471,7 @@ fn shows_what_was_left(setting: Option<bool>, lose: impl Fn(&Session, &serde_jso
 #[test]
 fn a_saved_screen_comes_back_once_not_after_a_later_loss_that_saved_nothing() {
     let s = Session::new();
-    let config = s.root.join("config/herdr-core/config.toml");
+    let config = s.root.join("config/agentdeck-core/config.toml");
     std::fs::create_dir_all(config.parent().unwrap()).unwrap();
     std::fs::write(&config, "restore_screen = true\n").unwrap();
     let t = run(&s, &["--keep", "sh", "-c", "printf 'before-the-update\\n'; exec sleep 100"]);
