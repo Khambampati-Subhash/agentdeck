@@ -100,7 +100,7 @@ export function checkMarkdown(file: string, source: string, ref: Reference): str
 }
 
 async function run(binary: string, arg: string): Promise<string> {
-  const result = Bun.spawnSync([resolve(binary), arg], { env: { ...process.env, AGENTDECK_HOME: resolve("target/docs-no-window") } });
+  const result = Bun.spawnSync([resolve(binary), arg], { env: { ...process.env, AGENTDECK_HOME: "/var/tmp/agentdeck-docs-no-window" } });
   if (result.exitCode !== 0) throw new Error(`${binary} ${arg}: ${result.stderr.toString()}`);
   return result.stdout.toString();
 }
