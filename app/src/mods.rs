@@ -838,12 +838,17 @@ pub fn run_here(command: &str, args: &[String]) -> Option<String> {
 
 /// The agents a machine can start (`knownAgents()`), asked at most once a minute.
 fn known_agents(on: Option<String>, list: Vec<Value>) -> Value {
+    known_agents_with(on, list, crate::programs::installed)
+}
+
+/// `known_agents` with the lookup of installed commands passed in.
+fn known_agents_with(on: Option<String>, list: Vec<Value>, installed: impl FnOnce(&[String], Option<&str>) -> Vec<String>) -> Value {
     type InstalledCache = std::collections::HashMap<Option<String>, (std::time::Instant, Vec<String>, Vec<String>)>;
     static SEEN: std::sync::Mutex<Option<InstalledCache>> = std::sync::Mutex::new(None);
     let commands: Vec<String> = list.iter().filter_map(|a| a["run"][0].as_str().map(str::to_owned)).collect();
     let cached = SEEN.lock().ok().and_then(|s| s.as_ref()?.get(&on).filter(|(at, checked, _)| at.elapsed().as_secs() < 60 && checked == &commands).map(|(_, _, v)| v.clone()));
     let have = cached.unwrap_or_else(|| {
-        let found = crate::programs::installed(&commands, on.as_deref());
+        let found = installed(&commands, on.as_deref());
         if let Ok(mut s) = SEEN.lock() {
             s.get_or_insert_with(std::collections::HashMap::new).insert(on.clone(), (std::time::Instant::now(), commands, found.clone()));
         }
@@ -1336,15 +1341,26 @@ mod tests {
         set_shown_copies(Default::default());
     }
 
-    #[cfg(unix)]
     #[test]
     fn known_agents_uses_snapshot_and_refreshes_changed_commands() {
+        // A stand-in for the shell lookup (tested in programs.rs): the real one runs the
+        // person's interactive shell, which a busy machine can't start within its limit.
+        let checks = std::sync::atomic::AtomicUsize::new(0);
+        let installed = |commands: &[String], _: Option<&str>| {
+            checks.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            commands.iter().filter(|c| *c == "printf").cloned().collect()
+        };
+        // A machine of its own: other tests' lookups share the cache.
+        let on = Some("known-agents-test".to_owned());
         let snapshot = vec![json!({"key": "claude", "run": ["herdr_issue57_not_installed"]})];
-        let first = std::thread::spawn(move || known_agents(None, snapshot)).join().unwrap();
+        let first = known_agents_with(on.clone(), snapshot.clone(), installed);
         assert_eq!(first[0]["run"], json!(["herdr_issue57_not_installed"]));
         assert_eq!(first[0]["installed"], false);
+        known_agents_with(on.clone(), snapshot, installed);
+        assert_eq!(checks.load(std::sync::atomic::Ordering::Relaxed), 1, "the same commands come from the cache");
         let snapshot = vec![json!({"key": "claude", "run": ["printf"]}), json!({"key": "claude-alt", "run": ["printf"]})];
-        let next = std::thread::spawn(move || known_agents(None, snapshot)).join().unwrap();
+        let next = known_agents_with(on, snapshot, installed);
+        assert_eq!(checks.load(std::sync::atomic::Ordering::Relaxed), 2, "changed commands are checked again");
         assert_eq!(next.as_array().unwrap().len(), 2);
         assert_eq!(next[0]["installed"], true);
         assert_eq!(next[1]["key"], "claude-alt");

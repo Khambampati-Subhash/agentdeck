@@ -160,8 +160,10 @@ seeing each other's terminals, settings or core. `scripts/side-by-side` passes
 - [ ] `app/README.md` is still upstream's: herdr.dev installers, Homebrew and Windows
       installs, "telemetry is on by default", cloning herdr-app. Rewrite it for
       AgentDeck as P2 did for `core/README.md`.
-- [ ] Flaky under full-suite load:
-      `mods::tests::known_agents_uses_snapshot_and_refreshes_changed_commands`.
+- [x] Flaky under load: `mods::tests::known_agents_uses_snapshot_and_refreshes_changed_commands`
+      started the person's interactive shell, which a busy machine couldn't start within the
+      30 s limit (74 of 80 failed under load). It now passes a stand-in lookup and also
+      checks the cache (0 of 160 under the same load), 2026-11-20.
 
 ## P4: upstream sync
 
