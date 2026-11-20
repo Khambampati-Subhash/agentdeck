@@ -36,6 +36,7 @@ scripts:
 check: offline scripts
     cd core && just check
     cd app && just test
+    cd app && just docs-check
 
 # Opens our build in a scratch home and core session, never the real Herdr setup.
 dev: build
