@@ -167,11 +167,18 @@ seeing each other's terminals, settings or core. `scripts/side-by-side` passes
 
 ## P4: upstream sync
 
-- [x] `docs/upstream.md`: procedure (`git subtree pull --prefix=app
-      upstream-app master`, same for core), a list of every file we changed and
+- [x] `docs/upstream.md`: procedure (`just sync-upstream <half>`: a fetch and
+      `git subtree merge` per half), a list of every file we changed and
       why, and a log of syncs.
 - [x] `just sync-upstream`: pulls, re-runs the rename checks and tests.
 - [x] First sync done for real, with any conflicts written down.
+- [ ] Names pass for text that was already there before P4: core `SKILL.md` "Herdr"
+      lines, `config.rs`'s `<hc>` tags, old `hc` in some schema descriptions,
+      `agentdeck.d.ts` "AgentOS has none", Settings' "to hc ${version}", the
+      `herdr-shot.png` default, older Herdr prose and the herdr.dev share text in
+      `app/defaults/AGENTS.md`.
+- [ ] `scripts/sync-upstream`'s report skips an added line whose content starts with
+      `++` (a known gap from the P4 review).
 
 ## P5: improvements
 
