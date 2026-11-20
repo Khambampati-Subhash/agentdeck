@@ -7,7 +7,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 allow=scripts/names-allow.txt
 paths=(app/src app/defaults app/scripts/docs.ts core/crates/herdr-core/src core/docs app/docs)
-pattern='HERDR_APP_HOME|HC_(SESSION|SOCKET)|\.config/herdr-(app|core)|~/\.herdr\b|dev\.herdr\.|Herdr\.app|`herdr-app [a-z]|`hc [a-z]|\[hc\]'
+pattern='HERDR_APP_HOME|(^|[^A-Za-z0-9_])HC_(SESSION|SOCKET)([^A-Za-z0-9_]|$)|\.config/herdr-(app|core)|~/\.herdr([^A-Za-z0-9_-]|$)|dev\.herdr\.|Herdr\.app|`herdr-app [a-z]|`hc [a-z]|\[hc\]'
 bad=0
 while IFS= read -r hit; do
   path=${hit%%:*}

@@ -69,10 +69,32 @@ class CheckNames(unittest.TestCase):
         out = self.run_check()
         self.assertEqual(out.returncode, 0)
 
+    def test_hc_session_fails(self):
+        """HC_SESSION alone in a file fails"""
+        self.write_file("app/src/a.rs", 'HC_SESSION=x')
+        out = self.run_check()
+        self.assertEqual(out.returncode, 1)
+        self.assertIn("app/src/a.rs:1:", out.stdout)
+
+    def test_hc_socket_fails(self):
+        """HC_SOCKET alone in a file fails"""
+        self.write_file("app/src/a.rs", 'HC_SOCKET')
+        out = self.run_check()
+        self.assertEqual(out.returncode, 1)
+        self.assertIn("app/src/a.rs:1:", out.stdout)
+
+    def test_home_herdr_fails(self):
+        """~/.herdr/worktrees in a file fails"""
+        self.write_file("app/defaults/AGENTS.md", '`~/.herdr/worktrees` is the path')
+        out = self.run_check()
+        self.assertEqual(out.returncode, 1)
+        self.assertIn("app/defaults/AGENTS.md:1:", out.stdout)
+
     def test_kept_reporter_vars_pass(self):
-        """HC_TERMINAL_ID and HC_TERMINAL_SOCKET pass (kept on purpose)"""
+        """HC_TERMINAL_ID, HC_TERMINAL_SOCKET, HC_SESSIONS_DIR pass (kept on purpose)"""
         self.write_file("app/src/a.rs", 'std::env::var("HC_TERMINAL_ID")')
         self.write_file("app/src/b.rs", 'std::env::var("HC_TERMINAL_SOCKET")')
+        self.write_file("app/src/c.rs", 'std::env::var("HC_SESSIONS_DIR")')
         out = self.run_check()
         self.assertEqual(out.returncode, 0)
         self.assertIn("check-names: clean", out.stdout)
