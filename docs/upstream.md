@@ -47,8 +47,9 @@ here with why. Files we only added aren't upstream's and aren't listed.
 | `core/crates/herdr-core/src/cli/{run,server,machine}.rs`, `src/remote/{run,put}.rs`, `src/cli/tests.rs` | P4 sync (2026-11-20): the P2 renames re-applied to code upstream moved out of `cli.rs` and `remote.rs` (`[adk]` notes, `adk …` hints, `brand::TERMINAL_ID_VAR`); `server restart --fresh` help says a terminal outside AgentDeck. |
 | `app/scripts/worktree.test.ts` | Tests for our worktree dialog changes (task agent picker, `clean`, the space menu's Clean up worktrees); its harness takes the fake `exec` replies as a fourth argument after upstream's settings text and overrides (2026-11-20). |
 | `app/src/core_bin.rs` | P4 sync (2026-11-20): `use_core` puts the core's folder on PATH ahead of another `adk` (`brand::CORE_CLI`, `adk.exe`/`adk.ps1` on Windows), not another `hc`, and its tests use `agentdeck-core`/`adk`. |
-| `app/src/mods.rs`, `src/mods/lifecycle_tests.rs` | P4 sync (2026-11-20): mods' `hc()` still runs `core_bin::path()` (upstream went back to `"hc"` on PATH), `known_agents_with` follows upstream's `Result`, and the synced tests load both module names through `with_modules`. |
+| `app/src/mods.rs`, `src/mods/lifecycle_tests.rs` | P4 sync (2026-11-20): mods' `hc()` still runs `core_bin::path()` (upstream now maps `hc` to `crate::core_bin::path()` inside `run_blocking` for Windows compatibility, so mods' `hc()` runs our core there too; our override in the mod `hc()` function and `exec` is kept as belt-and-braces), `known_agents_with` follows upstream's `Result`, and the synced tests load both module names through `with_modules`. |
 | `app/src/{terminal,update,window,main,macos_check}.rs`, `app/defaults/{AGENTS.md,agentdeck.d.ts}`, `app/src/SKILL.md` | P4 sync (2026-11-20): upstream's new text in our names: `adk put` errors, the core's `adk ` version prefix after an app update, the default window title and file-replace errors say AgentDeck, `agentdeck check`/`status`/`do`, `checking` imported from `"agentdeck"`, and the macOS check test's launchd label uses our prefix. |
+| `app/defaults/AGENTS.md` | P4 app sync: dropped upstream's note about the Herdr TUI's config.toml, which AgentDeck doesn't ship. |
 
 ## Syncing
 
@@ -74,7 +75,7 @@ Workflow:
 5. Review the added lines for:
    - New requests to any server (not just herdr.dev): gate it or remove it and add a row to the table above
    - New user-visible "Herdr" text: replace with AgentDeck's names
-6. For app syncs, also run a watched session (`just dev` with `scripts/watch-net` alongside, see `docs/plan.md` P1) to confirm no outbound connection.
+6. For app syncs, also run a watched session (`just dev` with `scripts/watch-net` alongside, see `docs/plan.md` P1) to confirm no outbound connection. `gh` → GitHub sockets are expected (the Pull requests board calls the person's signed-in `gh` at startup); only sockets or `curl` from the app or core count as a failure. To see none at all, run the session with `GH_CONFIG_DIR` pointing at an empty scratch folder.
 7. If lockfiles changed, run `just notices` in that half to update `THIRD-PARTY-NOTICES`.
 8. Open a PR and merge with `gh pr merge --merge` (never squash or rebase; subtree history must keep upstream's hashes).
 9. Add a line to `## Sync log` below.

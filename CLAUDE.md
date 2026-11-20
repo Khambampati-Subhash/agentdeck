@@ -13,7 +13,7 @@ docs and distribution checks), versioning (`VERSION`, `agentdeck-vX.Y.Z`
 tags, `just tag`), bundled core in AgentDeck.app, and a release workflow
 (tag → draft GitHub release). `agentdeck-v0.1.0` was published on 2026-11-20.
 P4 (upstream sync) is done: tooling (PR #10), core sync to herdr-core 0.1.21
-(PR #11) and app sync to herdr-app 0.1.16 (this PR); see `docs/upstream.md`.
+(PR #11) and app sync to herdr-app 0.1.16 (PR #12); see `docs/upstream.md`.
 Open items are in `docs/plan.md`.
 Update this line at the end of every milestone.
 

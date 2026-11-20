@@ -761,8 +761,6 @@ What's about the user, never a look:
   settings.json; the path and `~` refer to the space's machine, including remote
   spaces. Read when New worktree opens; existing checkouts are not moved, and
   Open / Remove worktree still use Git's checkout list. No mod clones needed.
-  The app does not read the TUI's config.toml; set its `[worktrees] directory`
-  to the same place if both should create checkouts together.
 - `terminal_line_height` (default 1, 0.8..2), `terminal_cell_width`
   (default 1, 0.8..2) and `terminal_scroll_speed` (default 1, 0.1..5):
   terminal row height, column width and wheel/trackpad speed, used where the
