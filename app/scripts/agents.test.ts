@@ -385,3 +385,20 @@ test("the list publishes when each blocked agent and pane-less sub-agent started
   expect(published).toHaveLength(2);
   expect(Object.keys(published[1][1] as object)).toEqual(["t4"]);
 });
+
+test("a blocked sub-agent with no listed ancestor counts under Needs you", () => {
+  const header = (r: ReturnType<typeof keptRender>) => r.texts.get("sec-4") ?? "";
+  // Only orphans blocked: the section and its inbox button still show.
+  const alone = keptRender("priority", { kept: [], paneless: [{ address: "t5", parent: "t9" }, { address: "t6", parent: "t6" }], statuses: { t5: "blocked", t6: "error" } });
+  expect(alone.ids).toContain("sec-4");
+  expect(alone.ids).toContain("open-inbox");
+  expect(header(alone)).toContain("Needs you");
+  expect(header(alone)).toContain("2");
+  // Beside a blocked agent: one badge for both. A sub-agent under a listed agent isn't an orphan.
+  const both = keptRender("priority", { kept: [], paneless: [{ address: "t5", parent: "t9" }, { address: "t7", parent: "t1" }], statuses: { t1: "blocked", t5: "blocked", t7: "blocked" } });
+  expect(both.ids.filter((id) => id === "sec-4")).toHaveLength(1);
+  expect(header(both)).toContain("2");
+  // Not blocked, or grouped by space: nothing changes.
+  expect(keptRender("priority", { kept: [], paneless: [{ address: "t5", parent: "t9" }], statuses: { t5: "working" } }).ids).not.toContain("sec-4");
+  expect(keptRender("grouped", { kept: [], paneless: [{ address: "t5", parent: "t9" }], statuses: { t5: "blocked" } }).ids).not.toContain("open-inbox");
+});

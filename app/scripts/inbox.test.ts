@@ -1,4 +1,4 @@
-import { test, expect } from "bun:test";
+import { test, expect, setSystemTime } from "bun:test";
 import { inboxRows, stamp, trimPreview, keepSelection, message } from "../defaults/mods/inbox/rows.js";
 
 const agent = (address: string, status: string) => ({ address, space: "s1", space_name: "app", tab_name: "main", title: address, program: "claude", status });
@@ -98,8 +98,13 @@ function el() {
 }
 const textOf = (node: any): string => typeof node === "string" ? node : (node?.children ?? []).map(textOf).join(" ");
 
-function popup({ list = [] as any[], stamps = undefined as unknown, t = {} as Record<string, string>, read = async (_args: string[]) => ({ code: 0, stdout: JSON.stringify({ text: "screen", complete: true, how: "grid" }), stderr: "" }), storage = new Map<string, string>() } = {}) {
+// The shipped layout's shape, with the Agents list shown.
+const withAgents = { id: "root", type: "row", children: [{ id: "sidebar", type: "column", children: [{ id: "agents", type: "block", content: { mod: "agents" } }] }] };
+
+function popup({ list = [] as any[], stamps = undefined as unknown, t = {} as Record<string, string>, read = async (_args: string[]) => ({ code: 0, stdout: JSON.stringify({ text: "screen", complete: true, how: "grid" }), stderr: "" }), storage = new Map<string, string>(), shown = withAgents as unknown } = {}) {
   const commands: unknown[][] = [];
+  const revealed: number[] = [];
+  const ScrollHandle = { new: () => ({ scroll_to_item: (i: number) => revealed.push(i), release: () => true }) };
   const reads: string[][] = [];
   const closed: unknown[] = [];
   const tasks: Promise<unknown>[] = [];
@@ -110,14 +115,14 @@ function popup({ list = [] as any[], stamps = undefined as unknown, t = {} as Re
     props: () => ({ overlay: "ov1" }), closeOverlay: (id: unknown) => closed.push(id),
     run: (...args: unknown[]) => commands.push(args),
     hc: (args: string[]) => { reads.push(args); return read(args); },
-    localStorage, ...rowsModule,
+    localStorage, ScrollHandle, layout: () => shown, ...rowsModule,
   };
   const Inbox = new Function(...Object.keys(globals), mainSource)(...Object.values(globals));
   const cx: any = { notify() {}, stop_propagation() {}, focus_handle: () => ({ focus() {} }), timer: { every() {}, after() {} }, spawn: (f: (cx: any) => Promise<unknown>) => tasks.push(f(cx)) };
   const view = new Inbox();
   view.init({}, cx);
   const settle = async () => { while (tasks.length) await tasks.shift(); };
-  return { view, cx, commands, reads, closed, settle, storage };
+  return { view, cx, commands, reads, closed, settle, storage, tasks, revealed };
 }
 
 test("go focuses the selected agent and closes", () => {
@@ -216,4 +221,59 @@ test("the selected row is filled as selected, not as hovered", () => {
   const root = view.render(cx).node;
   expect(find(root, "ib-t1").bg).toBe("sel");
   expect(find(root, "ib-t2").bg).toBeUndefined();
+});
+
+test("a read that hangs is tried again after 10 s, and only the newer one lands", async () => {
+  const start = Date.now();
+  setSystemTime(start);
+  try {
+    const answers: ((text: string) => void)[] = [];
+    const read = () => new Promise<any>((resolve) => answers.push((text) => resolve({ code: 0, stdout: JSON.stringify({ text }), stderr: "" })));
+    const { view, cx, reads, tasks } = popup({ list: [agent("t1", "blocked")], read });
+    view.refresh(cx);
+    setSystemTime(start + 9000);
+    view.refresh(cx);
+    expect(reads).toHaveLength(1);
+    setSystemTime(start + 11000);
+    view.refresh(cx);
+    expect(reads).toHaveLength(2);
+    answers[1]("fresh");
+    await tasks[1];
+    expect(view.previews.get("t1")).toEqual(["fresh"]);
+    answers[0]("old");
+    await tasks[0];
+    expect(view.previews.get("t1")).toEqual(["fresh"]);
+    // The late old read didn't free the slot early: the next refresh waits for nothing.
+    view.refresh(cx);
+    expect(reads).toHaveLength(3);
+  } finally {
+    setSystemTime();
+  }
+});
+
+test("the selected row is scrolled into view when the selection moves, not on every render", () => {
+  const { view, cx, revealed } = popup({ list: [agent("t1", "blocked"), agent("t2", "blocked"), agent("t3", "blocked")] });
+  const find = (node: any, id: string): any => node?.id === id ? node : (node?.children ?? []).map((c: any) => find(c, id)).find(Boolean);
+  expect(find(view.render(cx).node, "inbox-list").calls).toContain("track_scroll");
+  view.render(cx);
+  expect(revealed).toEqual([0]);
+  view.move(-1);
+  view.render(cx);
+  view.render(cx);
+  expect(revealed).toEqual([0, 2]);
+});
+
+test("the agents list's stamps count only while the shown layout draws it", () => {
+  const now = Date.now();
+  const storage = new Map([["since", JSON.stringify({ t1: now - 60000 })]]);
+  const stale = { t1: now - 5 * 3600000 };
+  const waited = (shown: unknown) => Math.round(popup({ list: [agent("t1", "blocked")], storage, stamps: stale, shown }).view.rows()[0].waited / 60000);
+  const agentsBlock = { id: "agents", type: "block", content: { mod: "agents" } };
+  expect(waited(withAgents)).toBe(300);
+  expect(waited({ id: "root", type: "row", children: [{ id: "bar", type: "block", content: { mod: "terminals-bar" } }] })).toBe(1);
+  expect(waited({ id: "root", type: "row", children: [{ ...agentsBlock, hidden: true }] })).toBe(1);
+  expect(waited({ id: "root", type: "row", children: [{ id: "side", type: "column", hidden: true, children: [agentsBlock] }] })).toBe(1);
+  expect(waited({ id: "root", type: "stack", active: "files", children: [{ id: "files", type: "block", content: { mod: "files" } }, agentsBlock] })).toBe(1);
+  expect(waited({ id: "root", type: "stack", active: "agents", children: [{ id: "files", type: "block", content: { mod: "files" } }, agentsBlock] })).toBe(300);
+  expect(waited(null)).toBe(1);
 });

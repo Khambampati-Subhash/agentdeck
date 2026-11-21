@@ -59,3 +59,13 @@ export function keepSelection(rows, address, index) {
   const at = rows.findIndex((r) => r.address === address);
   return at >= 0 ? at : Math.min(index, rows.length - 1);
 }
+
+// Whether a layout draws the mod: a node with it that isn't hidden, under no
+// hidden node, and in a stack only under its active child.
+export function draws(node, mod) {
+  if (!node || typeof node !== "object" || node.hidden) return false;
+  if (node.content?.mod === mod) return true;
+  const kids = Array.isArray(node.children) ? node.children : [];
+  const shown = node.type === "stack" ? kids.filter((k) => k?.id === node.active) : kids;
+  return shown.some((k) => draws(k, mod));
+}
