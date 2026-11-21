@@ -196,10 +196,13 @@ do it, it's a mod):
   - [ ] The notch "island": blocked agents shown above other apps. Needs app
         Rust code (a floating window) and a setting to hide message text.
   - [ ] Voice control on top of the inbox (push-to-talk, local speech).
-  - [ ] Existing installs don't get new default keys: `keys.rs` only upgrades
-        keys files matching a saved snapshot, and there is none for v0.1.0.
-  - [ ] Inbox polish: wait times only tick while the popup is open; a hung
-        `adk read` is never retried; the selected row can scroll out of view.
+  - [ ] Add each AgentDeck release's `keys*.json` to `app/src/keys/shipped`
+        before the defaults change again: `keys.rs` only upgrades keys files
+        matching a saved snapshot. v0.1.0's `keys.macos.json` matches
+        `v0.1.15-keys.macos.json`, so untouched macOS installs get new keys;
+        its `keys.json` (other systems, not released) matches none.
+  - [ ] Inbox polish: a hung `adk read` is never retried; the selected row
+        can scroll out of view.
 - [ ] Our default layout and theme.
 - [ ] Anything else from daily use: keep a list here.
   - [x] Worktree spaces group under their repo even when no space is on the

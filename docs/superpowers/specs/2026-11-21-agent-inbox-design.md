@@ -51,8 +51,11 @@ quickly. Voice control (planned next) will drive the same list.
 - Data: `agents()` for blocked agents and their place; `terminals()` for each
   agent's `report` (`kind`, `msg`); `hc(["read", addr, "--json"])` for the
   preview, trimmed to the last ~6 non-empty lines.
-- Waiting time: the mod stamps when it first sees an agent blocked (like the
-  agents mod's `changed` map).
+- Waiting time: the agents mod, always shown, publishes when each blocked
+  agent (and pane-less sub-agent) started waiting as shared `agents.blocked`;
+  the inbox keeps its own stamps only as a fallback.
+- Pane-less sub-agents that are blocked or failed (`error`) are rows too, from
+  `terminals()`, as the Agents list counts them.
 - Going to a pane: `run("agent.focus", …)` (or the same call the agents mod
   uses), then close the overlay. Peek: `run("terminal.peek", { terminal })`.
 - Pure helpers (rows from agents and terminals, ordering, preview trim) are
