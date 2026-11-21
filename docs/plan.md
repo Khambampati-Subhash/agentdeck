@@ -185,9 +185,28 @@ seeing each other's terminals, settings or core. `scripts/side-by-side` passes
 The user picks these. Candidates, mostly as mods (Herdr's rule: if a mod can
 do it, it's a mod):
 
-- [ ] Ideas from the old AgentOS: approvals bar for blocked agents, policy
-      (deny by default), token, context and cost per agent, session resume.
-      Each needs a check of what OSC 7501 and `hc` already give.
+- [ ] Ideas from the old AgentOS: policy (deny by default), token, context
+      and cost per agent, session resume. Each needs a check of what OSC 7501
+      and `hc` already give.
+- [x] Agent inbox (the old approvals bar, 2026-11-21): the `inbox` mod
+      (`cmd-shift-i`) lists blocked agents with their `kind`, `msg`, wait and
+      screen preview, ↵ goes to the pane; "Needs you" in the Agents list shows
+      a count, an inbox button and each message. It never answers for the
+      person ([design](superpowers/specs/2026-11-21-agent-inbox-design.md)).
+  - [ ] The notch "island": blocked agents shown above other apps. Needs app
+        Rust code (a floating window) and a setting to hide message text.
+  - [ ] Voice control on top of the inbox (push-to-talk, local speech).
+  - [ ] Add each AgentDeck release's `keys*.json` to `app/src/keys/shipped`
+        before the defaults change again: `keys.rs` only upgrades keys files
+        matching a saved snapshot. v0.1.0's `keys.macos.json` matches
+        `v0.1.15-keys.macos.json`, so untouched macOS installs get new keys;
+        its `keys.json` (other systems, not released) matches none.
+  - [ ] Inbox polish: a hung `adk read` is never retried; the selected row
+        can scroll out of view. In layouts without the Agents list (`terminals`,
+        `win98`) the saved `agents.blocked` map goes stale and still wins over
+        the inbox's own stamps: clear it when the agents mod goes away, or mark
+        who published it. Orphan sub-agents (no listed ancestor) show in the
+        inbox but not in the "Needs you" count.
 - [ ] Our default layout and theme.
 - [ ] Anything else from daily use: keep a list here.
   - [x] Worktree spaces group under their repo even when no space is on the

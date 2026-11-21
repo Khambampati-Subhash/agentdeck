@@ -50,6 +50,11 @@ function title(tab, l) {
   const telling = live && live !== (l?.terminal ?? l?.address) && live !== prog && !path && !live.includes("@") && live.toLowerCase() !== l?.program?.key;
   return (tab.name === prog || !tab.named) && telling ? live : tab.name;
 }
+// What a blocked agent asked, from its own report: one short line under its name.
+const blockedMsg = (term) => {
+  const m = (term?.report?.msg ?? "").replace(/\s+/g, " ").trim();
+  return m.length > 80 ? `${m.slice(0, 80)}\u2026` : m;
+};
 const RANK = { blocked: 4, done: 3, working: 2, idle: 1 };
 // A sub-agent without a pane isn't in agents(): its raw word, error counting as
 // blocked. It's never done: it reports to its parent, and the parent's done is the news.
@@ -130,6 +135,17 @@ export default class Agents extends View {
     this.pendingPins = pending;
     if (pending.length) localStorage.setItem("pins", JSON.stringify(pending));
     else localStorage.removeItem("pins");
+  }
+
+  // When each blocked agent and pane-less sub-agent started waiting, for the inbox:
+  // the whole map each time, and only when it changed (every mod re-renders on it).
+  publishBlocked(tracked) {
+    const stamps = {};
+    for (const a of tracked) if (a.status === "blocked") stamps[a.address] = this.changed[a.address]?.at;
+    const json = JSON.stringify(stamps);
+    if (json === this.published) return;
+    this.published = json;
+    setShared("agents.blocked", stamps);
   }
 
   since(a) {
@@ -230,7 +246,11 @@ export default class Agents extends View {
     this.migratePins(all);
     const shown = focused()?.agent;
     const now = Date.now();
-    this.track(list, now);
+    // Pane-less sub-agents are stamped too: the inbox lists the blocked ones.
+    const paneless = all.filter((k) => k.parent && k.state === "live" && !this.listed.has(k.address)).map((k) => ({ address: k.address, status: kidStatus(k, this.listed) }));
+    const tracked = [...list, ...paneless];
+    this.track(tracked, now);
+    this.publishBlocked(tracked);
     // A kept sub-agent (one with a pane) is in agents() too: where a tree shows
     // it, it gets no row of its own, unless it's pinned.
     const nested = new Set(collapsed ? [] : list.flatMap((a) => this.tree(all, a.address).map((s) => s.t.address)));
@@ -344,11 +364,13 @@ export default class Agents extends View {
       // Under a space header the space goes without saying; an automatic tab number says nothing.
       // Without a space header above (priority, pinned) the row names its space.
       const full = byPriority || isPinned;
+      // A blocked agent says what it's waiting on (not in the rail, which has no room).
+      const msg = a.status === "blocked" ? blockedMsg(all.find((x) => x.address === a.address)) : "";
       const name = full ? a.space_name || label(a) : more ?? (/^\d+$/.test(label(a)) ? a.program?.name || label(a) : label(a));
       return h_flex()
         .id(`ag-${a.address}`)
         .px(8)
-        .h(30)
+        .h(msg ? 46 : 30)
         .flex_none()
         .rounded(8)
         .items_center()
@@ -368,9 +390,11 @@ export default class Agents extends View {
             this.folded.has(a.address) ? this.folded.delete(a.address) : this.folded.add(a.address);
             cx.notify();
           })).child(pic)))
-        .child(h_flex().flex_1().min_w(0).gap(5).items_center()
-          .child(div().min_w(0).max_w(full && more ? 120 : 200).truncate().text_color(idle ? t.muted : t.foreground).child(name))
-          .when(full && Boolean(more), el => el.child(div().flex_1().min_w(0).truncate().text_color(t.dim).child(`\u00b7 ${more}`))))
+        .child(v_flex().flex_1().min_w(0)
+          .child(h_flex().min_w(0).gap(5).items_center()
+            .child(div().min_w(0).max_w(full && more ? 120 : 200).truncate().text_color(idle ? t.muted : t.foreground).child(name))
+            .when(full && Boolean(more), el => el.child(div().flex_1().min_w(0).truncate().text_color(t.dim).child(`\u00b7 ${more}`))))
+          .when(Boolean(msg), el => el.child(div().min_w(0).truncate().text_size(11).text_color(t.dim).child(msg))))
         .when(Boolean(machine), el => el.child(div().text_size(10).text_color(t.dim).child(machine)))
         .when(subs.length > 0, el => el.child(fold(a, subs)))
         .when(this.hovered === a.address, el => el.child(pin))
@@ -409,8 +433,24 @@ export default class Agents extends View {
           cx.notify();
         })
         .child(div().truncate().text_color(t[g.status] ?? t.dim).child(g.label))
-        .when(byPriority || !open, (el) => el.child(div().text_color(t.dim).child(String(g.members.length))))
+        .when(byPriority || !open, (el) => el.child(g.status === "blocked"
+          // Needs-you count as a badge.
+          ? div().px(5).rounded(8).text_size(10).bg(t.blocked + "26").font_semibold().text_color(t.blocked).child(String(g.members.length))
+          : div().text_color(t.dim).child(String(g.members.length))))
         .child(div().flex_1())
+        // Opens the inbox; stop_propagation keeps the click from folding the section.
+        .when(g.status === "blocked" && open, (el) => el.child(div()
+          .id("open-inbox")
+          .p(2)
+          .rounded(4)
+          .text_color(t.dim)
+          .hover((s) => s.text_color(t.foreground))
+          .tooltip("Open the inbox")
+          .on_click((_e, cx) => {
+            cx.stop_propagation();
+            run("mod.open", { name: "inbox" });
+          })
+          .child(svg("mods/workspace-chrome/layers.svg").size(13))))
         .when(!open, (el) => el
           .when(!byPriority && top && top !== "idle", (el) => el.child(this.status(t, { status: top }, true)))
           .child(svg("mods/workspace-chrome/chevron-right.svg").size(11).flex_none().text_color(t.dim)));

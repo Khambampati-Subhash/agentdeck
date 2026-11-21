@@ -176,7 +176,7 @@ jobs:
           scripts/agents.test.ts scripts/spaces.test.ts scripts/mod-storage.test.ts
           scripts/worktree.test.ts scripts/settings.test.ts scripts/tabs.test.ts
           scripts/prboard.test.ts scripts/issues.test.ts scripts/prchecks.test.ts
-          scripts/pragent.test.ts scripts/propen.test.ts
+          scripts/pragent.test.ts scripts/propen.test.ts scripts/inbox.test.ts
       # Upstream's macOS selection: every integration test but shot_pixels
       # (it needs the native window renderer and its own opt-in), plus --bins.
       # Unoptimized dev dependencies cut test compile time.

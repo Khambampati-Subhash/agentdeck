@@ -26,7 +26,7 @@ let dark = true;
 const shipped = [["graphite", false], ["ink", false], ["moss", false], ["paper", true], ["atom-one-dark", false], ["mine-light", true], ["win98", true]];
 const values = {
   View: class {}, div: element, svg: (path: string) => { icons.push(path); return element(); }, v_flex: element, h_flex: element, Input: { new: element }, theme: () => ({}), keys: () => [], win: () => ({ platform }),
-  commands: () => [{ name: "app.theme", args: [{ name: "name", required: true }], about: "Use a theme." }], layouts: () => ["main", "win98"], shared: () => "main",
+  commands: () => [{ name: "app.theme", args: [{ name: "name", required: true }], about: "Use a theme." }, { name: "mod.open", args: [{ name: "name", required: true }], about: "Open a mod." }], layouts: () => ["main", "win98"], shared: () => "main",
   themes: () => shipped.map(([name, light]) => ({ name, light })), settings: () => ({ dark }),
 };
 const Palette = new Function(...Object.keys(values), source.replace(/^import .*;\n/gm, "").replace("export default class Palette", "return class Palette"))(...Object.values(values));
@@ -88,4 +88,14 @@ test("palette offers only the themes that can show in the current appearance", (
   dark = false;
   // win98 is the Herdr 98 layout's own theme, so it isn't offered here.
   expect(offered()).toEqual(["paper", "mine-light"]);
+});
+
+test("palette opens the inbox by name", () => {
+  const view = new Palette();
+  view.recent = [];
+  view.query = "";
+  const inbox = view.rows().map((r: any) => r.e).find((e: any) => e.title === "Open inbox");
+  expect(inbox).toMatchObject({ name: "mod.open", args: { name: "inbox" }, group: "Agent" });
+  view.query = "needs you";
+  expect(view.rows()[0].e.title).toBe("Open inbox");
 });
