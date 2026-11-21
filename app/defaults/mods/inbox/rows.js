@@ -1,25 +1,50 @@
-// Blocked agents as inbox rows, longest-waiting first.
-export function inboxRows(agents, terminals, since, now) {
-  const reports = new Map(terminals.map((t) => [t.address, t.report]));
-  return agents
-    .filter((a) => a.status === "blocked")
-    .map((a) => {
-      const report = reports.get(a.address);
-      return {
-        address: a.address, space: a.space, space_name: a.space_name, tab_name: a.tab_name,
-        title: a.title, program: a.program,
-        kind: report?.kind ?? null, msg: report?.msg ?? "",
-        waited: now - (since[a.address] ?? now),
-      };
-    })
-    // Array.sort is stable, so ties stay in agents() order.
-    .sort((a, b) => b.waited - a.waited);
+// What an agent asks, on one line and at most `cap` characters.
+export function message(msg, cap = 300) {
+  const m = (msg ?? "").replace(/\s+/g, " ").trim();
+  return m.length > cap ? `${m.slice(0, cap).trimEnd()}…` : m;
 }
 
-// When each agent started waiting; stamps of agents no longer blocked are dropped.
-export function stamp(since, agents, now) {
+// Blocked agents as inbox rows, longest-waiting first. A sub-agent without a pane
+// isn't in agents(): it comes from terminals(), error counting as blocked (as in
+// the Agents list), under its nearest listed ancestor's space and tab.
+export function inboxRows(agents, terminals, since, now) {
+  const byAddress = new Map(terminals.map((t) => [t.address, t]));
+  const listed = new Map(agents.map((a) => [a.address, a]));
+  const ancestor = (t) => {
+    const seen = new Set();
+    for (let p = t.parent; p && !seen.has(p); p = byAddress.get(p)?.parent) {
+      if (listed.has(p)) return listed.get(p);
+      seen.add(p);
+    }
+    return null;
+  };
+  const row = (address, where, fields) => {
+    const report = byAddress.get(address)?.report;
+    return {
+      address, space: where?.space ?? null, space_name: where?.space_name ?? "", tab_name: where?.tab_name ?? "",
+      kind: report?.kind ?? null, msg: message(report?.msg),
+      waited: now - (since[address] ?? now),
+      ...fields,
+    };
+  };
+  const top = agents
+    .filter((a) => a.status === "blocked")
+    .map((a) => row(a.address, a, { title: a.title, program: a.program, label: a.program?.name ?? a.title ?? a.address }));
+  const kids = terminals
+    .filter((t) => t.parent && t.state === "live" && !listed.has(t.address) && (t.status === "blocked" || t.status === "error"))
+    .map((t) => {
+      const r = row(t.address, ancestor(t), { title: t.name ?? "", program: t.program, label: t.name || t.template || t.program?.name || t.address });
+      if (!r.kind && t.status === "error") r.kind = "error";
+      return r;
+    });
+  // Array.sort is stable, so ties stay in agents() order, sub-agents after.
+  return [...top, ...kids].sort((a, b) => b.waited - a.waited);
+}
+
+// When each blocked address started waiting; stamps of the others are dropped.
+export function stamp(since, addresses, now) {
   const next = {};
-  for (const a of agents) if (a.status === "blocked") next[a.address] = since[a.address] ?? now;
+  for (const a of addresses) next[a] = since[a] ?? now;
   return next;
 }
 

@@ -4,7 +4,7 @@
 
 import { View, div, image, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
-import { agents, terminals, run, hc, theme, settings, props, closeOverlay } from "herdr";
+import { agents, terminals, run, hc, theme, settings, props, shared, closeOverlay } from "herdr";
 import { inboxRows, stamp, trimPreview, keepSelection } from "./rows.js";
 
 function duration(ms) {
@@ -23,7 +23,8 @@ function icon(p, size, color) {
 
 export default class Inbox extends View {
   init(_props, cx) {
-    // When each agent started waiting (ms), kept across restarts.
+    // When each agent started waiting (ms), kept across restarts: only a fallback for
+    // the Agents list's stamps (shared "agents.blocked"), which it keeps while it's shown.
     try { this.since = JSON.parse(localStorage.getItem("since") ?? "{}"); } catch { this.since = {}; }
     if (!this.since || typeof this.since !== "object" || Array.isArray(this.since)) this.since = {};
     this.previews = new Map();
@@ -44,15 +45,19 @@ export default class Inbox extends View {
   rows() {
     const now = Date.now();
     const list = agents();
-    const next = stamp(this.since, list, now);
+    const all = terminals();
+    const blocked = inboxRows(list, all, {}, now).map((r) => r.address);
+    const next = stamp(this.since, blocked, now);
     if (JSON.stringify(next) !== JSON.stringify(this.since)) {
       this.since = next;
       try { localStorage.setItem("since", JSON.stringify(next)); } catch {}
     }
-    const rows = inboxRows(list, terminals(), this.since, now);
+    const published = shared("agents.blocked");
+    const stamps = published && typeof published === "object" && !Array.isArray(published) ? published : {};
+    const rows = inboxRows(list, all, { ...this.since, ...stamps }, now);
     // Agents no longer blocked lose their preview; blocked again, they get a fresh one.
-    const blocked = new Set(rows.map((r) => r.address));
-    for (const a of this.previews.keys()) if (!blocked.has(a)) this.previews.delete(a);
+    const shown = new Set(rows.map((r) => r.address));
+    for (const a of this.previews.keys()) if (!shown.has(a)) this.previews.delete(a);
     return rows;
   }
 
@@ -114,12 +119,12 @@ export default class Inbox extends View {
       .gap(3)
       .rounded(7)
       .cursor_pointer()
-      .when(on, (el) => el.bg(t.hover))
+      .when(on, (el) => el.bg(t.selected))
       .hover((s) => s.bg(t.hover))
       .on_click(() => { this.at = i; this.address = r.address; this.go(); })
       .child(h_flex().gap(8).items_center()
         .child(icon(r.program, 16, t.foreground))
-        .child(div().min_w(0).truncate().font_medium().text_color(t.foreground).child(r.program?.name ?? r.title ?? r.address))
+        .child(div().min_w(0).truncate().font_medium().text_color(t.foreground).child(r.label))
         .when(Boolean(r.kind), (el) => el.child(div().flex_none().px(6).h(18).rounded(5).bg(t.blocked + "26").text_size(10.5).font_semibold().text_color(t.blocked).flex().items_center().child(r.kind)))
         .child(div().flex_1())
         .child(div().flex_none().text_size(11).text_color(t.dim).child(duration(r.waited))))

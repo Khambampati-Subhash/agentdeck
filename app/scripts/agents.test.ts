@@ -8,6 +8,7 @@ function harness(pins: string[], globals: Record<string, unknown> = {}) {
   const data = new Map([["pins", JSON.stringify(pins)]]);
   const writes: unknown[] = [];
   const storage = { getItem: (k: string) => data.get(k) ?? null, setItem: (k: string, v: string) => data.set(k, v), removeItem: (k: string) => data.delete(k) };
+  globals = { setShared() {}, ...globals };
   const Agents = new Function("View", "localStorage", "props", "run", ...Object.keys(globals), `${source}; return Agents;`)(
     class {}, storage, () => ({}), (...args: unknown[]) => writes.push(args),
     ...Object.values(globals),
@@ -349,6 +350,38 @@ test("blockedMsg shows the report's message", () => {
   const long = blockedMsg({ report: { msg: "x".repeat(100) } });
   expect(long).toBe("x".repeat(80) + "…");
   expect(long).toHaveLength(81);
+  expect(blockedMsg({ report: { msg: "Apply\n\n  these\tchanges?" } })).toBe("Apply these changes?");
   expect(blockedMsg(undefined)).toBe("");
   expect(blockedMsg({})).toBe("");
+});
+
+test("the list publishes when each blocked agent and pane-less sub-agent started waiting", () => {
+  const program = { name: "Claude", key: "claude", agent: true };
+  const status: Record<string, string> = { t1: "blocked", t2: "working", t4: "error" };
+  const list = ["t1", "t2"].map((address, i) => ({ address, pane: `p-${address}`, tab: "tab1", space: "s1", space_name: "Project", program, title: address, seq: i, get status() { return status[address]; } }));
+  const published: unknown[][] = [];
+  const { agents } = harness([], {
+    agents: () => list,
+    terminals: () => [
+      ...list.map(a => ({ address: a.address, parent: null, state: "live", status: status[a.address], program, labels: {} })),
+      { address: "t4", parent: "t2", state: "live", get status() { return status.t4; }, program, labels: {} },
+    ],
+    panes: () => list.map(a => ({ ...a, terminal: a.address })), focused: () => null,
+    spaces: () => [{ tabs: [{ id: "tab1", name: "Project", named: true }] }],
+    layout: () => ({ id: "sidebar", size: { px: 268 } }), shared: () => "priority",
+    setShared: (...args: unknown[]) => published.push(args),
+    theme: () => ({}), setAgentOrder() {},
+    div: element, v_flex: element, h_flex: element, svg: element, image: element,
+  });
+  agents.render({});
+  agents.render({});
+  expect(published).toHaveLength(1);
+  const [key, stamps] = published[0] as [string, Record<string, number>];
+  expect(key).toBe("agents.blocked");
+  expect(Object.keys(stamps)).toEqual(["t1", "t4"]);
+  expect(stamps.t1).toBe(agents.changed.t1.at);
+  status.t1 = "working";
+  agents.render({});
+  expect(published).toHaveLength(2);
+  expect(Object.keys(published[1][1] as object)).toEqual(["t4"]);
 });

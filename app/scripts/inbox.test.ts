@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { inboxRows, stamp, trimPreview, keepSelection } from "../defaults/mods/inbox/rows.js";
+import { inboxRows, stamp, trimPreview, keepSelection, message } from "../defaults/mods/inbox/rows.js";
 
 const agent = (address: string, status: string) => ({ address, space: "s1", space_name: "app", tab_name: "main", title: address, program: "claude", status });
 
@@ -26,8 +26,37 @@ test("inboxRows handles remote addresses", () => {
 });
 
 test("stamp keeps old stamps, adds new, drops unblocked", () => {
-  const agents = [agent("t1", "blocked"), agent("t2", "blocked"), agent("t9", "idle")];
-  expect(stamp({ t1: 5, t9: 1 }, agents, 10)).toEqual({ t1: 5, t2: 10 });
+  expect(stamp({ t1: 5, t9: 1 }, ["t1", "t2"], 10)).toEqual({ t1: 5, t2: 10 });
+});
+
+test("inboxRows lists blocked or failed sub-agents without a pane, once each", () => {
+  const agents = [agent("t1", "working"), agent("t2", "blocked")];
+  const live = (address: string, parent: string | null, status: string, more = {}) => ({ address, parent, status, state: "live", program: { name: "Claude" }, ...more });
+  const terminals = [
+    live("t1", null, "working"),
+    live("t2", "t1", "blocked"), // kept: in agents() already
+    live("t3", "t1", "blocked", { name: "reviewer", report: { kind: "permission", msg: "Run tests?" } }),
+    live("t4", "t3", "error"),
+    live("t5", "t1", "working"),
+    live("t6", "t1", "blocked", { state: "exited" }),
+    live("t7", "t7", "blocked"), // a loop in parents
+    live("t8", null, "blocked"), // not a sub-agent: the Agents list doesn't count it either
+  ];
+  const rows = inboxRows(agents, terminals, {}, 10);
+  expect(rows.map((r: any) => r.address)).toEqual(["t2", "t3", "t4", "t7"]);
+  const [, kid, grandkid, loop] = rows;
+  expect(kid).toMatchObject({ label: "reviewer", kind: "permission", msg: "Run tests?", space_name: "app", tab_name: "main" });
+  expect(grandkid).toMatchObject({ label: "Claude", kind: "error", space_name: "app", tab_name: "main" });
+  expect(loop).toMatchObject({ space_name: "", tab_name: "" });
+  expect(rows[0].label).toBe("t2"); // no program name: its title
+});
+
+test("message collapses whitespace and caps long ones", () => {
+  expect(message("  Apply\n\tthese   changes?  ")).toBe("Apply these changes?");
+  expect(message(undefined)).toBe("");
+  const long = message("x ".repeat(400));
+  expect(long).toBe("x ".repeat(150).trim() + "…");
+  expect(inboxRows([agent("t1", "blocked")], [{ address: "t1", report: { msg: "a\n\nb" } }], {}, 1)[0].msg).toBe("a b");
 });
 
 test("trimPreview keeps the last non-blank lines", () => {
@@ -56,6 +85,7 @@ function el() {
     if (method === "node") return node;
     return (...args: any[]) => {
       if (method === "id") node.id = args[0];
+      if (method === "bg") node.bg = args[0];
       node.calls = [...(node.calls ?? []), method];
       if (method === "on_click") node.click = args[0];
       if (method === "child") node.children.push(args[0]?.node ?? args[0]);
@@ -68,7 +98,7 @@ function el() {
 }
 const textOf = (node: any): string => typeof node === "string" ? node : (node?.children ?? []).map(textOf).join(" ");
 
-function popup({ list = [] as any[], read = async (_args: string[]) => ({ code: 0, stdout: JSON.stringify({ text: "screen", complete: true, how: "grid" }), stderr: "" }), storage = new Map<string, string>() } = {}) {
+function popup({ list = [] as any[], stamps = undefined as unknown, t = {} as Record<string, string>, read = async (_args: string[]) => ({ code: 0, stdout: JSON.stringify({ text: "screen", complete: true, how: "grid" }), stderr: "" }), storage = new Map<string, string>() } = {}) {
   const commands: unknown[][] = [];
   const reads: string[][] = [];
   const closed: unknown[] = [];
@@ -76,7 +106,7 @@ function popup({ list = [] as any[], read = async (_args: string[]) => ({ code: 
   const localStorage = { getItem: (k: string) => storage.get(k) ?? null, setItem: (k: string, v: string) => storage.set(k, v), removeItem: (k: string) => storage.delete(k) };
   const globals: Record<string, unknown> = {
     View: class {}, div: el, svg: el, image: el, v_flex: el, h_flex: el,
-    agents: () => list, terminals: () => [], theme: () => ({}), settings: () => ({}),
+    agents: () => list, terminals: () => [], shared: (k: string) => (k === "agents.blocked" ? stamps : undefined), theme: () => t, settings: () => ({}),
     props: () => ({ overlay: "ov1" }), closeOverlay: (id: unknown) => closed.push(id),
     run: (...args: unknown[]) => commands.push(args),
     hc: (args: string[]) => { reads.push(args); return read(args); },
@@ -166,4 +196,24 @@ test("rows sit in a list that takes their height, not the popup's leftover space
   // The popup is as tall as its content: a flex_1 scroll list there gets no height at all.
   expect(list.calls).not.toContain("flex_1");
   expect(root.calls).not.toContain("size_full");
+});
+
+test("the agents list's stamps set the waits and order, over the popup's own", () => {
+  const now = Date.now();
+  const storage = new Map([["since", JSON.stringify({ t1: now - 99 * 3600000 })]]);
+  const { view } = popup({ list: [agent("t1", "blocked"), agent("t2", "blocked"), agent("t3", "blocked")], storage, stamps: { t1: now - 120000, t2: now - 600000 } });
+  const rows = view.rows();
+  expect(rows.map((r: any) => r.address)).toEqual(["t2", "t1", "t3"]);
+  expect(Math.round(rows[0].waited / 60000)).toBe(10);
+  expect(Math.round(rows[1].waited / 60000)).toBe(2);
+  // Without the agents list, its own stamps are the fallback.
+  expect(popup({ list: [agent("t1", "blocked")], storage, stamps: "priority" }).view.rows()[0].waited).toBeGreaterThan(98 * 3600000);
+});
+
+test("the selected row is filled as selected, not as hovered", () => {
+  const { view, cx } = popup({ list: [agent("t1", "blocked"), agent("t2", "blocked")], t: { selected: "sel", hover: "hov" } });
+  const find = (node: any, id: string): any => node?.id === id ? node : (node?.children ?? []).map((c: any) => find(c, id)).find(Boolean);
+  const root = view.render(cx).node;
+  expect(find(root, "ib-t1").bg).toBe("sel");
+  expect(find(root, "ib-t2").bg).toBeUndefined();
 });

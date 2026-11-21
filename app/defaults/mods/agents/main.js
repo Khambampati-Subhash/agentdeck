@@ -52,7 +52,7 @@ function title(tab, l) {
 }
 // What a blocked agent asked, from its own report: one short line under its name.
 const blockedMsg = (term) => {
-  const m = (term?.report?.msg ?? "").trim();
+  const m = (term?.report?.msg ?? "").replace(/\s+/g, " ").trim();
   return m.length > 80 ? `${m.slice(0, 80)}\u2026` : m;
 };
 const RANK = { blocked: 4, done: 3, working: 2, idle: 1 };
@@ -135,6 +135,17 @@ export default class Agents extends View {
     this.pendingPins = pending;
     if (pending.length) localStorage.setItem("pins", JSON.stringify(pending));
     else localStorage.removeItem("pins");
+  }
+
+  // When each blocked agent and pane-less sub-agent started waiting, for the inbox:
+  // the whole map each time, and only when it changed (every mod re-renders on it).
+  publishBlocked(tracked) {
+    const stamps = {};
+    for (const a of tracked) if (a.status === "blocked") stamps[a.address] = this.changed[a.address]?.at;
+    const json = JSON.stringify(stamps);
+    if (json === this.published) return;
+    this.published = json;
+    setShared("agents.blocked", stamps);
   }
 
   since(a) {
@@ -235,7 +246,11 @@ export default class Agents extends View {
     this.migratePins(all);
     const shown = focused()?.agent;
     const now = Date.now();
-    this.track(list, now);
+    // Pane-less sub-agents are stamped too: the inbox lists the blocked ones.
+    const paneless = all.filter((k) => k.parent && k.state === "live" && !this.listed.has(k.address)).map((k) => ({ address: k.address, status: kidStatus(k, this.listed) }));
+    const tracked = [...list, ...paneless];
+    this.track(tracked, now);
+    this.publishBlocked(tracked);
     // A kept sub-agent (one with a pane) is in agents() too: where a tree shows
     // it, it gets no row of its own, unless it's pinned.
     const nested = new Set(collapsed ? [] : list.flatMap((a) => this.tree(all, a.address).map((s) => s.t.address)));
