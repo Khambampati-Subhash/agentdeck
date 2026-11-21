@@ -14,7 +14,8 @@ tags, `just tag`), bundled core in AgentDeck.app, and a release workflow
 (tag → draft GitHub release). `agentdeck-v0.1.0` was published on 2026-11-20.
 P4 (upstream sync) is done: tooling (PR #10), core sync to herdr-core 0.1.21
 (PR #11) and app sync to herdr-app 0.1.16 (PR #12); see `docs/upstream.md`.
-P5 started: the agent inbox (`inbox` mod, branch `agent-inbox`).
+P5: the agent inbox (`inbox` mod) is on `main` (PR #14); its polish is on
+branch `inbox-polish`.
 Open items are in `docs/plan.md`.
 Update this line at the end of every milestone.
 
