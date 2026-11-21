@@ -140,7 +140,7 @@ export default class Inbox extends View {
     return v_flex()
       .id("inbox")
       .track_focus(this.handle)
-      .size_full()
+      .w_full()
       .min_h(0)
       .p(18)
       .gap(10)
@@ -163,8 +163,9 @@ export default class Inbox extends View {
         .child(div().flex_1())
         .child(div().id("inbox-esc").px(6).py(2).rounded(5).text_size(11).text_color(t.dim).cursor_pointer().hover((s) => s.bg(t.hover).text_color(t.foreground)).on_click(() => this.close()).child("Esc")))
       .child(rows.length
-        ? v_flex().id("inbox-list").flex_1().min_h(0).overflow_y_scrollbar().gap(2).children(rows.map((r, i) => this.row(t, r, i, r === sel)))
-        : div().flex_1().py(24).text_center().text_color(t.dim).child("No agent needs you"))
+        ? // The popup is as tall as its content, so the list takes its rows' height, up to a cap.
+          v_flex().id("inbox-list").max_h(460).overflow_y_scrollbar().gap(2).children(rows.map((r, i) => this.row(t, r, i, r === sel)))
+        : div().py(24).text_center().text_color(t.dim).child("No agent needs you"))
       .child(h_flex().gap(14).pt(8).border_t(1).border_color(t.border).text_size(11).text_color(t.dim)
         .child(hint("↑↓ move")).child(hint("↵ go to pane")).child(hint("space peek")));
   }

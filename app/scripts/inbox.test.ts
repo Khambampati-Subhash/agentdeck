@@ -56,6 +56,7 @@ function el() {
     if (method === "node") return node;
     return (...args: any[]) => {
       if (method === "id") node.id = args[0];
+      node.calls = [...(node.calls ?? []), method];
       if (method === "on_click") node.click = args[0];
       if (method === "child") node.children.push(args[0]?.node ?? args[0]);
       if (method === "children") node.children.push(...args[0].map((c: any) => c?.node ?? c));
@@ -152,4 +153,17 @@ test("the popup lists what each agent asks, and says when none need you", async 
   expect(text).toContain("app · main");
   expect(text).toContain("screen");
   expect(textOf(popup().view.render(cx).node)).toContain("No agent needs you");
+});
+
+test("rows sit in a list that takes their height, not the popup's leftover space", () => {
+  const { view, cx } = popup({ list: [agent("t1", "blocked"), agent("t2", "blocked")] });
+  const find = (node: any, id: string): any => node?.id === id ? node : (node?.children ?? []).map((c: any) => find(c, id)).find(Boolean);
+  const root = view.render(cx).node;
+  const list = find(root, "inbox-list");
+  expect(list).toBeDefined();
+  expect(find(list, "ib-t1")).toBeDefined();
+  expect(find(list, "ib-t2")).toBeDefined();
+  // The popup is as tall as its content: a flex_1 scroll list there gets no height at all.
+  expect(list.calls).not.toContain("flex_1");
+  expect(root.calls).not.toContain("size_full");
 });
