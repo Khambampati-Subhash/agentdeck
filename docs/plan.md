@@ -201,12 +201,13 @@ do it, it's a mod):
         matching a saved snapshot. v0.1.0's `keys.macos.json` matches
         `v0.1.15-keys.macos.json`, so untouched macOS installs get new keys;
         its `keys.json` (other systems, not released) matches none.
-  - [ ] Inbox polish: a hung `adk read` is never retried; the selected row
-        can scroll out of view. In layouts without the Agents list (`terminals`,
-        `win98`) the saved `agents.blocked` map goes stale and still wins over
-        the inbox's own stamps: clear it when the agents mod goes away, or mark
-        who published it. Orphan sub-agents (no listed ancestor) show in the
-        inbox but not in the "Needs you" count.
+  - [x] Inbox polish (2026-11-21, [plan](superpowers/plans/2026-11-21-inbox-polish.md)):
+        a read stuck for 10 s no longer blocks a new one, and only the newest lands;
+        the selected row is scrolled into view; the inbox ignores `agents.blocked`
+        unless the shown layout draws the Agents list (mods have no unmount hook);
+        "Needs you" counts orphan sub-agents (no listed ancestor) and shows for
+        them alone. Its badge can still be below the inbox's row count: a parent
+        with two blocked sub-agents is one row there.
 - [ ] Our default layout and theme.
 - [ ] Anything else from daily use: keep a list here.
   - [x] Worktree spaces group under their repo even when no space is on the

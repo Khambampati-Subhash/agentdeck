@@ -3,9 +3,12 @@
 // for you: no approve or deny, no keys sent. The preview is shown as read.
 
 import { View, div, image, svg } from "gpui-kit";
-import { v_flex, h_flex } from "gpui-base";
-import { agents, terminals, run, hc, theme, settings, props, shared, closeOverlay } from "herdr";
-import { inboxRows, stamp, trimPreview, keepSelection } from "./rows.js";
+import { v_flex, h_flex, ScrollHandle } from "gpui-base";
+import { agents, terminals, run, hc, theme, settings, props, shared, layout, closeOverlay } from "herdr";
+import { inboxRows, stamp, trimPreview, keepSelection, draws } from "./rows.js";
+
+// A read this old no longer blocks a new one (hc() itself gives up after 30 s).
+const STUCK = 10000;
 
 function duration(ms) {
   const m = Math.floor(ms / 60000);
@@ -28,9 +31,13 @@ export default class Inbox extends View {
     try { this.since = JSON.parse(localStorage.getItem("since") ?? "{}"); } catch { this.since = {}; }
     if (!this.since || typeof this.since !== "object" || Array.isArray(this.since)) this.since = {};
     this.previews = new Map();
-    this.reading = new Set();
+    this.reading = new Map(); // address -> the read in flight: { at, token }
+    this.tokens = 0;
     this.at = 0;
     this.address = null;
+    this.scroll = ScrollHandle.new();
+    this.revealed = null;
+    this.agentsShown = draws(layout(), "agents"); // read again on each render, not each rows()
     this.handle = cx.focus_handle();
     this.handle.focus();
     cx.timer.after(600, () => this.handle.focus());
@@ -52,7 +59,8 @@ export default class Inbox extends View {
       this.since = next;
       try { localStorage.setItem("since", JSON.stringify(next)); } catch {}
     }
-    const published = shared("agents.blocked");
+    // The Agents list keeps its map only while it's drawn: from any other layout it's stale.
+    const published = this.agentsShown ? shared("agents.blocked") : null;
     const stamps = published && typeof published === "object" && !Array.isArray(published) ? published : {};
     const rows = inboxRows(list, all, { ...this.since, ...stamps }, now);
     // Agents no longer blocked lose their preview; blocked again, they get a fresh one.
@@ -88,16 +96,20 @@ export default class Inbox extends View {
     if (r) run("terminal.peek", { terminal: r.address });
   }
 
-  // One read in flight per agent; a failed read is an empty preview.
+  // One read in flight per agent, unless it's stuck; only the newest one lands.
+  // A failed read is an empty preview.
   read(address, cx) {
-    if (this.reading.has(address)) return;
-    this.reading.add(address);
+    const now = Date.now();
+    if (now - (this.reading.get(address)?.at ?? -Infinity) < STUCK) return;
+    const token = ++this.tokens;
+    this.reading.set(address, { at: now, token });
     cx.spawn(async (cx) => {
       let lines = [];
       try {
         const r = await hc(["read", address, "--json"]);
         if (r.code === 0) lines = trimPreview(JSON.parse(r.stdout).text ?? "");
       } catch {}
+      if (this.reading.get(address)?.token !== token) return;
       this.reading.delete(address);
       if (this.rows().some((row) => row.address === address)) this.previews.set(address, lines);
       cx.notify();
@@ -138,9 +150,16 @@ export default class Inbox extends View {
 
   render(cx) {
     const t = theme();
+    this.agentsShown = draws(layout(), "agents");
     const rows = this.rows();
     for (const r of rows) if (!this.previews.has(r.address)) this.read(r.address, cx);
     const sel = this.selected(rows);
+    // Bring the selected row into view when the selection moves; the refresh leaves the scroll alone.
+    const reveal = `${this.address}\u0000${this.at}`;
+    if (sel && reveal !== this.revealed) {
+      this.revealed = reveal;
+      this.scroll.scroll_to_item(this.at);
+    }
     const hint = (text) => div().child(text);
     return v_flex()
       .id("inbox")
@@ -169,7 +188,7 @@ export default class Inbox extends View {
         .child(div().id("inbox-esc").px(6).py(2).rounded(5).text_size(11).text_color(t.dim).cursor_pointer().hover((s) => s.bg(t.hover).text_color(t.foreground)).on_click(() => this.close()).child("Esc")))
       .child(rows.length
         ? // The popup is as tall as its content, so the list takes its rows' height, up to a cap.
-          v_flex().id("inbox-list").max_h(460).overflow_y_scrollbar().gap(2).children(rows.map((r, i) => this.row(t, r, i, r === sel)))
+          v_flex().id("inbox-list").max_h(460).overflow_y_scrollbar().track_scroll(this.scroll).gap(2).children(rows.map((r, i) => this.row(t, r, i, r === sel)))
         : div().py(24).text_center().text_color(t.dim).child("No agent needs you"))
       .child(h_flex().gap(14).pt(8).border_t(1).border_color(t.border).text_size(11).text_color(t.dim)
         .child(hint("↑↓ move")).child(hint("↵ go to pane")).child(hint("space peek")));

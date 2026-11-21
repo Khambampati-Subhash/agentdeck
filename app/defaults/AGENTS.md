@@ -940,7 +940,8 @@ has 124 programs (agents, editors, runtimes, tools, databases, infra);
   Ctrl-Shift-I elsewhere: every agent blocked on you, longest waiting first,
   with what it asks and its screen's last lines; Enter goes to its pane, Space
   peeks; it never answers for you; wait times come from the Agents list's
-  shared `agents.blocked`, address to ms), and `worktree`
+  shared `agents.blocked`, address to ms, while the shown layout draws the
+  Agents list, else from the inbox's own stamps), and `worktree`
   (git worktrees as spaces: the space menu's and the + menu's New worktree,
   Open worktree (the repo's checkouts, filtered; one already shown is gone
   to), Remove worktree and Clean up worktrees open it as a dialog with props `{space, folder?,

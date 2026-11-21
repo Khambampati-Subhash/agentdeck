@@ -64,6 +64,16 @@ const kidStatus = (k, listed) => {
   const s = k.status;
   return s === "error" ? "blocked" : s === "done" ? "idle" : s;
 };
+// A pane-less sub-agent under no listed agent has no row anywhere here; the inbox lists
+// it, so "Needs you" counts it. Parents are followed until a listed one, or a loop.
+const orphaned = (k, byAddress, listed) => {
+  const seen = new Set();
+  for (let p = k.parent; p && !seen.has(p); p = byAddress.get(p)?.parent) {
+    if (listed.has(p)) return false;
+    seen.add(p);
+  }
+  return true;
+};
 const SORTS = [
   { id: "priority", label: "Priority", icon: "clock" },
   { id: "grouped", label: "Grouped by space", icon: "layers" },
@@ -247,7 +257,10 @@ export default class Agents extends View {
     const shown = focused()?.agent;
     const now = Date.now();
     // Pane-less sub-agents are stamped too: the inbox lists the blocked ones.
-    const paneless = all.filter((k) => k.parent && k.state === "live" && !this.listed.has(k.address)).map((k) => ({ address: k.address, status: kidStatus(k, this.listed) }));
+    const loose = all.filter((k) => k.parent && k.state === "live" && !this.listed.has(k.address));
+    const paneless = loose.map((k) => ({ address: k.address, status: kidStatus(k, this.listed) }));
+    const byAddress = new Map(all.map((t) => [t.address, t]));
+    const orphans = loose.filter((k) => kidStatus(k, this.listed) === "blocked" && orphaned(k, byAddress, this.listed)).length;
     const tracked = [...list, ...paneless];
     this.track(tracked, now);
     this.publishBlocked(tracked);
@@ -411,6 +424,13 @@ export default class Agents extends View {
       if (groups.at(-1)?.id === id) groups.at(-1).members.push(a);
       else groups.push({ id, label: byPriority ? SECTION[r] : a.space_name || "", status: byPriority ? SECTION_STATUS[r] : null, members: [a] });
     }
+    // Orphans join the "Needs you" count, which shows for them alone too. Inbox rows can
+    // still outnumber it: a parent with two blocked sub-agents is one row here.
+    if (byPriority && orphans) {
+      const needs = groups.find((g) => g.id === `sec-${RANK.blocked}`);
+      if (needs) needs.extra = orphans;
+      else groups.splice(pinned.length ? 1 : 0, 0, { id: `sec-${RANK.blocked}`, label: SECTION[RANK.blocked], status: "blocked", members: [], extra: orphans });
+    }
 
     // A group's header; it folds the group. Folded, it says how many and the most urgent state.
     const header = (g) => {
@@ -435,7 +455,7 @@ export default class Agents extends View {
         .child(div().truncate().text_color(t[g.status] ?? t.dim).child(g.label))
         .when(byPriority || !open, (el) => el.child(g.status === "blocked"
           // Needs-you count as a badge.
-          ? div().px(5).rounded(8).text_size(10).bg(t.blocked + "26").font_semibold().text_color(t.blocked).child(String(g.members.length))
+          ? div().px(5).rounded(8).text_size(10).bg(t.blocked + "26").font_semibold().text_color(t.blocked).child(String(g.members.length + (g.extra ?? 0)))
           : div().text_color(t.dim).child(String(g.members.length))))
         .child(div().flex_1())
         // Opens the inbox; stop_propagation keeps the click from folding the section.
