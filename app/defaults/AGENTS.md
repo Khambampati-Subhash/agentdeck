@@ -936,7 +936,10 @@ has 124 programs (agents, editors, runtimes, tools, databases, infra);
 - The defaults are mods too, read them as examples: `spaces`, `agents`,
   `tabs` (the tab bar), `menu`, `prompt`, `confirm`, `help`, `toast`,
   Terminals' `picker`, `peek`, and `pane` (an
-  example pane header, not used by the default layouts), and `worktree`
+  example pane header, not used by the default layouts), `inbox` (Cmd-Shift-I,
+  Ctrl-Shift-I elsewhere: every agent blocked on you, longest waiting first,
+  with what it asks and its screen's last lines; Enter goes to its pane, Space
+  peeks; it never answers for you), and `worktree`
   (git worktrees as spaces: the space menu's and the + menu's New worktree,
   Open worktree (the repo's checkouts, filtered; one already shown is gone
   to), Remove worktree and Clean up worktrees open it as a dialog with props `{space, folder?,
