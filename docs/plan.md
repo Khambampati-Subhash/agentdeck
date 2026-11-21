@@ -202,7 +202,11 @@ do it, it's a mod):
         `v0.1.15-keys.macos.json`, so untouched macOS installs get new keys;
         its `keys.json` (other systems, not released) matches none.
   - [ ] Inbox polish: a hung `adk read` is never retried; the selected row
-        can scroll out of view.
+        can scroll out of view. In layouts without the Agents list (`terminals`,
+        `win98`) the saved `agents.blocked` map goes stale and still wins over
+        the inbox's own stamps: clear it when the agents mod goes away, or mark
+        who published it. Orphan sub-agents (no listed ancestor) show in the
+        inbox but not in the "Needs you" count.
 - [ ] Our default layout and theme.
 - [ ] Anything else from daily use: keep a list here.
   - [x] Worktree spaces group under their repo even when no space is on the
