@@ -237,13 +237,15 @@ test("a read that hangs is tried again after 10 s, and only the newer one lands"
     setSystemTime(start + 11000);
     view.refresh(cx);
     expect(reads).toHaveLength(2);
+    // The old read lands late, while the new one is in flight: it changes nothing.
+    answers[0]("old");
+    await tasks[0];
+    expect(view.previews.has("t1")).toBe(false);
+    view.refresh(cx);
+    expect(reads).toHaveLength(2);
     answers[1]("fresh");
     await tasks[1];
     expect(view.previews.get("t1")).toEqual(["fresh"]);
-    answers[0]("old");
-    await tasks[0];
-    expect(view.previews.get("t1")).toEqual(["fresh"]);
-    // The late old read didn't free the slot early: the next refresh waits for nothing.
     view.refresh(cx);
     expect(reads).toHaveLength(3);
   } finally {
@@ -275,5 +277,8 @@ test("the agents list's stamps count only while the shown layout draws it", () =
   expect(waited({ id: "root", type: "row", children: [{ id: "side", type: "column", hidden: true, children: [agentsBlock] }] })).toBe(1);
   expect(waited({ id: "root", type: "stack", active: "files", children: [{ id: "files", type: "block", content: { mod: "files" } }, agentsBlock] })).toBe(1);
   expect(waited({ id: "root", type: "stack", active: "agents", children: [{ id: "files", type: "block", content: { mod: "files" } }, agentsBlock] })).toBe(300);
+  // As the app does: no active child, or a hidden one, shows the first visible child.
+  expect(waited({ id: "root", type: "stack", children: [agentsBlock, { id: "files", type: "block", content: { mod: "files" } }] })).toBe(300);
+  expect(waited({ id: "root", type: "stack", active: "files", children: [{ id: "files", type: "block", hidden: true, content: { mod: "files" } }, agentsBlock] })).toBe(300);
   expect(waited(null)).toBe(1);
 });

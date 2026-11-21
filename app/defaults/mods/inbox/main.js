@@ -37,6 +37,7 @@ export default class Inbox extends View {
     this.address = null;
     this.scroll = ScrollHandle.new();
     this.revealed = null;
+    this.agentsShown = draws(layout(), "agents"); // read again on each render, not each rows()
     this.handle = cx.focus_handle();
     this.handle.focus();
     cx.timer.after(600, () => this.handle.focus());
@@ -59,7 +60,7 @@ export default class Inbox extends View {
       try { localStorage.setItem("since", JSON.stringify(next)); } catch {}
     }
     // The Agents list keeps its map only while it's drawn: from any other layout it's stale.
-    const published = draws(layout(), "agents") ? shared("agents.blocked") : null;
+    const published = this.agentsShown ? shared("agents.blocked") : null;
     const stamps = published && typeof published === "object" && !Array.isArray(published) ? published : {};
     const rows = inboxRows(list, all, { ...this.since, ...stamps }, now);
     // Agents no longer blocked lose their preview; blocked again, they get a fresh one.
@@ -149,6 +150,7 @@ export default class Inbox extends View {
 
   render(cx) {
     const t = theme();
+    this.agentsShown = draws(layout(), "agents");
     const rows = this.rows();
     for (const r of rows) if (!this.previews.has(r.address)) this.read(r.address, cx);
     const sel = this.selected(rows);

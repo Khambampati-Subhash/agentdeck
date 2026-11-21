@@ -61,11 +61,12 @@ export function keepSelection(rows, address, index) {
 }
 
 // Whether a layout draws the mod: a node with it that isn't hidden, under no
-// hidden node, and in a stack only under its active child.
+// hidden node, and in a stack only under the child it shows (as the app picks
+// it: the active one if visible, else the first visible).
 export function draws(node, mod) {
   if (!node || typeof node !== "object" || node.hidden) return false;
   if (node.content?.mod === mod) return true;
-  const kids = Array.isArray(node.children) ? node.children : [];
-  const shown = node.type === "stack" ? kids.filter((k) => k?.id === node.active) : kids;
+  const kids = (Array.isArray(node.children) ? node.children : []).filter((k) => k && !k.hidden);
+  const shown = node.type === "stack" ? [kids.find((k) => k.id === node.active) ?? kids[0]] : kids;
   return shown.some((k) => draws(k, mod));
 }
