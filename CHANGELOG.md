@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Agent inbox**: `cmd-shift-i` (`ctrl-shift-i` elsewhere) opens a list of every agent that needs you, with what it's asking, how long it has waited and its last screen lines; ↵ goes to its pane. The Agents list's "Needs you" section shows a count, an inbox button and each agent's message.
+
 - **Command line link**: AgentDeck.app from a release now links `agentdeck` into `~/.local/bin` when it runs from an Applications folder. 0.1.0 looked for `Herdr.app` and never made the link.
 - **Upstream fixes**: the app and core now include upstream's fixes up to herdr-app 0.1.16 and herdr-core 0.1.21.
 - **Worktree folder**: new worktrees go under `~/.agentdeck/worktrees` instead of Herdr's `~/.herdr/worktrees` (or where `worktrees.directory` in settings.json says). Existing ones are left alone.

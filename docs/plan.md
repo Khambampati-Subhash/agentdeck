@@ -185,9 +185,21 @@ seeing each other's terminals, settings or core. `scripts/side-by-side` passes
 The user picks these. Candidates, mostly as mods (Herdr's rule: if a mod can
 do it, it's a mod):
 
-- [ ] Ideas from the old AgentOS: approvals bar for blocked agents, policy
-      (deny by default), token, context and cost per agent, session resume.
-      Each needs a check of what OSC 7501 and `hc` already give.
+- [ ] Ideas from the old AgentOS: policy (deny by default), token, context
+      and cost per agent, session resume. Each needs a check of what OSC 7501
+      and `hc` already give.
+- [x] Agent inbox (the old approvals bar, 2026-11-21): the `inbox` mod
+      (`cmd-shift-i`) lists blocked agents with their `kind`, `msg`, wait and
+      screen preview, ↵ goes to the pane; "Needs you" in the Agents list shows
+      a count, an inbox button and each message. It never answers for the
+      person ([design](superpowers/specs/2026-11-21-agent-inbox-design.md)).
+  - [ ] The notch "island": blocked agents shown above other apps. Needs app
+        Rust code (a floating window) and a setting to hide message text.
+  - [ ] Voice control on top of the inbox (push-to-talk, local speech).
+  - [ ] Existing installs don't get new default keys: `keys.rs` only upgrades
+        keys files matching a saved snapshot, and there is none for v0.1.0.
+  - [ ] Inbox polish: wait times only tick while the popup is open; a hung
+        `adk read` is never retried; the selected row can scroll out of view.
 - [ ] Our default layout and theme.
 - [ ] Anything else from daily use: keep a list here.
   - [x] Worktree spaces group under their repo even when no space is on the
