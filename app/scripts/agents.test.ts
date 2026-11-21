@@ -342,3 +342,13 @@ test("a title's leading emoji stays, a status glyph before it goes", () => {
   expect(row("🔴")).toBe("🔴");
   expect(row("🔴 claude")).toBe("🔴 claude");
 });
+
+test("blockedMsg shows the report's message", () => {
+  const blockedMsg = new Function("View", "localStorage", "props", "run", `${source}; return blockedMsg;`)(class {}, {}, () => ({}), () => {});
+  expect(blockedMsg({ report: { msg: "  Apply these changes?  " } })).toBe("Apply these changes?");
+  const long = blockedMsg({ report: { msg: "x".repeat(100) } });
+  expect(long).toBe("x".repeat(80) + "…");
+  expect(long).toHaveLength(81);
+  expect(blockedMsg(undefined)).toBe("");
+  expect(blockedMsg({})).toBe("");
+});
