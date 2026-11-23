@@ -6,7 +6,7 @@ window) and `core/` is [herdr-core](https://github.com/herdrdev/herdr-core)
 (`hc`, the runtime that keeps every terminal alive). Both are Apache-2.0;
 see `NOTICE.md`.
 
-**Status (2026-11-21):** P0 (import, build), P1 (no link to herdr.dev,
+**Status (2026-11-23):** P0 (import, build), P1 (no link to herdr.dev,
 PR #2), the forge loop (PR #1), P2, the rename (PR #3), and P3 (build and
 release, PRs #6 to #8) are on `main`. P3 added CI (macOS arm64, with the app
 docs and distribution checks), versioning (`VERSION`, `agentdeck-vX.Y.Z`
@@ -14,8 +14,8 @@ tags, `just tag`), bundled core in AgentDeck.app, and a release workflow
 (tag → draft GitHub release). `agentdeck-v0.1.0` was published on 2026-11-20.
 P4 (upstream sync) is done: tooling (PR #10), core sync to herdr-core 0.1.21
 (PR #11) and app sync to herdr-app 0.1.16 (PR #12); see `docs/upstream.md`.
-P5: the agent inbox (`inbox` mod) is on `main` (PR #14); its polish is on
-branch `inbox-polish`.
+P5: the agent inbox (`inbox` mod) and its polish are on `main` (PRs #14
+and #15).
 Open items are in `docs/plan.md`.
 Update this line at the end of every milestone.
 
