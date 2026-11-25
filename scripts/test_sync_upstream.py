@@ -220,6 +220,20 @@ class SyncUpstream(unittest.TestCase):
         self.assertIn('core/toast.txt: toast("Herdr is ready")', out.stdout)
         self.assertIn('core/toast.txt: println!("[hc] started")', out.stdout)
 
+    def test_report_lists_added_lines_starting_with_plus_plus(self):
+        """Content lines '++Herdr;' and '++ b/other.c' are reported under the same file."""
+        with open(os.path.join(self.upstream, "x.c"), "w") as f:
+            f.write("++Herdr;\n++ b/other.c Herdr\nHerdr tail\n")
+        subprocess.run(["git", "add", "x.c"], cwd=self.upstream, check=True, env=self.test_env)
+        subprocess.run(["git", "commit", "-m", "add x"], cwd=self.upstream, check=True, env=self.test_env)
+
+        out = self.run_sync("pull", "core")
+        self.assertEqual(out.returncode, 0, out.stderr)
+
+        self.assertIn("core/x.c: ++Herdr;", out.stdout)
+        self.assertIn("core/x.c: ++ b/other.c Herdr", out.stdout)
+        self.assertIn("core/x.c: Herdr tail", out.stdout)
+
     def test_check_ignores_sync_commits_on_other_branches(self):
         """Sync merge on branch sync-a, new branch sync-b from main, check core → exit 2."""
         # Add a commit to upstream

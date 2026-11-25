@@ -196,14 +196,19 @@ def check(half):
 
     print("added lines to review:", flush=True)
     current_file = "(unknown)"
+    in_hunk = False
     for line in diff_output.splitlines():
-        # File headers are "+++ b/..." or "+++ /dev/null"
-        if line.startswith("+++ b/"):
+        # "+++ b/..." names the file only in a file's header; inside a hunk
+        # every "+" line is content, even one starting "++".
+        if line.startswith("diff --git "):
+            in_hunk = False
+        elif not in_hunk and line.startswith("+++ b/"):
             current_file = line[6:]  # Skip "+++ b/"
-        elif line.startswith("+++ /dev/null"):
+        elif not in_hunk and line.startswith("+++ /dev/null"):
             current_file = "(deleted)"
-        elif line.startswith("+") and not line.startswith("+++"):
-            # This is an added line (not a +++ header or ++ at start of content)
+        elif line.startswith("@@"):
+            in_hunk = True
+        elif in_hunk and line.startswith("+"):
             content = line[1:]  # Skip the "+"
             if combined_pattern.search(content):
                 print(f"{current_file}: {content}", flush=True)
