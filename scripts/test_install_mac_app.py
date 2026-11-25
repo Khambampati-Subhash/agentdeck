@@ -76,6 +76,27 @@ class InstallMacApp(unittest.TestCase):
         self.assertFalse(os.path.exists(staging),
                         "Staging directory should be cleaned up")
 
+    def test_stops_core_left_from_previous_install(self):
+        """A core still running the old build is stopped (macOS denies its shells otherwise)"""
+        env = os.environ.copy()
+        env["HOME"] = self.test_home
+        env["APP_BIN"] = self.app_bin
+        env["CORE_BIN"] = self.core_bin
+        env["ADK_LSREGISTER"] = "0"
+        # A previous install whose core is still running.
+        old_core = os.path.join(self.core_path, "Contents/MacOS/agentdeck-core")
+        os.makedirs(os.path.dirname(old_core))
+        with open(old_core, "w") as f:
+            f.write("#!/bin/sh\nsleep 60\n")
+        os.chmod(old_core, 0o755)
+        running = subprocess.Popen([old_core], start_new_session=True)
+        try:
+            result = subprocess.run([SCRIPT, "--no-build"], capture_output=True, text=True, env=env)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            running.wait(timeout=10)
+        finally:
+            os.killpg(running.pid, 9) if running.poll() is None else None
+
 
 if __name__ == "__main__":
     unittest.main()
