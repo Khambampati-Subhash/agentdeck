@@ -152,8 +152,8 @@ pub struct StatusResult {
     pub holders: Vec<HolderInfo>,
     pub live: usize,
     pub finished: usize,
-    /// The package manager this hc came from (homebrew, nix, mise, or
-    /// system package manager): it updates hc, `adk update` won't.
+    /// The package manager this adk came from (homebrew, nix, mise, or
+    /// system package manager): it updates adk, `adk update` won't.
     /// Null for a replaceable plain install.
     pub installed_by: Option<String>,
     /// True: systemd lingering is enabled; false: programs stop at last logout.

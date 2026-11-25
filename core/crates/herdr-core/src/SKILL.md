@@ -202,7 +202,7 @@ A machine whose SSH login fails shows `needs_login` and retries slowly (up to
 every 10 minutes); `adk machine login <name>` in a terminal reconnects now.
 
 On Windows, `adk server status` never starts a core. If elevated SSH startup
-would block the same user's desktop session, open Herdr on that Windows
+would block the same user's desktop session, open AgentDeck on that Windows
 machine or run `adk server start` in a normal desktop terminal, then reconnect.
 Headless Windows machines can still start their core over SSH.
 New Windows terminals refresh user/system environment settings, including PATH.
@@ -307,7 +307,7 @@ paths start at your current folder. Prefer explicit paths for remote work.
   If launchd fails, startup falls back to a direct child and logs the reason in
   `core.log`; that core may end with its launching app. A start timeout records
   the job label, failed phase and available spawn state before cleanup.
-- On macOS, reopening Herdr after logout/login refreshes an older GUI core's
+- On macOS, reopening AgentDeck after logout/login refreshes an older GUI core's
   login context while keeping surviving terminals. New terminals use the new
   login; existing programs retain their original OS context. An explicit
   `adk server restart` from a healthy login also retires holders from another
@@ -315,7 +315,7 @@ paths start at your current folder. Prefer explicit paths for remote work.
   replace it, and lock/unlock does not rotate holders. Cores installed before
   this session metadata need an update or explicit restart once.
 - Updates and `adk server restart` keep the environment the core started with.
-  Run `adk server restart --fresh` from a terminal outside Herdr to use that shell's
+  Run `adk server restart --fresh` from a terminal outside AgentDeck to use that shell's
   environment for new terminals without ending running programs. Existing
   programs keep their environment; kept terminals use the fresh one after
   recovery. Stopping and starting also takes a fresh environment. Per-terminal

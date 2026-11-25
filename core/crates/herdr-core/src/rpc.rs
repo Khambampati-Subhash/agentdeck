@@ -133,7 +133,7 @@ pub fn openrpc(methods: Vec<Value>, defs: Map<String, Value>, version: &str, gen
         "info": {
             "title": "agentdeck-core",
             "version": version,
-            "description": format!("Terminal runtime for coding agents. JSON-RPC 2.0, one message per line on the hc socket \
+            "description": format!("Terminal runtime for coding agents. JSON-RPC 2.0, one message per line on the adk socket \
                 (or framed after `hello`). Protocol generation {generation}. Errors carry a stable `data.kind`."),
             "license": {"name": "Apache-2.0"},
         },
