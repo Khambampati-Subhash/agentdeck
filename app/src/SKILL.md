@@ -116,7 +116,7 @@ with a nonzero code within two seconds, the window shows an error toast with
 the exit code and last output lines.
 
 A terminal started with adk opts into the window with `herdr.space=<id>`.
-`herdr.tab=<id>` chooses its tab; without it, Herdr creates a tab in that space.
+`herdr.tab=<id>` chooses its tab; without it, AgentDeck creates a tab in that space.
 Unlabeled workers stay hidden. Do not add labels just to run a background
 worker. Use app commands when the
 user wants to see a new tab or split, adk for orchestration that need not change
@@ -149,7 +149,7 @@ those files or the generated guide. The app rewrites them on start.
   `"focus"` from `nextCommand()` and focuses its own keyboard handle.
 - A mod's `watchFolder(dir)` promise has `cancel()`; cancel it when the folder
   is no longer shown. It resolves with `[]` and releases only that call.
-- Shipped mods belong to Herdr: duplicate with `mod.clone` before editing.
+- Shipped mods belong to AgentDeck: duplicate with `mod.clone` before editing.
   Shipped layouts likewise use `layout.clone` for a personal copy.
   Discover required arguments with `agentdeck commands`.
 - Save to reload. A broken save keeps the old version running and reports
@@ -183,7 +183,7 @@ Then confirm it is shown correctly in the running window with `shot`; don't clai
 check you haven't made.
 
 `agentdeck shot [file.png]` saves the window's current frame and prints its
-absolute path (default: `herdr-shot.png` in your current folder). It is the
+absolute path (default: `agentdeck-shot.png` in your current folder). It is the
 app's own rendering at full pixel size: terminals, images, overlays and
 floats included, even when the window is covered or minimized. No screen
 capture or permissions. It needs a running window that has drawn a frame;
@@ -191,7 +191,7 @@ capture or permissions. It needs a running window that has drawn a frame;
 
 ## Problems and safety
 
-If Herdr misbehaves, `agentdeck feedback "<what happened>"` drafts a report.
+If AgentDeck misbehaves, `agentdeck feedback "<what happened>"` drafts a report.
 The person reviews and sends it; it does not silently send feedback.
 
 Never experiment with pointer/key automation on the person's real display.

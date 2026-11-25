@@ -54,7 +54,7 @@ Usage:
   agentdeck feedback <text>        draft feedback for the person to review and send
   agentdeck commands               every command, its arguments, what it does
   agentdeck status                 what the window shows, and any errors
-  agentdeck shot [file.png]        save the current window frame (default: herdr-shot.png)
+  agentdeck shot [file.png]        save the current window frame (default: agentdeck-shot.png)
   agentdeck check <mod folder>     load a mod once and report what's wrong
   agentdeck --skill                Agent Skill: driving the window, and where hc fits
   agentdeck --version

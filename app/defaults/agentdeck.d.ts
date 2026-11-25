@@ -84,7 +84,7 @@ export function playSound(sound: string): null;
  *   Mod clones rewrite their own asset prefixes and self-opening overlay names.
  *   Default clone name: <name>-copy; an existing name is refused. Clones record cloned_from: {name, version}.
  *   Shipped layouts/mods are replaced at start; edits move to <name>-edited.
- *   Herdr (main) inherits settings; Herdr 98 and Terminals bring their own look. Clone to change shipped looks beyond theme picks.
+ *   AgentDeck (main) inherits settings; AgentDeck 98 and Terminals bring their own look. Clone to change shipped looks beyond theme picks.
  *   layout.reset {name?} resets a shipped layout and its clicks.
  * App: mod.open {name}, overlay.close {id?}, app.help, app.reset, app.theme {name}, app.zoom_in|zoom_out|zoom_reset.
  * Mods: "<mod>.<command>" delivers <command> to that mod's nextCommand().
@@ -355,7 +355,7 @@ export function presentUpdateNotes(versions: string[]): null;
 
 /** Anonymous usage data (one report per day, never terminal content). `enabled`: collecting now;
  *  `setting`: settings.json's `telemetry`; `off_because`: an env var that turns it off for this run
- *  (DO_NOT_TRACK, HERDR_TELEMETRY, CI); `sends`: false unless HERDR_TELEMETRY_URL names a server (AgentOS has none).
+ *  (DO_NOT_TRACK, HERDR_TELEMETRY, CI); `sends`: false unless HERDR_TELEMETRY_URL names a server (AgentDeck has none).
  *  `draft`: today's report so far; `queued`: finished days waiting to go, exactly as they'll be
  *  sent; `last_sent`: the last one the server took (`at`: unix seconds). Null until it starts. */
 export function telemetry(): {

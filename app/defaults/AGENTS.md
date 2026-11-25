@@ -1,11 +1,11 @@
-# Herdr app
+# AgentDeck app
 
-<!-- Written by the Herdr app on every start. Edits here are overwritten. -->
+<!-- Written by the AgentDeck app on every start. Edits here are overwritten. -->
 
-This folder is **the Herdr app's whole interface, as files**. The Herdr app
+This folder is **the AgentDeck app's whole interface, as files**. The AgentDeck app
 is a desktop app for terminals and coding agents, and it redraws itself from
 these files while it runs: change a layout, a key or a panel here and the
-window follows within a second. Shipped layouts and mods are Herdr's:
+window follows within a second. Shipped layouts and mods are AgentDeck's:
 change settings for look, or clone before editing structure/code (see Layouts).
 When someone asks for something ("a sidebar
 of my PRs", "give ctrl+1 back to the shell", "make it warmer", "move the
@@ -20,7 +20,7 @@ from the same parts you have.
 - **agentdeck-core (`adk`)**, which runs every terminal and agent. They keep
   running when the window closes or updates. You can use `adk` yourself:
   start a terminal, read its screen, send it text, wait for an agent
-  (`adk --help`). The Herdr app is one client of it.
+  (`adk --help`). The AgentDeck app is one client of it.
 
 `agentdeck` controls this app; `adk` controls agentdeck-core.
 
@@ -64,11 +64,11 @@ commands. They're rewritten on every start to match this version. Mods import it
 ## Seeing the window
 
 `agentdeck shot [file.png]` saves the current window frame as a PNG
-and prints its absolute path (default: `herdr-shot.png` in your current
+and prints its absolute path (default: `agentdeck-shot.png` in your current
 folder). Use it when debugging mod UIs: inspect spacing, colors, terminal
 images, overlays, popups and floats. It captures the app, not the desktop,
 at the window’s physical pixel size, even when covered or minimized. No
-screen-recording permission is needed. Herdr must be running; before its
+screen-recording permission is needed. AgentDeck must be running; before its
 first frame or during GPU recovery it reports an error instead of a PNG.
 `AGENTDECK_HOME` selects which running window to ask, as with `status`.
 
@@ -81,13 +81,13 @@ first frame or during GPU recovery it reports an error instead of a PNG.
 | `settings.json` | the person: zoom, sounds, fonts for every layout, worktree directory | live |
 | `mods/<name>/` | panels: small JavaScript programs | live (hot reload) |
 | `programs.json` | how programs show (name, icon, tile), on top of the built-in table | live |
-| `icons/` | the shipped program icons | written by Herdr (put your own elsewhere) |
-| `frame/` | the app's own screens (welcome, ...) | rewritten by Herdr on every start: don't edit, it won't stick |
-| `view.json` | this screen's selected space/tab/pane, zoom, settled tabs, recent spaces and seen attention | written by Herdr |
-| `shared.json`, `data/`, `seen.json`, `installed.json`, `window.json`, `windows.json` | mod state, bookkeeping, where the window was (size, maximized), mods' windows (spots, kept ones) | written by Herdr |
+| `icons/` | the shipped program icons | written by AgentDeck (put your own elsewhere) |
+| `frame/` | the app's own screens (welcome, ...) | rewritten by AgentDeck on every start: don't edit, it won't stick |
+| `view.json` | this screen's selected space/tab/pane, zoom, settled tabs, recent spaces and seen attention | written by AgentDeck |
+| `shared.json`, `data/`, `seen.json`, `installed.json`, `window.json`, `windows.json` | mod state, bookkeeping, where the window was (size, maximized), mods' windows (spots, kept ones) | written by AgentDeck |
 
 Shared state is saved atomically in the background, with the latest change winning.
-If `shared.json` is invalid, Herdr logs a warning and keeps it as
+If `shared.json` is invalid, AgentDeck logs a warning and keeps it as
 `shared.json.corrupt-<time>` before starting empty.
 `agentdeck check` uses empty shared state in memory and leaves this file untouched.
 
@@ -105,7 +105,7 @@ In the expanded Spaces sidebar, drag a space to reorder it within its machine;
 the highlighted line shows where it will land.
 
 - A **space** is a place to work, on one machine: this one, or another
-  from `adk machine ls` (`spaces()[i].machine`). Herdr leaves out machines
+  from `adk machine ls` (`spaces()[i].machine`). AgentDeck leaves out machines
   added with `--temp` (an agent's short-lived sandbox): no spaces, not in
   `machines()`, and mods listing machines skip `temporary`. Names work as in Herdr:
   a space nobody named is called after where its first terminal is now
@@ -131,13 +131,13 @@ the highlighted line shows where it will land.
   mod pane splits, zooms, closes and gets a header like any pane, keeps
   the keyboard when clicked, and is saved with its tab; its `props` tell
   it what to show (a file, a folder). Closing a terminal pane ends its
-  terminal, and a program exiting closes its pane, even if Herdr was closed.
+  terminal, and a program exiting closes its pane, even if AgentDeck was closed.
   Terminal panes are kept by their machine's core (`keep: true`). A lost
   terminal (core crash, reboot, logout) gets a shell in its last folder,
   with the same address; its original command is never run again. Splits
   and mod panes stay. An exited or killed terminal is closed, not restarted.
   Focus, zoom, recent spaces, settled tabs and seen attention stay on this screen.
-- Every terminal is a core terminal. Herdr labels the ones it starts with
+- Every terminal is a core terminal. AgentDeck labels the ones it starts with
   `herdr.space=<id>` and `herdr.tab=<id>`. **A terminal with those
   labels shows up there**, even one you start yourself:
   `adk run --keep --label herdr.space=<id> --label herdr.tab=<id> -- claude`.
@@ -147,9 +147,9 @@ the highlighted line shows where it will land.
   When a core change is needed, `terminal.keep` / `terminal.park` acknowledge
   with `pending: true`, then apply after the machine replies; failures show a toast.
   Normal quit waits for pending terminal changes and layout writes; remote waits are bounded.
-  An id Herdr doesn't know becomes a new space or tab (unnamed: Herdr's names).
-  Terminals without the labels (another app's) stay out of Herdr's
-  screens, and so do other machines' terminals, unless Herdr started them
+  An id AgentDeck doesn't know becomes a new space or tab (unnamed: AgentDeck's names).
+  Terminals without the labels (another app's) stay out of AgentDeck's
+  screens, and so do other machines' terminals, unless AgentDeck started them
   for a space on that machine.
 - **Agents** are terminals whose program reports a status (OSC 7501):
   `working`, `blocked`, `idle`, or `done` = finished while the user wasn't
@@ -175,7 +175,7 @@ the highlighted line shows where it will land.
 
 Each file is one whole window. `layout.switch` (`ctrl-shift-l`) cycles
 through them, `layout.switch {name}` picks one; `shared("layout")` is the
-shown one's name. Herdr ships `main` ("Herdr": spaces by machine and the
+shown one's name. AgentDeck ships `main` ("AgentDeck": spaces by machine and the
 agents list on the left, `workspace-chrome`; tabs as pills with a + menu
 that starts a terminal or any installed agent, `new-menu`; panes as cards
 with a header; Files, Changes and Pull requests panels on the right,
@@ -197,16 +197,16 @@ opened from the tab bar and remembered per space (which ones:
 shared `"workspace.panels"`, set by the welcome); a status bar,
 `workspace-status`), and as examples `terminals` ("Terminals": tabs in
 the title bar, panes as cards, a space picker) and `win98`
-("Herdr 98": a whole desktop in one mod, `win98`). Add a layout by
+("AgentDeck 98": a whole desktop in one mod, `win98`). Add a layout by
 writing a new file. The Files panel supports Windows folder paths with spaces,
 parentheses and apostrophes, and preserves Unicode file and folder names
 (including Chinese). Directory links expand as folders; their contents load
 only when expanded.
 
-**Herdr's own layouts and mods are read-only.** They are replaced whole
+**AgentDeck's own layouts and mods are read-only.** They are replaced whole
 on every start. Use settings.json for look (fonts, sizes, theme, colors,
-sounds), where the layout leaves them unset. Herdr (main) has no look of
-its own, so your settings decide it; Herdr 98 and Terminals bring their own
+sounds), where the layout leaves them unset. AgentDeck (main) has no look of
+its own, so your settings decide it; AgentDeck 98 and Terminals bring their own
 look. The theme picker overrides any layout. To change a shipped layout's
 look beyond that, or its structure/code, clone it and edit the clone:
 
@@ -226,7 +226,7 @@ overlay names to the new name.
 
 If you edit a shipped file anyway, the next start moves it to
 `<name>-edited` (a mod folder or layout JSON; a number is added if taken),
-copies its layout clicks, restores Herdr's version and shows a toast.
+copies its layout clicks, restores AgentDeck's version and shows a toast.
 No-longer-shipped things go if
 untouched, otherwise they stay.
 
@@ -295,7 +295,7 @@ Properties any node can have:
   handle Ctrl-clicks (Cmd-clicks on macOS) in terminals, in order. Clone a
   shipped layout before adding link handlers.
 - Root only: `"toast": "my-toast"` chooses the mod that shows notifications
-  (Herdr's own and every `notify()`), in place of the shipped `toast`; an
+  (AgentDeck's own and every `notify()`), in place of the shipped `toast`; an
   unknown mod logs a warning and falls back to `toast`. It gets the same
   `props()`: `{title, body, level, icon, action, timeout, overlay}` (`timeout`
   is optional). A mod that hands them to the system instead
@@ -353,7 +353,7 @@ layout's look and a block can differ:
   writing hex when a layout should work light and dark.
 - `themes/<name>.json`: `{ "background", "foreground", "selection",
   "cursor"?, "ansi": [16 colors], "colors"?: {...} }`, all `#rrggbb`; panel
-  colors are derived from these, `colors` overrides them. Herdr ships
+  colors are derived from these, `colors` overrides them. AgentDeck ships
   `atom-one-dark`. The original unedited Atom One Dark and Win98 theme files
   are upgraded to readable terminal colors; edited theme files are kept.
   A theme named like a layout (`themes/win98.json`) is
@@ -369,13 +369,13 @@ layout's look and a block can differ:
   diff's (px at zoom 1); `ui_font`: the mods' (their text sizes are their own,
   in px, and follow zoom). Optional: without them a layout uses settings.json's,
   else AgentDeck's (JetBrains Mono 14, Geist).
-  Herdr (main) leaves these unset; Terminals sets text size 15, and Herdr 98
+  AgentDeck (main) leaves these unset; Terminals sets text size 15, and AgentDeck 98
   brings its own fonts.
-  JetBrains Mono, Geist Mono and Geist ship with Herdr; any installed font
+  JetBrains Mono, Geist Mono and Geist ship with AgentDeck; any installed font
   works (a terminal font the machine lacks falls back to JetBrains Mono).
   A layout brings its own fonts: `.ttf`/`.otf` files in a mod's `fonts/`
   folder (or the home's `fonts/`) load at start and on the next look change,
-  so a layout and its mod folder travel together (Herdr 98's do: its pixel
+  so a layout and its mod folder travel together (AgentDeck 98's do: its pixel
   fonts are in `mods/win98/fonts/`).
 - `font_weight` (100..900): the terminals' text weight. Default 500
   (Medium); 400 is Regular, 300 Light, using the family's nearest face.
@@ -431,7 +431,7 @@ The tab block says how each pane of the shown tab is wrapped:
 A floating block sits over its node, `edge` (`top`, `right`, `bottom`,
 `left`) and `align` along it (`start`, `center`, `end`), 12 px in. It sizes
 to its content (render nothing to hide it). People drag it anywhere; on
-release it springs to the nearest edge and third, and Herdr saves the new
+release it springs to the nearest edge and third, and AgentDeck saves the new
 spot. Clicks and hovers on it never reach what's underneath.
 
 `peek` (side edges only) makes it a drawer: only that many px next to the
@@ -440,7 +440,7 @@ moment after the pointer leaves. The mod draws one full layout and never
 changes it on hover (that's what keeps it smooth): put what should peek
 (status, icons) on the edge side of each row.
 
-Herdr draws the frame around a floating mod (theme background, border,
+AgentDeck draws the frame around a floating mod (theme background, border,
 rounded corners, shadow; accent border while dragged), like a dialog's,
 with 5 px above and below. The mod draws only its content, no panel: on a
 side, rows can run edge to edge. It reads `placement()`:
@@ -474,21 +474,20 @@ the tabs also leave room for the window buttons when the sidebar is narrower.
 
 ### Layouts and mods other people made
 
-People share layouts at herdr.dev/layouts and mods at herdr.dev/mods. Each
+People share layouts and mods on GitHub. Each
 is a folder laid out like this home: a layout has `layouts/<name>.json` and
 the `mods/<name>/` it needs; a mod is a piece for the person's own window,
 so it has only `mods/<name>/` and maybe a `keys.json` with the keys it
 expects. Both have a `RECIPE.md` (the brief to build it from scratch) and a
 `preview.png`. The files are one build of the recipe. Asked to add one
-(`herdr.dev/layouts/<owner>/<name>`, `herdr.dev/mods/<owner>/<name>`, or a
-folder on GitHub):
+(a folder on GitHub, or one on this machine):
 
 1. Read the recipe and every file before writing anything. Before adding,
    tell the person if a mod reaches the network, runs programs (`exec`,
    `adk`) or reads files outside its own folder.
 2. Copy the layout file to `layouts/` and each mod folder to `mods/`. Leave
    the recipe and preview out. Never overwrite: if a name is taken (yours
-   or Herdr's), rename the new one: its file or folder, the `mod` names in
+   or AgentDeck's), rename the new one: its file or folder, the `mod` names in
    the layout, and the mod's own `mods/<name>/` paths.
 3. Fit it to this setup only where its assumptions don't hold (a missing
    program, a name clash) or the person asks. If the files don't work on
@@ -502,9 +501,7 @@ folder on GitHub):
 
 To share one: put that folder in a public GitHub repo (one folder each if
 there are several), write its `RECIPE.md`, save a screenshot of it as
-`preview.png` and add the repo topic `herdr-layout` for a layout or
-`herdr-mod` for a mod. It shows up at herdr.dev/layouts or herdr.dev/mods
-within the hour.
+`preview.png`, and send people the repo's link.
 
 A `RECIPE.md` is a brief: another agent with an empty folder builds the
 layout or mod from it. Write it from the real files, in this order:
@@ -597,7 +594,7 @@ The main ones:
   each space's `machine`, null here. Without folder, its terminals start in
   the focused terminal's folder when that terminal is on the same machine,
   else in that machine's home),
-  `space.close {id?, confirmed?}`, `space.rename {id?, name}` ("": Herdr's name again),
+  `space.close {id?, confirmed?}`, `space.rename {id?, name}` ("": AgentDeck's name again),
   `space.move {id, index}`, `space.select {index | id}`, `space.next`, `space.prev`.
   With no `argv`, the target core chooses that machine's default shell (PowerShell 7 when available on Windows).
 - Tabs: `tab.new {name?, space?, folder?, argv?, task?, focus?}` (argv: an
@@ -660,8 +657,8 @@ The main ones:
   images are converted to PNG before sending,
   `terminal.right_click {to: "program" | "menu", terminal?}` (where right-clicks go
   when the program takes the mouse; kept as its label `herdr.right-click=program`;
-  Shift+right-click is always Herdr's menu),
-  `terminal.scroll {lines | pages | to: "top" | "bottom", terminal?}` (moves Herdr's view of the
+  Shift+right-click is always AgentDeck's menu),
+  `terminal.scroll {lines | pages | to: "top" | "bottom", terminal?}` (moves AgentDeck's view of the
   history, not the program: negative lines or pages go up, toward history; pages may be
   fractional, one page is the terminal's rows; on the alternate screen, such as vim or less,
   there is no history, so nothing moves),
@@ -679,7 +676,7 @@ The main ones:
   Selection endpoints are inclusive: start is the anchor, end is the moving end, even when reversed.
   Selection is null when absent or when no terminal view is attached.
   `terminal.pin {terminal, pinned}` (pins an agent to the top of the agent lists;
-  kept on the terminal as `herdr.pinned`, so every Herdr client shows it, and
+  kept on the terminal as `herdr.pinned`, so every AgentDeck client shows it, and
   gone when the terminal ends; read it as `agents()` `pinned`). Copy, paste, paste-image and implicit
   right-click targeting follow keyboard focus, including peek and floating terminals;
   with no terminal holding keyboard focus, they use the focused pane or block.
@@ -718,7 +715,7 @@ The main ones:
 - Window: `window.minimize`, `window.maximize` (or back), `window.close`.
 - macOS: `app.quit`, `app.hide`, `app.hide_others`, `app.show_all`.
 
-When the user runs a command without a required name (a key, a click), Herdr
+When the user runs a command without a required name (a key, a click), AgentDeck
 asks them. **You never get a dialog**: pass every required argument, or the
 command says what's missing.
 
@@ -747,7 +744,7 @@ What's about the user, never a look:
   (0.5 to 3; the zoom keys change it). Write sizes as designed at zoom 1.
 - `sounds`: `{ "enabled": true, "done": "<file>", "blocked": "<file>" }`.
   When an agent needs the person, or finishes while they aren't looking at
-  it, Herdr plays a sound and (unless they're looking) posts a toast that
+  it, AgentDeck plays a sound and (unless they're looking) posts a toast that
   goes there when clicked. `done` / `blocked` replace the bundled MP3s
   (path absolute or relative to `~/.config/agentdeck`). Changes apply live,
   including the Play buttons in Settings > Alerts.
@@ -766,7 +763,7 @@ What's about the user, never a look:
   terminal row height, column width and wheel/trackpad speed, used where the
   layout leaves them unset.
 - `font`, `font_size`, `font_weight`, `ui_font`: used where the layout doesn't set its
-  own. Herdr (main) leaves these unset. Bigger panels: `zoom`.
+  own. AgentDeck (main) leaves these unset. Bigger panels: `zoom`.
 - `font_ligatures`: programming ligatures are off by default; set `true` to
   enable them in terminal fonts such as JetBrains Mono and Fira Code. The cursor
   and background changes (including selections) break ligatures so individual cells stay clear.
@@ -915,7 +912,7 @@ has 124 programs (agents, editors, runtimes, tools, databases, infra);
   again after a popup over it closes. Leave with `run("pane.go", {direction})`.
   Without this opt-in, navigation and clicks stay unchanged.
 
-- The first time Herdr sees a folder, it docks one copy per `mod.json` into
+- The first time AgentDeck sees a folder, it docks one copy per `mod.json` into
   the shown layout (`"none"`: only where a layout or another mod puts it).
   After that, the layouts decide. Saving any file reloads every copy in place
   (not files the app writes: `jsconfig.json`, `.d.ts`, hidden ones,
@@ -974,7 +971,7 @@ has 124 programs (agents, editors, runtimes, tools, databases, infra);
   `git push -u origin <branch>` then `gh pr create` / `glab mr create`
   (a draft unless Draft is turned off) and opens the new one's `prdiff`
   window). Shipped mods
-  are Herdr's; duplicate with `mod.clone` before editing.
+  are AgentDeck's; duplicate with `mod.clone` before editing.
 
 ### Terminal link handlers
 
@@ -1059,7 +1056,7 @@ export default class Branches extends View {
 Rules:
 - `main.js` default-exports a class extending `View`. `init(props, cx)` runs
   once; `render(cx)` describes the UI and runs again after `cx.notify()` and
-  whenever Herdr's live data changes (spaces, agents, terminals, focus,
+  whenever AgentDeck's live data changes (spaces, agents, terminals, focus,
   theme, shared state). Don't poll those.
 - Module code runs once per source version and is shared by copies, even after all
   copies close. Keep instance state and host calls in constructor/init, not module
@@ -1149,7 +1146,7 @@ All of it is in `agentdeck.d.ts`. In short:
   `loading`, `ready`, or `unavailable` on this connection; loading ends on
   the first read even if it fails, and offline machines are unavailable),
   `agents()` (status, app, space, tab, pinned, focused; "done" turns "idle"
-  once someone looks at it on any Herdr client), `terminals()`
+  once someone looks at it on any AgentDeck client), `terminals()`
   (every core terminal), `focused()`, `layout()`, `theme()` (every color by
   name: background (the terminals', cards), canvas (behind cards), chrome
   (sidebars, bars), surface, popover, raised, hover, selected, border,
@@ -1173,7 +1170,7 @@ All of it is in `agentdeck.d.ts`. In short:
 - Overlays: `openOverlay({ mod, props, kind: "dialog" | "popup" | "window", width, height, at, frame })`
   returns an id; the mod gets `props().overlay` and closes itself with
   `closeOverlay(id)`; Esc closes the top dialog or popup. `frame: "none"`
-  drops Herdr's border, corners and shadow so the mod draws its own.
+  drops AgentDeck's border, corners and shadow so the mod draws its own.
   `notify({ title, body, level, icon, timeout })` posts a notification, drawn
   by the layout-chosen mod (default: `toast`).
 - Windows (`kind: "window"`): stay open until closed, over the layout and
