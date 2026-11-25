@@ -11,7 +11,7 @@ pattern='HERDR_APP_HOME|(^|[^A-Za-z0-9_])HC_(SESSION|SOCKET)([^A-Za-z0-9_]|$)|\.
 # The word hc in core's schema and docs, and "Herdr" meaning this app in the guides.
 hc_paths=(core/schema/hc.openrpc.json core/docs)
 hc_pattern='(^|[^A-Za-z0-9_./-])hc([^A-Za-z0-9_-]|$)'
-guides=(app/defaults/AGENTS.md app/src/SKILL.md core/crates/herdr-core/src/SKILL.md)
+guides=(app/defaults/AGENTS.md app/src/SKILL.md core/crates/herdr-core/src/SKILL.md app/README.md)
 hits() {
   git grep -n -I -E "$pattern" -- "${paths[@]}" || true
   git grep -n -I -E "$hc_pattern" -- "${hc_paths[@]}" || true

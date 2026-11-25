@@ -170,6 +170,9 @@ class CheckNames(unittest.TestCase):
     def test_herdr_word_in_skill_fails(self):
         self.assert_fails("core/crates/herdr-core/src/SKILL.md", "open Herdr there")
 
+    def test_herdr_word_in_app_readme_fails(self):
+        self.assert_fails("app/README.md", "Quit and reopen Herdr")
+
     def test_herdr_word_in_code_passes(self):
         self.assert_clean("app/src/a.rs", "// like Herdr")
 
