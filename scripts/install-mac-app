@@ -88,3 +88,28 @@ echo "  core: adk ls (links in ~/.local/bin)"
 if [[ -f $OLD_HOME/settings.json ]]; then echo "  settings from before the rename stay in $OLD_HOME: just migrate copies them"; fi
 echo "Open it from Spotlight or Finder: open \"$APP\""
 if [[ -d $OLD_APP ]]; then echo "The old $OLD_APP is still there: quit it, then move it to the Trash."; fi
+
+# A core left running from the previous build keeps that build's ad hoc signature,
+# and macOS then denies its shells ~/Documents and ~/Downloads. So quit the app,
+# stop that core (its terminals end) and reopen the app, which starts the new core.
+# Detached and last: run from an AgentDeck terminal, this ends that terminal.
+restart() {
+  stop() { # TERM, up to 5 s, then KILL
+    pkill -f "$1" || return 0
+    for _ in 1 2 3 4 5 6 7 8 9 10; do pgrep -qf "$1" || return 0; sleep 0.5; done
+    pkill -9 -f "$1" || true
+  }
+  local was_open=
+  if pgrep -qf "$APP/Contents/MacOS/$NAME"; then
+    was_open=1
+    osascript -e "tell application \"$APP\" to quit" || true
+    stop "$APP/Contents/MacOS/$NAME"
+  fi
+  stop "$CORE"
+  if [[ -n $was_open ]]; then open "$APP"; fi
+}
+if pgrep -qf "$CORE|$APP/Contents/MacOS/$NAME"; then
+  echo "Restarting AgentDeck on the new build: its terminals close."
+  restart >/dev/null 2>&1 < /dev/null &
+  disown
+fi
