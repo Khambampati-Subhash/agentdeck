@@ -125,6 +125,57 @@ class CheckNames(unittest.TestCase):
         self.assertEqual(out.returncode, 1)
         self.assertIn("app/src/b.rs:1:", out.stdout)
 
+    def assert_fails(self, path, content):
+        self.write_file(path, content)
+        out = self.run_check()
+        self.assertEqual(out.returncode, 1, out.stdout)
+        self.assertIn(f"{path}:1:", out.stdout)
+
+    def assert_clean(self, path, content):
+        self.write_file(path, content)
+        out = self.run_check()
+        self.assertEqual(out.returncode, 0, out.stdout)
+        self.assertIn("check-names: clean", out.stdout)
+
+    def test_hc_tag_fails(self):
+        self.assert_fails("core/crates/herdr-core/src/a.rs", "/// `<hc>` tags")
+
+    def test_hc_word_in_schema_fails(self):
+        self.assert_fails("core/schema/hc.openrpc.json", '"The hc session there"')
+
+    def test_hc_word_in_core_docs_fails(self):
+        self.assert_fails("core/docs/via/x.py", '"""Reach it with hc: hc machine add"""')
+
+    def test_released_schema_ignored(self):
+        self.assert_clean("core/schema/released.openrpc.json", '"The hc session there"')
+
+    def test_hc_in_file_names_passes(self):
+        self.assert_clean("core/docs/x.md", "See `schema/hc.openrpc.json` and herdr-core/hc.")
+
+    def test_upstream_shot_name_fails(self):
+        self.assert_fails("app/src/a.rs", 'unwrap_or("herdr-shot.png")')
+
+    def test_shot_temp_name_passes(self):
+        self.assert_clean("app/src/a.rs", 'format!(".herdr-shot-{}.png", id)')
+
+    def test_agentos_fails(self):
+        self.assert_fails("app/defaults/a.d.ts", "(AgentOS has none)")
+
+    def test_to_hc_version_fails(self):
+        self.assert_fails("app/defaults/a.js", "` to hc ${v}`")
+
+    def test_herdr_word_in_guides_fails(self):
+        self.assert_fails("app/defaults/AGENTS.md", "# Herdr app")
+
+    def test_herdr_word_in_skill_fails(self):
+        self.assert_fails("core/crates/herdr-core/src/SKILL.md", "open Herdr there")
+
+    def test_herdr_word_in_code_passes(self):
+        self.assert_clean("app/src/a.rs", "// like Herdr")
+
+    def test_herdr_label_in_guide_passes(self):
+        self.assert_clean("app/defaults/AGENTS.md", "`herdr.space=<id>`")
+
 
 if __name__ == "__main__":
     unittest.main()

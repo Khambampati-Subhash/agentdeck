@@ -7,7 +7,16 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 allow=scripts/names-allow.txt
 paths=(app/src app/defaults app/scripts/docs.ts core/crates/herdr-core/src core/docs app/docs)
-pattern='HERDR_APP_HOME|(^|[^A-Za-z0-9_])HC_(SESSION|SOCKET)([^A-Za-z0-9_]|$)|\.config/herdr-(app|core)|~/\.herdr([^A-Za-z0-9_-]|$)|dev\.herdr\.|Herdr\.app|`herdr-app [a-z]|`hc [a-z]|\[hc\]'
+pattern='HERDR_APP_HOME|(^|[^A-Za-z0-9_])HC_(SESSION|SOCKET)([^A-Za-z0-9_]|$)|\.config/herdr-(app|core)|~/\.herdr([^A-Za-z0-9_-]|$)|dev\.herdr\.|Herdr\.app|`herdr-app [a-z]|`hc [a-z]|\[hc\]|<hc>|herdr-shot\.png|AgentOS|to hc \$'
+# The word hc in core's schema and docs, and "Herdr" meaning this app in the guides.
+hc_paths=(core/schema/hc.openrpc.json core/docs)
+hc_pattern='(^|[^A-Za-z0-9_./-])hc([^A-Za-z0-9_-]|$)'
+guides=(app/defaults/AGENTS.md app/src/SKILL.md core/crates/herdr-core/src/SKILL.md)
+hits() {
+  git grep -n -I -E "$pattern" -- "${paths[@]}" || true
+  git grep -n -I -E "$hc_pattern" -- "${hc_paths[@]}" || true
+  git grep -n -I -F Herdr -- "${guides[@]}" || true
+}
 bad=0
 while IFS= read -r hit; do
   path=${hit%%:*}
@@ -18,6 +27,6 @@ while IFS= read -r hit; do
     if [[ $path == "$apath"* && $text == *"$sub"* ]]; then ok=1; break; fi
   done < "$allow"
   if (( ! ok )); then echo "$hit"; bad=1; fi
-done < <(git grep -n -I -E "$pattern" -- "${paths[@]}" || true)
+done < <(hits | sort -u)
 if (( bad )); then echo "check-names: upstream names are back above; see scripts/names-allow.txt" >&2; exit 1; fi
 echo "check-names: clean"
