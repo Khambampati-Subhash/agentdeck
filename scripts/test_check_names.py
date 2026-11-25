@@ -173,6 +173,18 @@ class CheckNames(unittest.TestCase):
     def test_herdr_word_in_app_readme_fails(self):
         self.assert_fails("app/README.md", "Quit and reopen Herdr")
 
+    def test_herdr_word_in_app_docs_fails(self):
+        self.assert_fails("app/docs/security.md", "A mod runs inside Herdr.")
+
+    def test_hc_word_in_schema_readme_fails(self):
+        self.assert_fails("core/schema/README.md", "so `ssh box hc connect` works")
+
+    def test_hc_file_name_in_backticks_passes(self):
+        self.assert_clean("core/schema/README.md", "`hc.openrpc.json` is the API; see hc.openrpc.json.")
+
+    def test_hc_at_sentence_end_fails(self):
+        self.assert_fails("core/docs/x.md", "Agents talk to hc.")
+
     def test_herdr_word_in_code_passes(self):
         self.assert_clean("app/src/a.rs", "// like Herdr")
 

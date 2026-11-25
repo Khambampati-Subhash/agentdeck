@@ -26,3 +26,4 @@ app/defaults/AGENTS.md	mods written for Herdr	means upstream: mods made for stoc
 app/defaults/AGENTS.md	Names work as in Herdr	means upstream: naming follows stock Herdr's
 app/defaults/AGENTS.md	as in Herdr;	means upstream: naming follows stock Herdr's
 app/README.md	It is a fork of [Herdr]	credit and link to upstream
+app/docs/labels.md	Herdr clients (the desktop app, the phone app	means upstream: the label protocol is shared by every Herdr-family client

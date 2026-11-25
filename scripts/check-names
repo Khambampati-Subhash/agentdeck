@@ -9,9 +9,10 @@ allow=scripts/names-allow.txt
 paths=(app/src app/defaults app/scripts/docs.ts core/crates/herdr-core/src core/docs app/docs)
 pattern='HERDR_APP_HOME|(^|[^A-Za-z0-9_])HC_(SESSION|SOCKET)([^A-Za-z0-9_]|$)|\.config/herdr-(app|core)|~/\.herdr([^A-Za-z0-9_-]|$)|dev\.herdr\.|Herdr\.app|`herdr-app [a-z]|`hc [a-z]|\[hc\]|<hc>|herdr-shot\.png|AgentOS|to hc \$'
 # The word hc in core's schema and docs, and "Herdr" meaning this app in the guides.
-hc_paths=(core/schema/hc.openrpc.json core/docs)
-hc_pattern='(^|[^A-Za-z0-9_./-])hc([^A-Za-z0-9_-]|$)'
-guides=(app/defaults/AGENTS.md app/src/SKILL.md core/crates/herdr-core/src/SKILL.md app/README.md)
+hc_paths=(core/schema/hc.openrpc.json core/schema/README.md core/docs)
+# hc.openrpc.json is a file name; "hc." ending a sentence is the word.
+hc_pattern='(^|[^A-Za-z0-9_./-])hc([^A-Za-z0-9_.-]|\.([^A-Za-z]|$)|$)'
+guides=(app/defaults/AGENTS.md app/src/SKILL.md core/crates/herdr-core/src/SKILL.md app/README.md app/docs/*.md)
 hits() {
   git grep -n -I -E "$pattern" -- "${paths[@]}" || true
   git grep -n -I -E "$hc_pattern" -- "${hc_paths[@]}" || true
