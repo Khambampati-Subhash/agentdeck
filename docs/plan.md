@@ -157,9 +157,8 @@ seeing each other's terminals, settings or core. `scripts/side-by-side` passes
 - [x] Upstream's app docs check runs in CI and `just check`, against `agentdeck`
       (2026-11-20). `app/scripts/test_distribution.py` runs in CI only: one case fails on
       a Mac with `/Applications/Herdr.app`.
-- [ ] `app/README.md` is still upstream's: herdr.dev installers, Homebrew and Windows
-      installs, "telemetry is on by default", cloning herdr-app. Rewrite it for
-      AgentDeck as P2 did for `core/README.md`.
+- [x] `app/README.md` rewritten for AgentDeck (2026-11-25): release or `just install`,
+      no updates or telemetry, build from this repo. `scripts/check-names` checks it.
 - [x] Flaky under load: `mods::tests::known_agents_uses_snapshot_and_refreshes_changed_commands`
       started the person's interactive shell, which a busy machine couldn't start within the
       30 s limit (74 of 80 failed under load). It now passes a stand-in lookup and also
@@ -172,13 +171,20 @@ seeing each other's terminals, settings or core. `scripts/side-by-side` passes
       why, and a log of syncs.
 - [x] `just sync-upstream`: pulls, re-runs the rename checks and tests.
 - [x] First sync done for real, with any conflicts written down.
-- [ ] Names pass for text that was already there before P4: core `SKILL.md` "Herdr"
+- [x] Names pass (2026-11-25, [plan](superpowers/plans/2026-11-24-names-docs-pass.md)) for text that was already there before P4: core `SKILL.md` "Herdr"
       lines, `config.rs`'s `<hc>` tags, old `hc` in some schema descriptions,
       `agentdeck.d.ts` "AgentOS has none", Settings' "to hc ${version}", the
       `herdr-shot.png` default, older Herdr prose and the herdr.dev share text in
-      `app/defaults/AGENTS.md`.
-- [ ] `scripts/sync-upstream`'s report skips an added line whose content starts with
-      `++` (a known gap from the P4 review).
+      `app/defaults/AGENTS.md`. `scripts/check-names` now fails on these (`<hc>`, `herdr-shot.png`,
+      AgentOS, the word `hc` in core's schema and docs, "Herdr" in the guides).
+- [x] `scripts/sync-upstream`'s report skipped an added line whose content starts with
+      `++` (a known gap from the P4 review); fixed 2026-11-25.
+- [ ] `telemetry.rs`, `feedback.rs` and the d.ts still read `HERDR_TELEMETRY`,
+      `HERDR_TELEMETRY_URL` and `HERDR_FEEDBACK_URL`; P2 said only `AGENTDECK_*` are read.
+- [ ] `app/scripts/bench.py` still sets `HERDR_APP_HOME` and `HC_SESSION` and calls `hc`.
+      AgentDeck reads neither, so as written it would drive the real home and default
+      session. Port it to `AGENTDECK_HOME`, `ADK_SESSION` and `adk` before using it;
+      the README leaves it out until then.
 
 ## P5: improvements
 

@@ -3,7 +3,7 @@
 `hc.openrpc.json` is the whole request/response API as an
 [OpenRPC](https://open-rpc.org) document: every method with its params,
 result and errors in JSON Schema. It is generated from the Rust types (a
-test fails when it is stale), and `hc schema` or the `rpc.discover` method
+test fails when it is stale), and `adk schema` or the `rpc.discover` method
 returns the same document from a running core.
 
 This file covers what OpenRPC does not describe: the two connection modes,
@@ -22,8 +22,8 @@ protocol generation, decided on purpose.
 
 On Unix, core listens on a Unix socket; on Windows, it uses a named pipe.
 See [endpoint rules](../docs/security.md#state-and-endpoints) for default paths,
-fallbacks, and overrides. `hc connect` speaks the same protocol over
-stdin/stdout, so `ssh box hc connect` is a remote core.
+fallbacks, and overrides. `adk connect` speaks the same protocol over
+stdin/stdout, so `ssh box adk connect` is a remote core.
 
 A connection starts in **plain mode**: JSON-RPC 2.0, one message per line.
 Any language or `socat` works.
@@ -219,5 +219,5 @@ watched machines after it.
 
 A terminal's status is whatever its program reported through OSC 7501, the
 Program Status Protocol (`idle`, `working`,
-`done`, `blocked`, `error`, ...), stored as reported. hc never infers status
+`done`, `blocked`, `error`, ...), stored as reported. adk never infers status
 from the screen. Programs that don't speak 7501 have no status.

@@ -22,3 +22,8 @@ core/crates/herdr-core/src/picker.rs	`hc ls`	code comment; P2 kept internal name
 core/crates/herdr-core/src/server.rs	`hc server stop`	code comment; P2 kept internal names in comments
 core/crates/herdr-core/src/cli/run.rs	//! `hc run …`	code comment; P2 kept internal names in comments
 core/crates/herdr-core/src/cli/server.rs	//! `hc server …`	code comment; P2 kept internal names in comments
+app/defaults/AGENTS.md	mods written for Herdr	means upstream: mods made for stock Herdr load in AgentDeck
+app/defaults/AGENTS.md	Names work as in Herdr	means upstream: naming follows stock Herdr's
+app/defaults/AGENTS.md	as in Herdr;	means upstream: naming follows stock Herdr's
+app/README.md	It is a fork of [Herdr]	credit and link to upstream
+app/docs/labels.md	Herdr clients (the desktop app, the phone app	means upstream: the label protocol is shared by every Herdr-family client

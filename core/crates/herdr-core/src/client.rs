@@ -19,7 +19,7 @@ pub fn remember_exe() {
     build_id();
 }
 
-/// The package manager this hc came from, or "system package manager" as a
+/// The package manager this adk came from, or "system package manager" as a
 /// compatibility marker when its folder isn't writable. None for a replaceable install.
 pub fn installed_by() -> Option<&'static str> {
     let exe = EXE.get().cloned().or_else(|| std::env::current_exe().ok())?;

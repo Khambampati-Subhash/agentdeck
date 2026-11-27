@@ -628,7 +628,7 @@ export default class Settings extends View {
         try { payload = JSON.parse(r.stdout || r.stderr); } catch {}
         if (r.code !== 0) throw new Error(payload?.error?.message || (r.stderr || r.stdout || "It didn't work.").trim());
         const message = action === "update"
-          ? `Updated ${machine}${payload?.version ? ` to hc ${payload.version}` : ""}; its terminals kept running.`
+          ? `Updated ${machine}${payload?.version ? ` to adk ${payload.version}` : ""}; its terminals kept running.`
           : action === "rename" ? `Renamed ${machine} to ${name.trim()}.` : `Removed ${machine}; its terminals keep running there.`;
         if (action === "update") this.machineResults[machine] = { message, ok: true };
         else this.machineNotice = message;

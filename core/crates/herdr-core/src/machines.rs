@@ -21,16 +21,16 @@ pub struct Machine {
     #[serde(default)]
     pub via: bool,
     /// Short-lived (a sandbox for a task): clients may show it apart from the
-    /// machines that stay. hc treats it like any other.
+    /// machines that stay. adk treats it like any other.
     #[serde(default)]
     pub temporary: bool,
-    /// The hc session there (null: its default).
+    /// The adk session there (null: its default).
     pub session: Option<String>,
     /// The other core's permanent id.
     pub id: String,
     /// What that core calls itself (its hostname).
     pub host: String,
-    /// Its hc version when last seen.
+    /// Its adk version when last seen.
     pub version: String,
     /// Last observed systemd logout protection; null for old or unsupported cores.
     #[serde(default)]

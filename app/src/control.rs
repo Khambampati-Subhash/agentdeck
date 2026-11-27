@@ -77,7 +77,7 @@ pub fn client(args: &[String]) -> i32 {
     }
     let cmd = match args {
         [verb, rest @ ..] if verb == "shot" && rest.len() <= 1 => {
-            let path = PathBuf::from(rest.first().map(String::as_str).unwrap_or("herdr-shot.png"));
+            let path = PathBuf::from(rest.first().map(String::as_str).unwrap_or("agentdeck-shot.png"));
             let path = match std::path::absolute(path) {
                 Ok(path) => path,
                 Err(e) => return fail(&format!("cannot resolve screenshot path: {e}")),

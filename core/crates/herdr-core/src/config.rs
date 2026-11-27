@@ -14,8 +14,8 @@ pub struct Config {
     pub detach_key: Option<String>,
     /// Seconds a `wait` runs before it checks in (default 180).
     pub wait_timeout: Option<f64>,
-    /// Notes to parent agents and `<hc>` tags on messages between agents, on
-    /// or off (default on). Off: hc types nothing on its own.
+    /// Notes to parent agents and `<adk>` tags on messages between agents, on
+    /// or off (default on). Off: adk types nothing on its own.
     pub notes: Option<bool>,
     /// Seconds of quiet before a note (default 3); after Enter or a clear it goes in at once.
     #[serde(default, deserialize_with = "seconds")]
